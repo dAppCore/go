@@ -114,6 +114,33 @@ func (c *Core) ServiceShutdown(ctx Context) Result {
 	return Result{OK: true}
 }
 
+// Go spawns a goroutine tracked by Core's waitGroup. ServiceShutdown
+// waits for every tracked goroutine to exit before stopping services,
+// so long-running workers + watchers + reconnect loops don't get
+// orphaned across a clean shutdown. Long-running goroutines should
+// also poll IsShutdown between work units to exit cooperatively.
+//
+//	c.Go(func() {
+//	    for !c.IsShutdown() {
+//	        pollOnce()
+//	        core.Sleep(30 * core.Second)
+//	    }
+//	})
+func (c *Core) Go(fn func()) {
+	c.waitGroup.Go(fn)
+}
+
+// IsShutdown reports whether ServiceShutdown has been initiated.
+// Long-running goroutines spawned via c.Go check this between work
+// units to exit cooperatively before the waitGroup drain blocks.
+//
+//	for !c.IsShutdown() {
+//	    processBatch()
+//	}
+func (c *Core) IsShutdown() bool {
+	return c.shutdown.Load()
+}
+
 // --- Runtime DTO (GUI binding) ---
 
 // Runtime is the container for GUI runtimes (e.g., Wails).
