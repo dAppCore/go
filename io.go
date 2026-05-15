@@ -192,3 +192,14 @@ func NewBufferString(s string) *bytes.Buffer {
 func NewBufferReader(b []byte) *bytes.Reader {
 	return bytes.NewReader(b)
 }
+
+// LimitReader returns a Reader that reads from r but stops with EOF
+// after n bytes. Useful for bounding HTTP body reads at a maximum
+// size to prevent memory blow-ups from oversized responses.
+//
+//	body := core.ReadAll(core.LimitReader(resp.Body, 4<<20))
+//	if !body.OK { return body }
+//	bytes := body.Value.([]byte)
+func LimitReader(r Reader, n int64) Reader {
+	return io.LimitReader(r, n)
+}

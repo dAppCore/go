@@ -102,3 +102,22 @@ func ExampleSliceAll() {
 	Println(SliceAll([]int{1, 2, 3}, func(n int) bool { return n > 0 }))
 	// Output: true
 }
+
+// ExampleSliceSortFunc sorts a list with a comparator through
+// `SliceSortFunc` for agent lists. Use SliceSort when natural ordering
+// applies; SliceSortFunc covers the comparator-required cases (struct
+// fields, mixed-criteria orderings).
+func ExampleSliceSortFunc() {
+	type item struct {
+		Path string
+	}
+	items := []item{{Path: "/c"}, {Path: "/a"}, {Path: "/b"}}
+	SliceSortFunc(items, func(a, b item) bool { return a.Path < b.Path })
+	for _, it := range items {
+		Println(it.Path)
+	}
+	// Output:
+	// /a
+	// /b
+	// /c
+}

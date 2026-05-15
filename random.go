@@ -81,3 +81,19 @@ func RandPick[T any](items []T) T {
 func RandIntn(n int) int {
 	return fastrand.IntN(n)
 }
+
+// RandRead fills b with cryptographically secure random bytes. Returns
+// Result.OK true on success; on failure r.Value holds the underlying
+// error. Use this when callers need to fill an existing slice rather
+// than allocate via RandomBytes.
+//
+//	buf := make([]byte, 32)
+//	if r := core.RandRead(buf); !r.OK {
+//	    return core.Fail(core.E("seed", "rand: "+r.Error(), nil))
+//	}
+func RandRead(b []byte) Result {
+	if _, err := cryptorand.Read(b); err != nil {
+		return Result{err, false}
+	}
+	return Result{nil, true}
+}

@@ -52,3 +52,17 @@ func ExampleRandIntn() {
 	Println(n >= 0 && n < 5)
 	// Output: true
 }
+
+// ExampleRandRead fills an existing buffer with cryptographically secure
+// random bytes through `RandRead` for session nonce generation. Use this
+// when callers need to fill a pre-allocated slice rather than allocate
+// via RandomBytes.
+func ExampleRandRead() {
+	buf := make([]byte, 16)
+	r := RandRead(buf)
+	Println(r.OK)
+	Println(len(buf))
+	// Output:
+	// true
+	// 16
+}

@@ -197,3 +197,14 @@ func ExampleBuilder() {
 	Println(b.String())
 	// Output: hello world
 }
+
+// ExampleLastIndex finds the last instance of a substring through
+// `LastIndex` for command text handling. Pair with Index when consumer
+// code needs both ends of a delimiter.
+func ExampleLastIndex() {
+	Println(LastIndex("host.example.com:8080", ":"))
+	Println(LastIndex("no-colon", ":"))
+	// Output:
+	// 16
+	// -1
+}

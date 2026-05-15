@@ -201,3 +201,12 @@ func HTMLEscape(s string) string {
 func HTMLUnescape(s string) string {
 	return html.UnescapeString(s)
 }
+
+// LastIndex returns the index of the last instance of substr in s, or
+// -1 if substr is not present. Mirrors strings.LastIndex; pair with
+// Index when consumer code needs both ends of a delimiter.
+//
+//	colon := core.LastIndex("host.example.com:8080", ":")  // 16
+func LastIndex(s, substr string) int {
+	return strings.LastIndex(s, substr)
+}

@@ -111,3 +111,14 @@ func ExampleNewBufferReader() {
 	Println(string(out))
 	// Output: hello
 }
+
+// ExampleLimitReader bounds a stream read at n bytes through `LimitReader`
+// for streaming payloads. Pair with ReadAll to cap HTTP body reads at a
+// safe maximum size.
+func ExampleLimitReader() {
+	src := NewReader("hello world")
+	bounded := LimitReader(src, 5)
+	r := ReadAll(bounded)
+	Println(r.Value)
+	// Output: hello
+}

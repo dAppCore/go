@@ -193,3 +193,13 @@ func SliceAll[T any](s []T, pred func(T) bool) bool {
 	}
 	return true
 }
+
+// SliceSortFunc sorts s in place using less to compare elements. The
+// sort is not guaranteed to be stable. Use SliceSort when natural
+// ordering applies; SliceSortFunc covers the comparator-required cases
+// (sorting structs by a field, mixed-criteria order, etc.).
+//
+//	core.SliceSortFunc(items, func(a, b Item) bool { return a.Path < b.Path })
+func SliceSortFunc[T any](s []T, less func(a, b T) bool) {
+	sort.Slice(s, func(i, j int) bool { return less(s[i], s[j]) })
+}
