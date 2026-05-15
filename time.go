@@ -123,3 +123,49 @@ func TimeParse(layout, value string) Result {
 func UnixTime(sec int64) time.Time {
 	return time.Unix(sec, 0)
 }
+
+// Unix returns the Time at sec seconds + nsec nanoseconds since the Unix
+// epoch. Mirrors the stdlib signature for callers that need sub-second
+// precision; UnixTime is the sec-only shorthand.
+//
+//	ts := core.Unix(sec, nsec)
+func Unix(sec, nsec int64) Time {
+	return time.Unix(sec, nsec)
+}
+
+// UnixMilli returns the Time at the given milliseconds since the Unix
+// epoch. Useful for parsing JSON timestamps and other ms-resolution APIs.
+//
+//	ts := core.UnixMilli(jsonField)
+func UnixMilli(ms int64) Time {
+	return time.UnixMilli(ms)
+}
+
+// After returns a channel that delivers the current time after duration d.
+// Use in select for timeouts:
+//
+//	select {
+//	case msg := <-ch:
+//	    handle(msg)
+//	case <-core.After(2 * core.Second):
+//	    return core.E("timeout", "no message", nil)
+//	}
+func After(d Duration) <-chan Time {
+	return time.After(d)
+}
+
+// Ticker delivers Time values at regular intervals on its C channel.
+// Stop the ticker with Stop() to release resources.
+type Ticker = time.Ticker
+
+// NewTicker returns a new Ticker that fires every duration d on its C
+// channel. The caller MUST call Stop() to release the underlying timer.
+//
+//	ticker := core.NewTicker(30 * core.Second)
+//	defer ticker.Stop()
+//	for range ticker.C {
+//	    poll()
+//	}
+func NewTicker(d Duration) *Ticker {
+	return time.NewTicker(d)
+}

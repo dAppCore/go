@@ -68,3 +68,42 @@ func ExampleUnixTime() {
 	Println(Contains(Sprint(UnixTime(0)), "1970-01-01"))
 	// Output: true
 }
+
+// ExampleUnix builds a timestamp from seconds + nanoseconds through `Unix` for health-check
+// timing. Mirrors the stdlib two-arg signature; UnixTime is the sec-only shorthand.
+func ExampleUnix() {
+	Println(Contains(Sprint(Unix(0, 0)), "1970-01-01"))
+	// Output: true
+}
+
+// ExampleUnixMilli builds a timestamp from milliseconds through `UnixMilli` for parsing
+// JSON timestamps and other ms-resolution APIs without importing time directly.
+func ExampleUnixMilli() {
+	Println(Contains(Sprint(UnixMilli(0)), "1970-01-01"))
+	// Output: true
+}
+
+// ExampleAfter shows the channel-returning timer used in select for
+// timeouts. Pair with a body select-case to bound any blocking read.
+func ExampleAfter() {
+	ch := make(chan string, 1)
+	ch <- "msg"
+	select {
+	case msg := <-ch:
+		Println(msg)
+	case <-After(100 * Millisecond):
+		Println("timeout")
+	}
+	// Output: msg
+}
+
+// ExampleNewTicker fires periodic ticks for poll loops. Caller MUST Stop
+// the ticker to release the underlying timer; the example reads one
+// tick + stops to keep the example test bounded.
+func ExampleNewTicker() {
+	ticker := NewTicker(10 * Millisecond)
+	defer ticker.Stop()
+	<-ticker.C
+	Println("tick")
+	// Output: tick
+}
