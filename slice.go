@@ -6,7 +6,6 @@ package core
 
 import (
 	"slices"
-	"sort"
 )
 
 // SliceContains reports whether s contains v.
@@ -34,9 +33,9 @@ func SliceClone[T any](s []T) []T {
 //
 //	core.SliceSort(scores)
 func SliceSort[T Ordered](s []T) {
-	sort.Slice(s, func(i, j int) bool {
-		return Compare(s[i], s[j]) < 0
-	})
+	// slices.Sort uses generic dispatch and avoids the interface-based
+	// reflection that sort.Slice incurred under Go 1.20-style closures.
+	slices.Sort(s)
 }
 
 // SliceUniq returns a new slice with duplicate values removed, preserving order.
@@ -201,5 +200,17 @@ func SliceAll[T any](s []T, pred func(T) bool) bool {
 //
 //	core.SliceSortFunc(items, func(a, b Item) bool { return a.Path < b.Path })
 func SliceSortFunc[T any](s []T, less func(a, b T) bool) {
-	sort.Slice(s, func(i, j int) bool { return less(s[i], s[j]) })
+	// slices.SortFunc is generic and avoids the interface-based reflect
+	// dispatch that sort.Slice used. The bool-less API is preserved by
+	// wrapping into the int comparator that slices.SortFunc expects.
+	slices.SortFunc(s, func(a, b T) int {
+		switch {
+		case less(a, b):
+			return -1
+		case less(b, a):
+			return 1
+		default:
+			return 0
+		}
+	})
 }
