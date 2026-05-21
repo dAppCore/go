@@ -59,7 +59,9 @@ func JSONMarshalString(v any) string {
 	if err != nil {
 		return "{}"
 	}
-	return string(data)
+	// json.Marshal returns a freshly-allocated []byte we own
+	// exclusively — AsString skips the copy.
+	return AsString(data)
 }
 
 // JSONUnmarshal deserialises JSON bytes into a target.
