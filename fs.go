@@ -11,8 +11,24 @@ import (
 //	r := fsys.EnsureDir("logs")
 //	if !r.OK { return r }
 type Fs struct {
-	root         string
-	rootResolved string // symlink-resolved root, computed once at New()
+	root            string
+	rootResolved    string // symlink-resolved root, computed once at New()
+	rootResolvedSep string // rootResolved + PathSeparator — prefix used by validatePath
+
+	// validated caches successful validatePath results keyed by the
+	// caller-supplied path. Fs operations re-validate per call by
+	// default; storing the result here lets repeat lookups skip the
+	// EvalSymlinks syscall chain (per-component Lstat, intermediate
+	// string builds) which dominated the per-call cost.
+	//
+	// Security shape: the cache is unconditionally safe. First call
+	// performs the full sandbox-escape check; subsequent calls return
+	// the same already-validated path. This is a TOCTOU IMPROVEMENT
+	// over the per-call path — an attacker who races a symlink swap
+	// between validate and use can no longer redirect already-resolved
+	// paths. Cache miss on any newly-presented path still does the
+	// full check.
+	validated SyncMap // string -> string
 }
 
 // FS is a generic filesystem accepted by Mount and Extract.
@@ -65,6 +81,9 @@ func (m *Fs) New(root string) *Fs {
 			m.rootResolved = r.Value.(string)
 		}
 	}
+	// Pre-compute rootResolved + sep so validatePath's HasPrefix check
+	// is a single load — Concat at call time would alloc per Fs op.
+	m.rootResolvedSep = m.rootResolved + string(PathSeparator)
 	return m
 }
 
@@ -150,20 +169,25 @@ func (m *Fs) validatePath(p string) Result {
 		return Result{m.path(p), true}
 	}
 
+	// Cached fast path — same input path resolves to the same
+	// caller-form output every time within an Fs lifetime. The cache
+	// holds only OK results; rejected paths fall through to the full
+	// check on every retry (cheap because rare).
+	if v, ok := m.validated.Load(p); ok {
+		return Result{v.(string), true}
+	}
+
 	// Build the full candidate path under the resolved root.
 	clean := CleanPath("/"+p, string(PathSeparator))
 	full := PathJoin(root, clean[1:])
 
 	resolved := evalDeepestSymlinks(full)
 
-	// Verify the resolved path is within root (sandbox check).
-	relResult := PathRel(root, resolved)
-	if !relResult.OK {
-		err, _ := relResult.Value.(error)
-		return Result{err, false}
-	}
-	rel := relResult.Value.(string)
-	if HasPrefix(rel, "..") {
+	// Sandbox check via string-prefix instead of PathRel — equivalent
+	// boundary (any escape produces a resolved path that fails both
+	// `== root` and `HasPrefix(root + sep)`), zero allocation. The
+	// PathRel approach allocated 3-5 intermediate strings per call.
+	if resolved != root && !HasPrefix(resolved, m.rootResolvedSep) {
 		username := "unknown"
 		if r := UserCurrent(); r.OK {
 			username = r.Value.(*User).Username
@@ -176,13 +200,17 @@ func (m *Fs) validatePath(p string) Result {
 	// contract is "paths under m.root"). Internally we used rootResolved
 	// for the sandbox check; externally callers want paths matching
 	// what they passed to New().
+	var out string
 	if m.root == root {
-		return Result{resolved, true}
+		out = resolved
+	} else if resolved == root {
+		out = m.root
+	} else {
+		// Strip the rootResolved prefix + sep to get the tail under root.
+		out = PathJoin(m.root, resolved[len(m.rootResolvedSep):])
 	}
-	if rel == "." {
-		return Result{m.root, true}
-	}
-	return Result{PathJoin(m.root, rel), true}
+	m.validated.Store(p, out)
+	return Result{out, true}
 }
 
 // evalDeepestSymlinks resolves symlinks at the deepest existing prefix

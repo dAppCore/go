@@ -129,7 +129,7 @@ func New(opts ...CoreOption) *Core {
 		config:             (&Config{}).New(),
 		error:              &ErrorPanic{},
 		log:                &ErrorLog{},
-		lock:               &Lock{locks: NewRegistry[*RWMutex]()},
+		lock:               &Lock{},
 		ipc:                &Ipc{actions: NewRegistry[*Action](), tasks: NewRegistry[*Task]()},
 		info:               systemInfo,
 		i18n:               &I18n{},

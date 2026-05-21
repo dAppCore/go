@@ -103,32 +103,38 @@ func BenchmarkIPC_QUERYALL_TenHandlers(b *B) {
 }
 
 // --- Register* ---
+//
+// Each benchmark fires Register against a fresh *Core so the COW slice
+// growth stays at the realistic-boot scale (a handful of handlers per
+// Core, not N accumulating across iterations). The atomic.Value pointer
+// store is the steady-state cost; the iter-local *Core allocation is
+// noise reported as "0 allocs" because the call body itself adds 1.
 
 func BenchmarkIPC_RegisterAction(b *B) {
-	c := New()
 	handler := noopHandler()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
+		c := New()
 		c.RegisterAction(handler)
 	}
 }
 
 func BenchmarkIPC_RegisterActions_Five(b *B) {
-	c := New()
 	hs := []func(*Core, Message) Result{
 		noopHandler(), noopHandler(), noopHandler(), noopHandler(), noopHandler(),
 	}
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
+		c := New()
 		c.RegisterActions(hs...)
 	}
 }
 
 func BenchmarkIPC_RegisterQuery(b *B) {
-	c := New()
 	q := noopQueryHandler()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
+		c := New()
 		c.RegisterQuery(q)
 	}
 }

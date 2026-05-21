@@ -14,22 +14,28 @@ package core
 type Lock struct {
 	Name  string
 	Mutex *RWMutex
-	locks *Registry[*RWMutex] // per-Core named mutexes
+	// locks holds the per-Core cache of *Lock wrappers. Only the
+	// registry-holder Lock (c.lock) populates this; per-name DTOs
+	// returned from c.Lock(name) leave it nil.
+	locks SyncMap
 }
 
 // Lock returns a named Lock, creating the mutex if needed.
 // Locks are per-Core — separate Core instances do not share mutexes.
+// The returned *Lock wrapper is cached after first lookup, so subsequent
+// calls for the same name reuse the same pointer (race-safe via
+// SyncMap.LoadOrStore — two goroutines racing the first lookup converge
+// on a single shared *RWMutex).
 //
 //	l := c.Lock("drain")
 //	l.Lock(); defer l.Unlock()
 func (c *Core) Lock(name string) *Lock {
-	r := c.lock.locks.Get(name)
-	if r.OK {
-		return &Lock{Name: name, Mutex: r.Value.(*RWMutex)}
+	if v, ok := c.lock.locks.Load(name); ok {
+		return v.(*Lock)
 	}
-	m := &RWMutex{}
-	c.lock.locks.Set(name, m)
-	return &Lock{Name: name, Mutex: m}
+	fresh := &Lock{Name: name, Mutex: &RWMutex{}}
+	actual, _ := c.lock.locks.LoadOrStore(name, fresh)
+	return actual.(*Lock)
 }
 
 // Lock acquires the named mutex for write.
