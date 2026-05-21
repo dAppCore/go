@@ -61,19 +61,33 @@ func SplitN(s, sep string, n int) []string {
 	return strings.SplitN(s, sep, n)
 }
 
-// Join joins parts with a separator, building via Concat.
+// Join joins parts with a separator into a single string.
 //
 //	core.Join("/", "deploy", "to", "homelab")      // "deploy/to/homelab"
 //	core.Join(".", "cmd", "deploy", "description")  // "cmd.deploy.description"
 func Join(sep string, parts ...string) string {
-	if len(parts) == 0 {
+	switch len(parts) {
+	case 0:
 		return ""
+	case 1:
+		return parts[0]
 	}
-	result := parts[0]
+	// Pre-size the Builder to the exact final length so WriteString
+	// never grows the internal buffer. The earlier implementation
+	// chained Concat(result, sep, p) per pair which produced O(N²)
+	// allocations and bytes-copied for N parts.
+	n := len(sep) * (len(parts) - 1)
+	for _, p := range parts {
+		n += len(p)
+	}
+	var b strings.Builder
+	b.Grow(n)
+	b.WriteString(parts[0])
 	for _, p := range parts[1:] {
-		result = Concat(result, sep, p)
+		b.WriteString(sep)
+		b.WriteString(p)
 	}
-	return result
+	return b.String()
 }
 
 // Replace replaces all occurrences of old with new in s.
@@ -181,7 +195,16 @@ func NewReader(s string) *strings.Reader {
 //	core.Concat("cmd.", "deploy.to.homelab", ".description")
 //	core.Concat("https://", host, "/api/v1")
 func Concat(parts ...string) string {
-	b := NewBuilder()
+	// Pre-size to the exact final length so WriteString never grows
+	// the internal buffer. Without this the Builder doubles its
+	// backing array as parts append, costing 1-3 extra allocations
+	// on every call.
+	n := 0
+	for _, p := range parts {
+		n += len(p)
+	}
+	var b strings.Builder
+	b.Grow(n)
 	for _, p := range parts {
 		b.WriteString(p)
 	}
