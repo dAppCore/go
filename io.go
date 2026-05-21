@@ -142,7 +142,18 @@ func ReadAll(reader any) Result {
 	if !ok {
 		return Result{E("core.ReadAll", "not a reader", nil), false}
 	}
-	data, err := io.ReadAll(rc)
+	var data []byte
+	var err error
+	// Fast path: if the reader knows its remaining size (bytes.Reader,
+	// bytes.Buffer, strings.Reader, *io.LimitedReader-of-known all
+	// expose Len()), allocate the destination once at the exact size
+	// instead of paying io.ReadAll's 5-10 buffer doublings (which cost
+	// roughly 3x the final byte count in transient allocations).
+	if sizer, hasLen := reader.(interface{ Len() int }); hasLen {
+		data, err = readAllSized(rc, sizer.Len())
+	} else {
+		data, err = io.ReadAll(rc)
+	}
 	if closer, ok := reader.(Closer); ok {
 		closer.Close()
 	}
@@ -150,6 +161,27 @@ func ReadAll(reader any) Result {
 		return Result{err, false}
 	}
 	return Result{string(data), true}
+}
+
+// readAllSized reads exactly n bytes (or until EOF) into a pre-allocated
+// buffer. Used by ReadAll when the source's remaining length is known.
+func readAllSized(r Reader, n int) ([]byte, error) {
+	if n <= 0 {
+		return nil, nil
+	}
+	buf := make([]byte, n)
+	read := 0
+	for read < n {
+		m, err := r.Read(buf[read:])
+		read += m
+		if err != nil {
+			if err == io.EOF {
+				return buf[:read], nil
+			}
+			return buf[:read], err
+		}
+	}
+	return buf, nil
 }
 
 // Buffer is an alias for bytes.Buffer — an in-memory byte sequence with
