@@ -390,7 +390,19 @@ func MountEmbed(efs embed.FS, basedir string) Result {
 }
 
 func (s *Embed) path(name string) Result {
-	joined := PathToSlash(PathJoin(s.basedir, name))
+	// Fast paths for common mount shapes:
+	//   - basedir "" or "." → name is already the embed-FS path; no
+	//     PathJoin alloc required. (Mount(fsys, ".") is the typical
+	//     consumer shape and hits this branch on every Read/Open.)
+	//   - basedir non-empty → fall through to PathJoin which builds
+	//     the joined path.
+	var joined string
+	switch s.basedir {
+	case "", ".":
+		joined = name
+	default:
+		joined = PathToSlash(PathJoin(s.basedir, name))
+	}
 	if HasPrefix(joined, "..") || Contains(joined, "/../") || HasSuffix(joined, "/..") {
 		return Result{E("embed.path", Concat("path traversal rejected: ", name), nil), false}
 	}

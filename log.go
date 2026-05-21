@@ -8,6 +8,7 @@ package core
 import (
 	"bytes"
 	goio "io"
+	"strconv"
 )
 
 // Level defines logging verbosity.
@@ -248,6 +249,11 @@ func (l *Log) log(level Level, prefix, msg string, keyvals ...any) {
 		}
 	}
 
+	// Scratch buffer reused across keyvals for strconv.AppendX calls.
+	// On stack — no heap alloc unless writeKV's closure escapes (it
+	// doesn't; it only escapes within this function's lifetime).
+	var scratch [64]byte
+
 	writeKV := func(key any, val any) {
 		line.WriteByte(' ')
 		// Fast path: key is already a string (the >99% case for structured logs).
@@ -266,12 +272,27 @@ func (l *Log) log(level Level, prefix, msg string, keyvals ...any) {
 			line.WriteString(keyStr)
 			line.WriteByte('=')
 		}
-		// Value formatting: %q for strings (escapes + quotes), %v for the rest.
-		// Stays on Sprintf for non-trivial types so behaviour matches the
-		// previous formatter byte-for-byte.
-		if s, ok := val.(string); ok {
-			line.WriteString(Sprintf("%q", s))
-		} else {
+		// Value formatting: byte-level fast paths for the common types
+		// (string / int / uint / bool / float64) drive directly into
+		// the line buffer via strconv.AppendX — zero alloc per keyval.
+		// All other types fall through to Sprintf("%v"), matching the
+		// previous behaviour for less common values.
+		switch v := val.(type) {
+		case string:
+			line.Write(strconv.AppendQuote(scratch[:0], v))
+		case int:
+			line.Write(strconv.AppendInt(scratch[:0], int64(v), 10))
+		case int64:
+			line.Write(strconv.AppendInt(scratch[:0], v, 10))
+		case uint:
+			line.Write(strconv.AppendUint(scratch[:0], uint64(v), 10))
+		case uint64:
+			line.Write(strconv.AppendUint(scratch[:0], v, 10))
+		case bool:
+			line.Write(strconv.AppendBool(scratch[:0], v))
+		case float64:
+			line.Write(strconv.AppendFloat(scratch[:0], v, 'g', -1, 64))
+		default:
 			line.WriteString(Sprintf("%v", val))
 		}
 	}
