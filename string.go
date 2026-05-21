@@ -40,6 +40,16 @@ func TrimSuffix(s, suffix string) string {
 	return strings.TrimSuffix(s, suffix)
 }
 
+// Clone returns a fresh copy of s, detached from its backing memory.
+// Use this when s aliases a reusable buffer (e.g. via core.AsString
+// over a scratch slice) and the result must outlive the buffer's
+// next reuse — map keys, struct fields, channel sends.
+//
+//	key := core.Clone(core.AsString(scratch))  // map[key] = ... is safe
+func Clone(s string) string {
+	return strings.Clone(s)
+}
+
 // Contains returns true if s contains substr.
 //
 //	core.Contains("hello world", "world")  // true
