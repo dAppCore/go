@@ -67,6 +67,12 @@ func (s *Array[T]) Contains(val T) bool {
 //	core.Println(filtered.Len())
 func (s *Array[T]) Filter(fn func(T) bool) Result {
 	filtered := &Array[T]{}
+	if len(s.items) == 0 {
+		return Result{filtered, true}
+	}
+	// Pre-size to len(s.items) so the inner append never grows the
+	// backing array. Unmatched elements waste capacity but no allocs.
+	filtered.items = make([]T, 0, len(s.items))
 	for _, v := range s.items {
 		if fn(v) {
 			filtered.items = append(filtered.items, v)
@@ -103,7 +109,24 @@ func (s *Array[T]) Remove(val T) {
 //	agents := core.NewArray("codex", "codex", "hades")
 //	agents.Deduplicate()
 func (s *Array[T]) Deduplicate() {
-	seen := make(map[T]struct{})
+	// Small-N linear path. For up to 16 elements, a linear scan on the
+	// growing result (O(N²) compares) beats the map allocation + hashing
+	// cost of the general path. Same shape as SliceUniq.
+	if len(s.items) <= 16 {
+		result := make([]T, 0, len(s.items))
+	outer:
+		for _, v := range s.items {
+			for _, r := range result {
+				if r == v {
+					continue outer
+				}
+			}
+			result = append(result, v)
+		}
+		s.items = result
+		return
+	}
+	seen := make(map[T]struct{}, len(s.items))
 	result := make([]T, 0, len(s.items))
 	for _, v := range s.items {
 		if _, exists := seen[v]; !exists {
