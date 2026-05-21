@@ -97,9 +97,7 @@ func BenchmarkSliceSort_Medium(b *B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		s := SliceClone(benchSliceMedium)
-		b.StartTimer()
 		SliceSort(s)
-		b.StopTimer()
 	}
 }
 
@@ -107,9 +105,7 @@ func BenchmarkSliceSortFunc_Medium(b *B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		s := SliceClone(benchSliceMedium)
-		b.StartTimer()
 		SliceSortFunc(s, func(a, b int) bool { return a < b })
-		b.StopTimer()
 	}
 }
 
