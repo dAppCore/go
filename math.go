@@ -33,20 +33,17 @@ func Compare[T Ordered](a, b T) int {
 //
 //	low := core.Min(3, 7)
 func Min[T Ordered](a, b T) T {
-	if Compare(a, b) <= 0 {
-		return a
-	}
-	return b
+	// Go's builtin min is a compiler intrinsic — direct comparison
+	// without the cmp.Compare three-way-return overhead that mattered
+	// for float Min/Max (NaN-aware) and saved a branch on every call.
+	return min(a, b)
 }
 
 // Max returns the larger of a and b.
 //
 //	high := core.Max(3, 7)
 func Max[T Ordered](a, b T) T {
-	if Compare(a, b) >= 0 {
-		return a
-	}
-	return b
+	return max(a, b)
 }
 
 // Abs returns the absolute value of x.
