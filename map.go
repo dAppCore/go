@@ -11,9 +11,14 @@ import "maps"
 //
 //	keys := core.MapKeys(map[string]int{"a": 1, "b": 2})
 func MapKeys[K comparable, V any](m map[K]V) []K {
-	keys := make([]K, 0, len(m))
+	// Pre-size to exact length and use direct index assignment — skips
+	// the bounds check + len-increment cycle that append performs on
+	// every iteration.
+	keys := make([]K, len(m))
+	i := 0
 	for key := range m {
-		keys = append(keys, key)
+		keys[i] = key
+		i++
 	}
 	return keys
 }
@@ -23,9 +28,11 @@ func MapKeys[K comparable, V any](m map[K]V) []K {
 //
 //	values := core.MapValues(map[string]int{"a": 1, "b": 2})
 func MapValues[K comparable, V any](m map[K]V) []V {
-	values := make([]V, 0, len(m))
+	values := make([]V, len(m))
+	i := 0
 	for _, value := range m {
-		values = append(values, value)
+		values[i] = value
+		i++
 	}
 	return values
 }
