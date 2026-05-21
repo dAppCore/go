@@ -45,6 +45,23 @@ func SliceUniq[T comparable](s []T) []T {
 	if len(s) == 0 {
 		return nil
 	}
+	// Small-N linear path. For up to 16 elements, a linear scan on the
+	// output (O(N²) compares) beats the map allocation + hashing cost
+	// of the general path. Tokeniser / vocab / config-key dedupe hot
+	// loops sit in this size band.
+	if len(s) <= 16 {
+		out := make([]T, 0, len(s))
+	outer:
+		for _, value := range s {
+			for _, o := range out {
+				if o == value {
+					continue outer
+				}
+			}
+			out = append(out, value)
+		}
+		return out
+	}
 	seen := make(map[T]struct{}, len(s))
 	out := make([]T, 0, len(s))
 	for _, value := range s {
