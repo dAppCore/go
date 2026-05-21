@@ -7,7 +7,7 @@ package core
 
 import (
 	cryptorand "crypto/rand"
-	"math/big"
+	"encoding/binary"
 	fastrand "math/rand/v2"
 )
 
@@ -36,11 +36,17 @@ func RandomBytes(n int) Result {
 //	r := core.RandomString(16)
 //	if r.OK { token := r.Value.(string) }
 func RandomString(n int) Result {
-	r := RandomBytes(n)
-	if !r.OK {
-		return r
+	if n < 0 {
+		return Result{Value: NewCode("random.length.invalid", "RandomString: negative length"), OK: false}
 	}
-	return Result{Value: HexEncode(r.Value.([]byte)), OK: true}
+	// Inline the bytes + hex pipeline; the previous version went through
+	// RandomBytes() and paid the intermediate Result.Value boxing plus
+	// the []byte interface assertion. One alloc less per call.
+	bytes := make([]byte, n)
+	if _, err := cryptorand.Read(bytes); err != nil {
+		return Result{Value: WrapCode(err, "random.entropy.failed", "RandomString", "OS entropy source failed"), OK: false}
+	}
+	return Result{Value: HexEncode(bytes), OK: true}
 }
 
 // RandomInt returns a cryptographically secure integer in the half-open
@@ -51,16 +57,29 @@ func RandomString(n int) Result {
 //	r := core.RandomInt(10, 20)
 //	if r.OK { delay := r.Value.(int) }
 func RandomInt(min, max int) Result {
-	span := new(big.Int).Sub(big.NewInt(int64(max)), big.NewInt(int64(min)))
-	if span.Sign() <= 0 {
+	if max <= min {
 		return Result{Value: NewCode("random.range.empty", "RandomInt: empty range"), OK: false}
 	}
-	n, err := cryptorand.Int(cryptorand.Reader, span)
-	if err != nil {
-		return Result{Value: WrapCode(err, "random.entropy.failed", "RandomInt", "OS entropy source failed"), OK: false}
+	// uint64 rejection sampling. The previous big.Int path allocated 3-4
+	// big.Ints per call; for any int range (which by definition fits in
+	// int64), uint64 arithmetic is exact and free.
+	//
+	// Sample 8 random bytes, reject values >= threshold (the largest
+	// multiple of span that fits in uint64) to eliminate modulo bias.
+	// For typical spans (≪ uint64Max) the rejection probability is
+	// effectively zero — the loop runs once.
+	span := uint64(max - min)
+	threshold := ^uint64(0) - (^uint64(0) % span)
+	var buf [8]byte
+	for {
+		if _, err := cryptorand.Read(buf[:]); err != nil {
+			return Result{Value: WrapCode(err, "random.entropy.failed", "RandomInt", "OS entropy source failed"), OK: false}
+		}
+		n := binary.BigEndian.Uint64(buf[:])
+		if n < threshold {
+			return Result{Value: int(n%span) + min, OK: true}
+		}
 	}
-	n.Add(n, big.NewInt(int64(min)))
-	return Result{Value: int(n.Int64()), OK: true}
 }
 
 // RandPick returns a pseudo-random item from items.
