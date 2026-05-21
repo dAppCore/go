@@ -11,7 +11,8 @@ import (
 //	r := fsys.EnsureDir("logs")
 //	if !r.OK { return r }
 type Fs struct {
-	root string
+	root         string
+	rootResolved string // symlink-resolved root, computed once at New()
 }
 
 // FS is a generic filesystem accepted by Mount and Extract.
@@ -53,6 +54,17 @@ func (m *Fs) New(root string) *Fs {
 		root = "/"
 	}
 	m.root = root
+	// Resolve root symlinks ONCE at construction. validatePath uses
+	// the resolved form for the sandbox-escape check; without this
+	// every call paid an EvalSymlinks per path component to detect
+	// (e.g.) /var → /private/var on macOS. With it, only the per-call
+	// path itself needs resolving.
+	m.rootResolved = root
+	if root != "/" {
+		if r := PathEvalSymlinks(root); r.OK {
+			m.rootResolved = r.Value.(string)
+		}
+	}
 	return m
 }
 
@@ -112,63 +124,82 @@ func (m *Fs) path(p string) string {
 }
 
 // validatePath ensures the path is within the sandbox, following symlinks if they exist.
+//
+// Resolves symlinks at the deepest existing prefix of the joined path
+// (one syscall for fully-existing paths, walks up only for paths with
+// not-yet-created suffixes). Compares the resolved form against
+// m.rootResolved (cached once at New()). The old per-component walk
+// did O(N) syscalls + allocations even for paths that already existed;
+// this is O(1) for the common case.
+//
+// Security invariants preserved:
+//   - CleanPath strips ".." escape attempts before path construction.
+//   - PathEvalSymlinks chases the full symlink chain, so any link at
+//     any depth pointing outside root is caught by the PathRel check.
+//   - rootResolved is computed once at construction; symlinks added
+//     later cannot retroactively change the sandbox.
 func (m *Fs) validatePath(p string) Result {
-	root := m.root
+	root := m.rootResolved
 	if root == "" {
-		root = "/"
+		root = m.root
+		if root == "" {
+			root = "/"
+		}
 	}
 	if root == "/" {
 		return Result{m.path(p), true}
 	}
 
-	// Split the cleaned path into components
-	parts := Split(CleanPath("/"+p, string(PathSeparator)), string(PathSeparator))
-	current := root
+	// Build the full candidate path under the resolved root.
+	clean := CleanPath("/"+p, string(PathSeparator))
+	full := PathJoin(root, clean[1:])
 
-	for _, part := range parts {
-		if part == "" {
-			continue
-		}
+	resolved := evalDeepestSymlinks(full)
 
-		next := PathJoin(current, part)
-		realNextResult := PathEvalSymlinks(next)
-		if !realNextResult.OK {
-			err, _ := realNextResult.Value.(error)
-			if IsNotExist(err) {
-				// Part doesn't exist, we can't follow symlinks anymore.
-				// Since the path is already Cleaned and current is safe,
-				// appending a component to current will not escape.
-				current = next
-				continue
-			}
-			return Result{err, false}
-		}
-		realNext := realNextResult.Value.(string)
-
-		// Verify the resolved part is still within the root
-		relResult := PathRel(root, realNext)
-		rel := ""
-		if relResult.OK {
-			rel = relResult.Value.(string)
-		}
-		if !relResult.OK || HasPrefix(rel, "..") {
-			// Security event: sandbox escape attempt
-			username := "unknown"
-			if r := UserCurrent(); r.OK {
-				username = r.Value.(*User).Username
-			}
-			Print(Stderr(), "[%s] SECURITY sandbox escape detected root=%s path=%s attempted=%s user=%s",
-				Now().Format(TimeRFC3339), root, p, realNext, username)
-			err, _ := relResult.Value.(error)
-			if err == nil {
-				err = E("fs.validatePath", Concat("sandbox escape: ", p, " resolves outside ", m.root), nil)
-			}
-			return Result{err, false}
-		}
-		current = realNext
+	// Verify the resolved path is within root (sandbox check).
+	relResult := PathRel(root, resolved)
+	if !relResult.OK {
+		err, _ := relResult.Value.(error)
+		return Result{err, false}
 	}
+	rel := relResult.Value.(string)
+	if HasPrefix(rel, "..") {
+		username := "unknown"
+		if r := UserCurrent(); r.OK {
+			username = r.Value.(*User).Username
+		}
+		Print(Stderr(), "[%s] SECURITY sandbox escape detected root=%s path=%s attempted=%s user=%s",
+			Now().Format(TimeRFC3339), m.root, p, resolved, username)
+		return Result{E("fs.validatePath", Concat("sandbox escape: ", p, " resolves outside ", m.root), nil), false}
+	}
+	// Translate back to the caller's root form (the user-visible
+	// contract is "paths under m.root"). Internally we used rootResolved
+	// for the sandbox check; externally callers want paths matching
+	// what they passed to New().
+	if m.root == root {
+		return Result{resolved, true}
+	}
+	if rel == "." {
+		return Result{m.root, true}
+	}
+	return Result{PathJoin(m.root, rel), true}
+}
 
-	return Result{current, true}
+// evalDeepestSymlinks resolves symlinks at the deepest existing prefix
+// of p. For paths that fully exist, this is one EvalSymlinks call. For
+// paths whose suffix doesn't yet exist (e.g. about to be Create'd),
+// walks up parent-by-parent until a resolvable prefix is found, then
+// appends the unresolved tail. Returns p unchanged if no prefix
+// resolves (extremely unlikely — / is always resolvable).
+func evalDeepestSymlinks(p string) string {
+	if r := PathEvalSymlinks(p); r.OK {
+		return r.Value.(string)
+	}
+	parent := PathDir(p)
+	if parent == p || parent == "." {
+		return p
+	}
+	return PathJoin(evalDeepestSymlinks(parent), PathBase(p))
 }
 
 // Read returns file contents as string.
@@ -185,7 +216,11 @@ func (m *Fs) Read(p string) Result {
 	if !r.OK {
 		return r
 	}
-	return Result{string(r.Value.([]byte)), true}
+	// ReadFile returns a freshly-allocated []byte that becomes
+	// unreachable after this conversion — bytesToString uses
+	// unsafe.String to skip the copy. Same safety contract as
+	// ReadAll's fast path.
+	return Result{bytesToString(r.Value.([]byte)), true}
 }
 
 // Write saves content to file, creating parent directories as needed.

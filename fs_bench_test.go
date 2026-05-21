@@ -1,0 +1,223 @@
+// SPDX-License-Identifier: EUPL-1.2
+
+// Benchmarks for the filesystem primitives in fs.go.
+// Per AX-11 — Fs is on the load-bearing path for go-mlx model file
+// loading (GGUF / safetensors reads), agent config persistence, log
+// rotation, and every dapp.workspace operation. The wrappers add
+// sandbox path validation on top of the stdlib os.* primitives so
+// regressions HERE cascade across the ecosystem.
+//
+// Run:    go test -bench='BenchmarkFs' -benchmem -run='^$' .
+
+package core_test
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	. "dappco.re/go"
+)
+
+// Sinks defeat compiler DCE on the read paths.
+var (
+	fsSinkResult Result
+	fsSinkBool   bool
+	fsSinkString string
+)
+
+// fsBenchFixture builds a *Fs over a temp dir pre-populated with files
+// of various sizes. Returns the *Fs plus a cleanup func the bench can
+// defer.
+func fsBenchFixture(tb testing.TB, sizes map[string]int) *Fs {
+	tb.Helper()
+	dir, err := os.MkdirTemp("", "fsbench-*")
+	if err != nil {
+		tb.Fatal(err)
+	}
+	tb.Cleanup(func() { os.RemoveAll(dir) })
+	// On macOS, /var/folders is a symlink to /private/var/folders.
+	// Fs.validatePath resolves symlinks during sandbox checks, so the
+	// fixture must use the symlink-resolved path to avoid spurious
+	// "sandbox escape detected" warnings during benches.
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = resolved
+	}
+
+	// Sub-directory with a few files for List/Walk benches.
+	if err := os.Mkdir(filepath.Join(dir, "models"), 0o755); err != nil {
+		tb.Fatal(err)
+	}
+	for name, size := range sizes {
+		payload := make([]byte, size)
+		for i := range payload {
+			payload[i] = byte('a' + (i % 26))
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), payload, 0o644); err != nil {
+			tb.Fatal(err)
+		}
+	}
+	for i, name := range []string{"qwen.gguf", "llama.gguf", "config.json"} {
+		_ = i
+		if err := os.WriteFile(filepath.Join(dir, "models", name), []byte("placeholder"), 0o644); err != nil {
+			tb.Fatal(err)
+		}
+	}
+
+	return (&Fs{}).New(dir)
+}
+
+// --- Read ---
+
+func BenchmarkFs_Read_1KB(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"f.bin": 1024})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = fs.Read("f.bin")
+	}
+}
+
+func BenchmarkFs_Read_64KB(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"f.bin": 64 * 1024})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = fs.Read("f.bin")
+	}
+}
+
+func BenchmarkFs_Read_1MB(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"f.bin": 1024 * 1024})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = fs.Read("f.bin")
+	}
+}
+
+// --- Existence checks ---
+
+func BenchmarkFs_Exists_Hit(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"f.bin": 128})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkBool = fs.Exists("f.bin")
+	}
+}
+
+func BenchmarkFs_Exists_Miss(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"f.bin": 128})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkBool = fs.Exists("missing.bin")
+	}
+}
+
+func BenchmarkFs_IsFile(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"f.bin": 128})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkBool = fs.IsFile("f.bin")
+	}
+}
+
+func BenchmarkFs_IsDir(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"f.bin": 128})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkBool = fs.IsDir("models")
+	}
+}
+
+func BenchmarkFs_Stat(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"f.bin": 128})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = fs.Stat("f.bin")
+	}
+}
+
+// --- List / TempDir ---
+
+func BenchmarkFs_List_SmallDir(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"f.bin": 128})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = fs.List("models")
+	}
+}
+
+func BenchmarkFs_TempDir(b *B) {
+	fs := fsBenchFixture(b, map[string]int{})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkString = fs.TempDir("agent-")
+	}
+}
+
+// --- Root / New ---
+
+func BenchmarkFs_Root(b *B) {
+	fs := fsBenchFixture(b, map[string]int{})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkString = fs.Root()
+	}
+}
+
+func BenchmarkFs_New(b *B) {
+	dir, _ := os.MkdirTemp("", "fsbench-new-")
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = resolved
+	}
+	b.Cleanup(func() { os.RemoveAll(dir) })
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = (&Fs{}).New(dir)
+	}
+}
+
+// --- Open / Create / Delete ---
+//
+// These mutate state, so they cycle through a unique path per iteration
+// and clean up between runs. The bench wall-time captures the cycle
+// cost (creation + close) which is the realistic per-op floor.
+
+func BenchmarkFs_Create(b *B) {
+	fs := fsBenchFixture(b, map[string]int{})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = fs.Create("create.bin")
+		if fsSinkResult.OK {
+			CloseStream(fsSinkResult.Value)
+		}
+		fs.Delete("create.bin")
+	}
+}
+
+// --- Write ---
+
+func BenchmarkFs_Write_Small(b *B) {
+	fs := fsBenchFixture(b, map[string]int{})
+	content := "x"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = fs.Write("w.bin", content)
+	}
+}
+
+func BenchmarkFs_Write_1KB(b *B) {
+	fs := fsBenchFixture(b, map[string]int{})
+	content := string(make([]byte, 1024))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = fs.Write("w.bin", content)
+	}
+}
+
+func BenchmarkFs_WriteAtomic_1KB(b *B) {
+	fs := fsBenchFixture(b, map[string]int{})
+	content := string(make([]byte, 1024))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = fs.WriteAtomic("w.bin", content)
+	}
+}
