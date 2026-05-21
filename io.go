@@ -21,6 +21,7 @@ package core
 import (
 	"bytes"
 	"io"
+	"unsafe"
 )
 
 // Reader is the canonical io.Reader interface, exported as core.Reader.
@@ -144,13 +145,26 @@ func ReadAll(reader any) Result {
 	}
 	var data []byte
 	var err error
-	// Fast path: if the reader knows its remaining size (bytes.Reader,
-	// bytes.Buffer, strings.Reader, *io.LimitedReader-of-known all
-	// expose Len()), allocate the destination once at the exact size
-	// instead of paying io.ReadAll's 5-10 buffer doublings (which cost
-	// roughly 3x the final byte count in transient allocations).
+	// Fast path: if the reader knows its remaining size, allocate the
+	// destination once at the exact size instead of paying io.ReadAll's
+	// 5-10 buffer doublings (which cost ~3x the final byte count in
+	// transient allocations).
+	//
+	// Probed types:
+	//   * interface{ Len() int }   — bytes.Reader, bytes.Buffer, strings.Reader
+	//   * *io.LimitedReader        — exposes max-remaining via .N; if the
+	//                                wrapped reader also exposes Len(), use
+	//                                min(N, Len()), otherwise just N
 	if sizer, hasLen := reader.(interface{ Len() int }); hasLen {
 		data, err = readAllSized(rc, sizer.Len())
+	} else if lr, ok := reader.(*io.LimitedReader); ok {
+		n := int(lr.N)
+		if inner, hasLen := lr.R.(interface{ Len() int }); hasLen {
+			if il := inner.Len(); il < n {
+				n = il
+			}
+		}
+		data, err = readAllSized(rc, n)
 	} else {
 		data, err = io.ReadAll(rc)
 	}
@@ -160,7 +174,7 @@ func ReadAll(reader any) Result {
 	if err != nil {
 		return Result{err, false}
 	}
-	return Result{string(data), true}
+	return Result{bytesToString(data), true}
 }
 
 // readAllSized reads exactly n bytes (or until EOF) into a pre-allocated
@@ -182,6 +196,21 @@ func readAllSized(r Reader, n int) ([]byte, error) {
 		}
 	}
 	return buf, nil
+}
+
+// bytesToString converts b to a string without copying the underlying
+// bytes. Safe only when the caller has exclusive ownership of b and
+// will not mutate it after the call — exactly what ReadAll guarantees
+// because b is a freshly-allocated buffer that becomes unreachable
+// once we hand the result to the caller.
+//
+// Mirrors what strings.Builder.String() does internally; named so the
+// intent is obvious at the call site.
+func bytesToString(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	return unsafe.String(unsafe.SliceData(b), len(b))
 }
 
 // Buffer is an alias for bytes.Buffer — an in-memory byte sequence with
