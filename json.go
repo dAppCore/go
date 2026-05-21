@@ -79,6 +79,12 @@ func JSONUnmarshal(data []byte, target any) Result {
 //
 //	var cfg Config
 //	r := core.JSONUnmarshalString(`{"port":8080}`, &cfg)
+//
+// Zero-copy: json.Unmarshal treats its input as read-only and does
+// not alias the buffer into the unmarshalled values (Strings are
+// copied via SetString), so AsBytes is safe here. Saves one alloc
+// per call — load-bearing on JSONL hot paths (one call per dataset
+// row, thousands per training run).
 func JSONUnmarshalString(s string, target any) Result {
-	return JSONUnmarshal([]byte(s), target)
+	return JSONUnmarshal(AsBytes(s), target)
 }
