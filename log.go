@@ -6,6 +6,7 @@
 package core
 
 import (
+	"bytes"
 	goio "io"
 )
 
@@ -219,74 +220,91 @@ func (l *Log) log(level Level, prefix, msg string, keyvals ...any) {
 
 	timestamp := styleTimestamp(Now().Format("15:04:05"))
 
-	// Copy keyvals to avoid mutating the caller's slice
-	keyvals = append([]any(nil), keyvals...)
+	// Build the output line in a single buffer sized for the common case.
+	// Avoids the O(N²) string-concat in the per-keyval loop and the
+	// intermediate Sprintf allocations the old path went through.
+	// bytes.Buffer over strings.Builder so we can hand its backing slice
+	// to output.Write without a second copy.
+	var line bytes.Buffer
+	line.Grow(len(timestamp) + len(prefix) + len(msg) + 8 + 24*len(keyvals)/2)
+	line.WriteString(timestamp)
+	line.WriteByte(' ')
+	line.WriteString(prefix)
+	line.WriteByte(' ')
+	line.WriteString(msg)
 
-	// Automatically extract context from error if present in keyvals
-	origLen := len(keyvals)
-	for i := 0; i < origLen; i += 2 {
-		if i+1 < origLen {
-			if err, ok := keyvals[i+1].(error); ok {
-				if op := Operation(err); op != "" {
-					// Check if op is already in keyvals
-					hasOp := false
-					for j := 0; j < len(keyvals); j += 2 {
-						if k, ok := keyvals[j].(string); ok && k == "op" {
-							hasOp = true
-							break
-						}
-					}
-					if !hasOp {
-						keyvals = append(keyvals, "op", op)
-					}
-				}
-				if stack := FormatStackTrace(err); stack != "" {
-					// Check if stack is already in keyvals
-					hasStack := false
-					for j := 0; j < len(keyvals); j += 2 {
-						if k, ok := keyvals[j].(string); ok && k == "stack" {
-							hasStack = true
-							break
-						}
-					}
-					if !hasStack {
-						keyvals = append(keyvals, "stack", stack)
-					}
-				}
+	// Extract op/stack from error context — done in-place against the
+	// caller's slice (we never mutate it; we only read + emit extras at
+	// the end). Two-pass: pass 1 discovers what's already present.
+	hasOp, hasStack := false, false
+	for j := 0; j < len(keyvals); j += 2 {
+		if k, ok := keyvals[j].(string); ok {
+			switch k {
+			case "op":
+				hasOp = true
+			case "stack":
+				hasStack = true
 			}
 		}
 	}
 
-	// Format key-value pairs
-	var kvStr string
-	if len(keyvals) > 0 {
-		kvStr = " "
-		for i := 0; i < len(keyvals); i += 2 {
-			if i > 0 {
-				kvStr += " "
+	writeKV := func(key any, val any) {
+		line.WriteByte(' ')
+		// Fast path: key is already a string (the >99% case for structured logs).
+		// Avoids Sprint(key) entirely + lets us write key bytes directly.
+		if ks, ok := key.(string); ok {
+			if SliceContains(redactKeys, ks) {
+				val = "[REDACTED]"
 			}
-			key := keyvals[i]
-			var val any
-			if i+1 < len(keyvals) {
-				val = keyvals[i+1]
-			}
-
-			// Redaction logic
+			line.WriteString(ks)
+			line.WriteByte('=')
+		} else {
 			keyStr := Sprint(key)
 			if SliceContains(redactKeys, keyStr) {
 				val = "[REDACTED]"
 			}
+			line.WriteString(keyStr)
+			line.WriteByte('=')
+		}
+		// Value formatting: %q for strings (escapes + quotes), %v for the rest.
+		// Stays on Sprintf for non-trivial types so behaviour matches the
+		// previous formatter byte-for-byte.
+		if s, ok := val.(string); ok {
+			line.WriteString(Sprintf("%q", s))
+		} else {
+			line.WriteString(Sprintf("%v", val))
+		}
+	}
 
-			// Secure formatting to prevent log injection
-			if s, ok := val.(string); ok {
-				kvStr += Sprintf("%v=%q", key, s)
-			} else {
-				kvStr += Sprintf("%v=%v", key, val)
+	for i := 0; i < len(keyvals); i += 2 {
+		key := keyvals[i]
+		var val any
+		if i+1 < len(keyvals) {
+			val = keyvals[i+1]
+		}
+		writeKV(key, val)
+
+		// Pass 2 (interleaved): if val is an error, surface op/stack
+		// once at the end. We collect by writing immediately the FIRST
+		// time we encounter each — subsequent errors don't re-emit.
+		if err, ok := val.(error); ok {
+			if !hasOp {
+				if op := Operation(err); op != "" {
+					writeKV("op", op)
+					hasOp = true
+				}
+			}
+			if !hasStack {
+				if stack := FormatStackTrace(err); stack != "" {
+					writeKV("stack", stack)
+					hasStack = true
+				}
 			}
 		}
 	}
 
-	Print(output, "%s %s %s%s", timestamp, prefix, msg, kvStr)
+	line.WriteByte('\n')
+	_, _ = output.Write(line.Bytes())
 }
 
 // Debug logs a debug message with optional key-value pairs.
