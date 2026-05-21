@@ -32,7 +32,10 @@
 
 package core
 
-import "unsafe"
+import (
+	"runtime"
+	"unsafe"
+)
 
 // AsBytes returns a read-only []byte view of s without copying.
 // See the package-level safety contract above before using.
@@ -59,4 +62,115 @@ func AsString(b []byte) string {
 		return ""
 	}
 	return unsafe.String(unsafe.SliceData(b), len(b))
+}
+
+// PinnedView pins a Go slice to a stable address so its first-element
+// pointer can be safely handed to C across the cgo boundary. The GC
+// is prevented from moving the backing array while the view is held,
+// which lets C callers retain the pointer beyond a single call (e.g.
+// async kernels, model weights mlx keeps a reference to). Always pair
+// with Release; the pinner table holds the slice live until then.
+//
+// Use for slices that:
+//   - C may retain across more than one cgo invocation, OR
+//   - are large enough that copy-into-C-memory dominates the call.
+//
+// For one-shot reads where C consumes the pointer during the call,
+// the cgo runtime already prevents GC movement — use
+// unsafe.SliceData / unsafe.Pointer directly without a PinnedView.
+//
+// SAFETY CONTRACT:
+//
+//   - The slice must NOT contain Go pointers (only numeric/byte
+//     elements). cgo memory rules forbid passing nested Go pointers
+//     through C; runtime.Pinner will panic in race mode if violated.
+//   - The slice must outlive every C use of Ptr(). Caller owns
+//     lifetime; PinnedView keeps the slice live, but does not own
+//     it. Don't reslice or grow the source after pinning.
+//   - Release exactly once. Double-release is a no-op; missing
+//     release leaks the pin until process exit.
+//
+// Example:
+//
+//	var view core.PinnedView
+//	core.PinSlice(weights, &view)
+//	defer view.Release()
+//	C.kernel_run(view.Ptr(), C.size_t(view.Bytes()))
+type PinnedView struct {
+	pinner runtime.Pinner
+	ptr    unsafe.Pointer
+	length int
+	bytes  int
+	active bool
+}
+
+// PinSlice pins slice's backing array and populates view in place.
+// view must point to a stack or heap PinnedView (typically a local
+// variable). The function is safe to call with an empty slice; in
+// that case view is left zero-valued and Release is a no-op.
+//
+//	var view core.PinnedView
+//	core.PinSlice(indices, &view)
+//	defer view.Release()
+//	C.fn(view.Ptr(), C.size_t(view.Len()))
+func PinSlice[T any](slice []T, view *PinnedView) {
+	if view == nil {
+		return
+	}
+	if len(slice) == 0 {
+		*view = PinnedView{}
+		return
+	}
+	first := &slice[0]
+	view.pinner.Pin(first)
+	view.ptr = unsafe.Pointer(first)
+	view.length = len(slice)
+	var zero T
+	view.bytes = int(unsafe.Sizeof(zero)) * len(slice)
+	view.active = true
+}
+
+// Ptr returns the pinned start-of-slice pointer for C consumption.
+// Returns nil on a zero or released view.
+func (p *PinnedView) Ptr() unsafe.Pointer {
+	if p == nil || !p.active {
+		return nil
+	}
+	return p.ptr
+}
+
+// Len returns the element count of the pinned slice.
+func (p *PinnedView) Len() int {
+	if p == nil {
+		return 0
+	}
+	return p.length
+}
+
+// Bytes returns the byte length of the pinned slice.
+func (p *PinnedView) Bytes() int {
+	if p == nil {
+		return 0
+	}
+	return p.bytes
+}
+
+// Active reports whether the view holds a live pin.
+func (p *PinnedView) Active() bool {
+	if p == nil {
+		return false
+	}
+	return p.active
+}
+
+// Release unpins the slice. Safe to call on a zero view or repeatedly.
+func (p *PinnedView) Release() {
+	if p == nil || !p.active {
+		return
+	}
+	p.pinner.Unpin()
+	p.ptr = nil
+	p.length = 0
+	p.bytes = 0
+	p.active = false
 }

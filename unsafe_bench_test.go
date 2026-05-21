@@ -11,6 +11,8 @@
 package core_test
 
 import (
+	"unsafe"
+
 	. "dappco.re/go"
 )
 
@@ -122,5 +124,91 @@ func BenchmarkAsString_Empty(b *B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		unsafeSinkString = AsString(nil)
+	}
+}
+
+// --- PinnedView: zero-copy slice handoff to C across cgo boundary ---
+// The point of comparison is "make + copy into a fresh []T of matching
+// element width" — the pattern open-coded across go-mlx's metal package
+// for every tensor op. PinnedView is one Pin (one small alloc) plus a
+// pointer view; copy-into-buf is one make plus N element copies. The
+// crossover by element count is where the substrate decision lives.
+
+var pinSinkPtr unsafe.Pointer
+
+func BenchmarkPinSlice_Int32_4(b *B) {
+	slice := []int32{1, 2, 3, 4}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		var view PinnedView
+		PinSlice(slice, &view)
+		pinSinkPtr = view.Ptr()
+		view.Release()
+	}
+}
+
+func BenchmarkPinSlice_Int32_64(b *B) {
+	slice := make([]int32, 64)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		var view PinnedView
+		PinSlice(slice, &view)
+		pinSinkPtr = view.Ptr()
+		view.Release()
+	}
+}
+
+func BenchmarkPinSlice_Float32_2048(b *B) {
+	slice := make([]float32, 2048)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		var view PinnedView
+		PinSlice(slice, &view)
+		pinSinkPtr = view.Ptr()
+		view.Release()
+	}
+}
+
+// Baseline: open-coded make + copy that go-mlx uses for shape arrays
+// today. Same element width on both sides, so this is the minimal
+// cost the substrate replaces.
+func BenchmarkPinSlice_Baseline_MakeCopy_Int32_4(b *B) {
+	slice := []int32{1, 2, 3, 4}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		copied := make([]int32, len(slice))
+		copy(copied, slice)
+		pinSinkPtr = unsafe.Pointer(&copied[0])
+	}
+}
+
+func BenchmarkPinSlice_Baseline_MakeCopy_Int32_64(b *B) {
+	slice := make([]int32, 64)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		copied := make([]int32, len(slice))
+		copy(copied, slice)
+		pinSinkPtr = unsafe.Pointer(&copied[0])
+	}
+}
+
+func BenchmarkPinSlice_Baseline_MakeCopy_Float32_2048(b *B) {
+	slice := make([]float32, 2048)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		copied := make([]float32, len(slice))
+		copy(copied, slice)
+		pinSinkPtr = unsafe.Pointer(&copied[0])
+	}
+}
+
+func BenchmarkPinSlice_Empty(b *B) {
+	var slice []int32
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		var view PinnedView
+		PinSlice(slice, &view)
+		pinSinkPtr = view.Ptr()
+		view.Release()
 	}
 }
