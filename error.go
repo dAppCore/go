@@ -90,7 +90,17 @@ func Wrap(err error, op, msg string) error {
 	if err == nil {
 		return nil
 	}
-	// Preserve Code from wrapped *Err
+	// Fast path: direct *Err preserves Code without reflection. Most
+	// callers pass errors they themselves produced via E()/WrapCode(),
+	// which are *Err directly — As() with its reflect-based unwrap
+	// only buys us protection against double-wrapped non-Err types
+	// (rare).
+	if e, ok := err.(*Err); ok {
+		if e.Code != "" {
+			return &Err{Operation: op, Message: msg, Cause: err, Code: e.Code}
+		}
+		return &Err{Operation: op, Message: msg, Cause: err}
+	}
 	var logErr *Err
 	if As(err, &logErr) && logErr.Code != "" {
 		return &Err{Operation: op, Message: msg, Cause: err, Code: logErr.Code}
@@ -169,6 +179,11 @@ func ErrorJoin(errs ...error) error {
 //	op := core.Operation(err)
 //	core.Println(op)
 func Operation(err error) string {
+	// Direct *Err fast path — no reflection, zero alloc. Falls back
+	// to As() for double-wrapped or transitively-Err types.
+	if e, ok := err.(*Err); ok {
+		return e.Operation
+	}
 	var e *Err
 	if As(err, &e) {
 		return e.Operation
@@ -183,6 +198,10 @@ func Operation(err error) string {
 //	code := core.ErrorCode(err)
 //	core.Println(code)
 func ErrorCode(err error) string {
+	// Direct *Err fast path — no reflection, zero alloc.
+	if e, ok := err.(*Err); ok {
+		return e.Code
+	}
 	var e *Err
 	if As(err, &e) {
 		return e.Code
@@ -199,6 +218,10 @@ func ErrorCode(err error) string {
 func ErrorMessage(err error) string {
 	if err == nil {
 		return ""
+	}
+	// Direct *Err fast path — no reflection, zero alloc.
+	if e, ok := err.(*Err); ok {
+		return e.Message
 	}
 	var e *Err
 	if As(err, &e) {
