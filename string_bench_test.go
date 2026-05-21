@@ -241,3 +241,55 @@ func BenchmarkHTMLEscape_WithSpecials(b *B) {
 		_ = HTMLEscape(s)
 	}
 }
+
+func BenchmarkHTMLUnescape_NoSpecials(b *B) {
+	s := "no special chars here just a plain sentence"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = HTMLUnescape(s)
+	}
+}
+
+func BenchmarkHTMLUnescape_WithSpecials(b *B) {
+	s := `&lt;a href=&quot;/search?q=go&amp;lang=en&quot;&gt;Go&lt;/a&gt;`
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = HTMLUnescape(s)
+	}
+}
+
+// --- Trim variants ---
+
+func BenchmarkTrimCutset(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = TrimCutset("[[task-id]]", "[]")
+	}
+}
+
+func BenchmarkTrimLeft(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = TrimLeft("---verbose", "-")
+	}
+}
+
+func BenchmarkTrimRight(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = TrimRight("hello!!!", "!")
+	}
+}
+
+// --- Builder / Reader factories ---
+
+func BenchmarkNewBuilder(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		bld := NewBuilder()
+		bld.WriteString("hello")
+		_ = bld.String()
+	}
+}
+
+// NewReader bench lives in io_bench_test.go (it is io-oriented).

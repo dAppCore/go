@@ -118,3 +118,27 @@ func BenchmarkRuntime_ServiceName(b *B) {
 		runtimeSinkString = r.ServiceName()
 	}
 }
+
+// --- Service lifecycle (startup + shutdown round-trip on empty Core) ---
+//
+// Service registration is a one-shot per process — but the cost matters
+// during test loops + multi-Core consumers. Empty Core is the floor;
+// adds a startable to time the iteration overhead the dispatcher pays.
+
+func BenchmarkServiceStartup_Empty(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		c := New()
+		runtimeSinkRuntimeRes = c.ServiceStartup(Background(), nil)
+		c.ServiceShutdown(Background())
+	}
+}
+
+func BenchmarkServiceShutdown_Empty(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		c := New()
+		c.ServiceStartup(Background(), nil)
+		runtimeSinkRuntimeRes = c.ServiceShutdown(Background())
+	}
+}

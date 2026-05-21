@@ -162,5 +162,58 @@ func BenchmarkErr_ErrorJoin_Two(b *B) {
 	}
 }
 
+// --- (*Err).Unwrap ---
+
+func BenchmarkErr_Unwrap(b *B) {
+	b.ReportAllocs()
+	leaf := errCoreLeaf.(*Err)
+	for i := 0; i < b.N; i++ {
+		errSinkErr = leaf.Unwrap()
+	}
+}
+
+// --- AllOperations / StackTrace / FormatStackTrace ---
+
+func BenchmarkErr_AllOperations_Iter(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		count := 0
+		for range AllOperations(errCoreDeep) {
+			count++
+		}
+		errSinkBool = count > 0
+	}
+}
+
+func BenchmarkErr_StackTrace_Deep(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		stack := StackTrace(errCoreDeep)
+		errSinkBool = len(stack) > 0
+	}
+}
+
+func BenchmarkErr_FormatStackTrace_Deep(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		errSinkStr = FormatStackTrace(errCoreDeep)
+	}
+}
+
+// --- ErrorPanic surface ---
+//
+// Recover / SafeGo would require triggering a panic per iteration, which
+// is far too costly to bench meaningfully — and not the hot path.
+// Reports() is the inspection accessor — that is benchable.
+
+func BenchmarkErr_ErrorPanic_Reports(b *B) {
+	c := New()
+	ep := c.Error()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = ep.Reports(10)
+	}
+}
+
 // Quiet unused-imports for "testing" — used implicitly via core.B alias chain.
 var _ = testing.Short

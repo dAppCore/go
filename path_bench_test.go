@@ -131,3 +131,67 @@ func BenchmarkPathToSlash(b *B) {
 		pathSinkString = PathToSlash("/home/agent/models")
 	}
 }
+
+// --- Filesystem-aware (Abs / EvalSymlinks / Glob / Walk*) ---
+//
+// These touch syscalls, so they are slower than the pure-string ops
+// above. The bench harness gates the contract — slowdowns from a Core
+// reroute show up here.
+
+func BenchmarkPathAbs_Already(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		pathSinkResult = PathAbs("/already/absolute/path")
+	}
+}
+
+func BenchmarkPathAbs_Relative(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		pathSinkResult = PathAbs("relative/path")
+	}
+}
+
+func BenchmarkPathEvalSymlinks_RealDir(b *B) {
+	// /tmp is real on every dev box and has no surprising depth.
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		pathSinkResult = PathEvalSymlinks("/tmp")
+	}
+}
+
+func BenchmarkPathGlob_NoMatch(b *B) {
+	pat := "/tmp/__core-bench-no-match-*.gguf"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		pathSinkStrings = PathGlob(pat)
+	}
+}
+
+func BenchmarkPathWalk_TmpShallow(b *B) {
+	root := "/tmp"
+	noop := func(_ string, _ FsFileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		return PathSkipDir
+	}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = PathWalk(root, noop)
+	}
+}
+
+func BenchmarkPathWalkDir_TmpShallow(b *B) {
+	root := "/tmp"
+	noop := func(_ string, _ FsDirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		return PathSkipDir
+	}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = PathWalkDir(root, noop)
+	}
+}

@@ -228,3 +228,38 @@ func BenchmarkAPI_Protocols(b *B) {
 		_ = c.API().Protocols()
 	}
 }
+
+// --- HTTP file server constructors ---
+//
+// HTTPListenAndServe blocks on a network bind, so we can't run it in a
+// bench loop. The pure constructors HTTPFileServer + HTTPFS are cheap
+// adapter-builders worth gating, and NewHTTPTestTLSServer is the TLS
+// twin of NewHTTPTestServer.
+
+func BenchmarkHTTPFS(b *B) {
+	fsys := DirFS(".")
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = HTTPFS(fsys)
+	}
+}
+
+func BenchmarkHTTPFileServer(b *B) {
+	root := HTTPFS(DirFS("."))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = HTTPFileServer(root)
+	}
+}
+
+func BenchmarkNewHTTPTestTLSServer(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		srv := NewHTTPTestTLSServer(apiBenchHandler)
+		srv.Close()
+	}
+}
+
+// HTTPListenAndServe + RemoteAction are not benched — they bind a real
+// socket / make a real outbound HTTP call. A unit-bench cannot do that
+// deterministically. They are exercised end-to-end in api_test.go.

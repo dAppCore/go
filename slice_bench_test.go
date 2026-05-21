@@ -167,3 +167,28 @@ func BenchmarkSliceFlatMap(b *B) {
 		_ = SliceFlatMap(src, func(n int) []int { return []int{n, n * 2, n * 3} })
 	}
 }
+
+// --- Reverse / Sorted ---
+
+func BenchmarkSliceReverse_Medium(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		s := SliceClone(benchSliceMedium)
+		SliceReverse(s)
+	}
+}
+
+func BenchmarkSliceSorted_Iter(b *B) {
+	src := benchSliceMedium
+	seq := Seq[int](func(yield func(int) bool) {
+		for _, v := range src {
+			if !yield(v) {
+				return
+			}
+		}
+	})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = SliceSorted(seq)
+	}
+}

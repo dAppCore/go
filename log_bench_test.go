@@ -100,3 +100,76 @@ func BenchmarkLog_PackageInfo_BelowThreshold(b *B) {
 		Info("agent ready", "host", "homelab.lan")
 	}
 }
+
+// --- Setters (mutex-gated, no formatting) ---
+
+func BenchmarkLog_SetLevel(b *B) {
+	l := logBenchFixture(LevelInfo)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		l.SetLevel(LevelInfo)
+	}
+}
+
+func BenchmarkLog_SetOutput(b *B) {
+	l := logBenchFixture(LevelInfo)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		l.SetOutput(io.Discard)
+	}
+}
+
+func BenchmarkLog_SetRedactKeys(b *B) {
+	l := logBenchFixture(LevelInfo)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		l.SetRedactKeys("token", "authorization", "cookie")
+	}
+}
+
+// --- Level.String ---
+
+func BenchmarkLog_LevelString(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = LevelInfo.String()
+	}
+}
+
+// --- Security path (formatter shared with Error) ---
+
+func BenchmarkLog_Security(b *B) {
+	l := logBenchFixture(LevelError)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		l.Security("entitlement.denied", "action", "process.run", "user", "darbs")
+	}
+}
+
+// --- LogErr / LogPanic ---
+
+func BenchmarkLog_NewLogErr(b *B) {
+	l := logBenchFixture(LevelError)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = NewLogErr(l)
+	}
+}
+
+func BenchmarkLog_NewLogPanic(b *B) {
+	l := logBenchFixture(LevelError)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = NewLogPanic(l)
+	}
+}
+
+func BenchmarkLog_LogErr_Log(b *B) {
+	l := logBenchFixture(LevelError)
+	logger := NewLogErr(l)
+	err := E("bench.LogErr", "synthetic", nil)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		logger.Log(err)
+	}
+}

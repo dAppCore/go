@@ -221,3 +221,96 @@ func BenchmarkFs_WriteAtomic_1KB(b *B) {
 		fsSinkResult = fs.WriteAtomic("w.bin", content)
 	}
 }
+
+// --- Append / Stream ---
+
+func BenchmarkFs_Append_Small(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"appendme.txt": 0})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = fs.Append("appendme.txt")
+		if fsSinkResult.OK {
+			CloseStream(fsSinkResult.Value)
+		}
+	}
+}
+
+func BenchmarkFs_ReadStream(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"stream.bin": 4096})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = fs.ReadStream("stream.bin")
+		if fsSinkResult.OK {
+			CloseStream(fsSinkResult.Value)
+		}
+	}
+}
+
+// --- EnsureDir / DeleteAll / Rename ---
+
+func BenchmarkFs_EnsureDir_Exists(b *B) {
+	fs := fsBenchFixture(b, map[string]int{})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = fs.EnsureDir("models")
+	}
+}
+
+func BenchmarkFs_EnsureDir_Create(b *B) {
+	fs := fsBenchFixture(b, map[string]int{})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		// Cycle the same dir so the bench captures the make-then-noop floor.
+		fsSinkResult = fs.EnsureDir("ephemeral")
+	}
+}
+
+func BenchmarkFs_DeleteAll(b *B) {
+	fs := fsBenchFixture(b, map[string]int{})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fs.EnsureDir("nuked")
+		fsSinkResult = fs.DeleteAll("nuked")
+	}
+}
+
+func BenchmarkFs_Rename(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"rename-src.bin": 16})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = fs.Rename("rename-src.bin", "rename-dst.bin")
+		if fsSinkResult.OK {
+			// Cycle back so the next iteration has the src again.
+			fs.Rename("rename-dst.bin", "rename-src.bin")
+		}
+	}
+}
+
+// --- NewUnrestricted ---
+
+func BenchmarkFs_NewUnrestricted(b *B) {
+	parent := fsBenchFixture(b, map[string]int{})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = parent.NewUnrestricted()
+	}
+}
+
+// --- ReadDir / ReadFSFile (the embed-side helpers) ---
+
+func BenchmarkFs_ReadDir_FS(b *B) {
+	fsys := DirFS(".")
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = ReadDir(fsys, ".")
+	}
+}
+
+func BenchmarkFs_ReadFSFile(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"r.bin": 1024})
+	fsys := DirFS(fs.Root())
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = ReadFSFile(fsys, "r.bin")
+	}
+}

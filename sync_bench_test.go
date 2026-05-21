@@ -214,3 +214,81 @@ func BenchmarkSyncMap_Load_Parallel(b *B) {
 		}
 	})
 }
+
+// --- SyncMap atomic ops ---
+
+func BenchmarkSyncMap_Swap(b *B) {
+	var m SyncMap
+	m.Store("k", 0)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		syncSinkAny, syncSinkBool = m.Swap("k", i)
+	}
+}
+
+func BenchmarkSyncMap_LoadAndDelete(b *B) {
+	var m SyncMap
+	for i := 0; i < b.N; i++ {
+		m.Store(i, i)
+	}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		syncSinkAny, syncSinkBool = m.LoadAndDelete(i)
+	}
+}
+
+func BenchmarkSyncMap_CompareAndSwap_Hit(b *B) {
+	var m SyncMap
+	m.Store("k", 1)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		syncSinkBool = m.CompareAndSwap("k", 1, 1)
+	}
+}
+
+func BenchmarkSyncMap_CompareAndDelete_Miss(b *B) {
+	var m SyncMap
+	m.Store("k", 1)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		syncSinkBool = m.CompareAndDelete("k", 99)
+	}
+}
+
+func BenchmarkSyncMap_Range_1000(b *B) {
+	var m SyncMap
+	for i := 0; i < 1000; i++ {
+		m.Store(i, i)
+	}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		count := 0
+		m.Range(func(_, _ any) bool {
+			count++
+			return true
+		})
+		syncSinkAny = count
+	}
+}
+
+func BenchmarkSyncMap_Clear_1000(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		var m SyncMap
+		for j := 0; j < 1000; j++ {
+			m.Store(j, j)
+		}
+		m.Clear()
+	}
+}
+
+// --- Once.Reset ---
+
+func BenchmarkOnce_Reset(b *B) {
+	var once Once
+	once.Do(func() {})
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		once.Reset()
+	}
+}
