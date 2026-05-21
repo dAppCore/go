@@ -12,6 +12,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"hash"
+	"unsafe"
 )
 
 // SHA256 returns the SHA-256 digest of data.
@@ -33,14 +34,28 @@ func SHA256Hex(data []byte) string {
 //
 //	sum := core.SHA256String("hello")
 func SHA256String(s string) [32]byte {
-	return SHA256([]byte(s))
+	return sha256.Sum256(stringBytes(s))
 }
 
 // SHA256HexString returns the SHA-256 digest of s as lowercase hexadecimal.
 //
 //	sum := core.SHA256HexString("hello")
 func SHA256HexString(s string) string {
-	return SHA256Hex([]byte(s))
+	sum := sha256.Sum256(stringBytes(s))
+	return HexEncode(sum[:])
+}
+
+// stringBytes returns the byte slice backing s without copying. Safe
+// only for read-only callers — SHA256 / HMAC consume the bytes for
+// hashing and never retain a reference, which matches the contract.
+//
+// Returns nil for "" so sha256.Sum256(nil) gets the canonical empty-
+// input digest (e3b0c4...).
+func stringBytes(s string) []byte {
+	if len(s) == 0 {
+		return nil
+	}
+	return unsafe.Slice(unsafe.StringData(s), len(s))
 }
 
 // HMAC returns the HMAC digest for data using key and algo wrapped in a
