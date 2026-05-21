@@ -97,6 +97,50 @@ func BenchmarkAbs_Float(b *B) {
 	}
 }
 
+// --- Clamp / Sign ---
+
+func BenchmarkClamp_Int_InRange(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		mathSinkInt = Clamp(50, 0, 100)
+	}
+}
+
+func BenchmarkClamp_Int_BelowLo(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		mathSinkInt = Clamp(-10, 0, 100)
+	}
+}
+
+func BenchmarkClamp_Float(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		mathSinkFloat = Clamp(0.42, 0.0, 1.0)
+	}
+}
+
+func BenchmarkSign_Pos(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		mathSinkInt = Sign(42)
+	}
+}
+
+func BenchmarkSign_Neg(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		mathSinkInt = Sign(-42)
+	}
+}
+
+func BenchmarkSign_Zero(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		mathSinkInt = Sign(0)
+	}
+}
+
 // --- NaN / IsNaN ---
 
 func BenchmarkNaN(b *B) {

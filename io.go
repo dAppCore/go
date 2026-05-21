@@ -21,7 +21,6 @@ package core
 import (
 	"bytes"
 	"io"
-	"unsafe"
 )
 
 // Reader is the canonical io.Reader interface, exported as core.Reader.
@@ -174,7 +173,7 @@ func ReadAll(reader any) Result {
 	if err != nil {
 		return Result{err, false}
 	}
-	return Result{bytesToString(data), true}
+	return Result{AsString(data), true}
 }
 
 // readAllSized reads exactly n bytes (or until EOF) into a pre-allocated
@@ -196,21 +195,6 @@ func readAllSized(r Reader, n int) ([]byte, error) {
 		}
 	}
 	return buf, nil
-}
-
-// bytesToString converts b to a string without copying the underlying
-// bytes. Safe only when the caller has exclusive ownership of b and
-// will not mutate it after the call — exactly what ReadAll guarantees
-// because b is a freshly-allocated buffer that becomes unreachable
-// once we hand the result to the caller.
-//
-// Mirrors what strings.Builder.String() does internally; named so the
-// intent is obvious at the call site.
-func bytesToString(b []byte) string {
-	if len(b) == 0 {
-		return ""
-	}
-	return unsafe.String(unsafe.SliceData(b), len(b))
 }
 
 // Buffer is an alias for bytes.Buffer — an in-memory byte sequence with

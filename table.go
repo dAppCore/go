@@ -69,7 +69,7 @@ func (t *Table) write(s string) {
 	if t.err != nil {
 		return
 	}
-	_, err := t.writer.Write([]byte(s))
+	_, err := t.writer.Write(AsBytes(s))
 	if err != nil {
 		t.err = err
 	}

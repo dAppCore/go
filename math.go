@@ -56,6 +56,36 @@ func Abs[T signedOrFloat](x T) T {
 	return x
 }
 
+// Clamp constrains x to the closed interval [lo, hi]. If lo > hi the
+// result is undefined (caller's responsibility). Used by gradient
+// clipping, normalisation, slider/progress bounds, and tile coords.
+//
+//	pct := core.Clamp(progress, 0.0, 100.0)
+//	idx := core.Clamp(cursor, 0, len(items)-1)
+func Clamp[T Ordered](x, lo, hi T) T {
+	if x < lo {
+		return lo
+	}
+	if x > hi {
+		return hi
+	}
+	return x
+}
+
+// Sign returns -1 when x is negative, 0 when zero, and +1 when positive.
+// NaN inputs return 0.
+//
+//	dir := core.Sign(delta)
+func Sign[T signedOrFloat](x T) T {
+	if x > 0 {
+		return 1
+	}
+	if x < 0 {
+		return -1
+	}
+	return 0
+}
+
 // NaN returns an IEEE 754 not-a-number value.
 //
 //	if core.IsNaN(x) { x = 0 }

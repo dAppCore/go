@@ -56,6 +56,21 @@ func (s *Array[T]) Contains(val T) bool {
 	return false
 }
 
+// IndexOf returns the index of the first occurrence of val, or -1 when
+// absent. Companion to Contains for callers that need the position.
+//
+//	if i := agents.IndexOf("hades"); i >= 0 {
+//	    core.Println("at", i)
+//	}
+func (s *Array[T]) IndexOf(val T) int {
+	for i, v := range s.items {
+		if v == val {
+			return i
+		}
+	}
+	return -1
+}
+
 // Filter returns a new Array with elements matching the predicate.
 //
 //	agents := core.NewArray("codex", "hades", "homelab")

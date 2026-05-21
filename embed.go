@@ -309,7 +309,7 @@ func compress(input string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, err := gz.Write([]byte(input)); err != nil {
+	if _, err := gz.Write(AsBytes(input)); err != nil {
 		_ = gz.Close()
 		return "", err
 	}

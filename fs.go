@@ -217,10 +217,9 @@ func (m *Fs) Read(p string) Result {
 		return r
 	}
 	// ReadFile returns a freshly-allocated []byte that becomes
-	// unreachable after this conversion — bytesToString uses
-	// unsafe.String to skip the copy. Same safety contract as
-	// ReadAll's fast path.
-	return Result{bytesToString(r.Value.([]byte)), true}
+	// unreachable after this conversion — AsString skips the copy.
+	// Same safety contract as ReadAll's fast path.
+	return Result{AsString(r.Value.([]byte)), true}
 }
 
 // Write saves content to file, creating parent directories as needed.
@@ -249,7 +248,7 @@ func (m *Fs) WriteMode(p, content string, mode FileMode) Result {
 	if r := MkdirAll(PathDir(full), 0755); !r.OK {
 		return r
 	}
-	if r := WriteFile(full, []byte(content), mode); !r.OK {
+	if r := WriteFile(full, AsBytes(content), mode); !r.OK {
 		return r
 	}
 	return Result{OK: true}
@@ -320,7 +319,7 @@ func (m *Fs) WriteAtomic(p, content string) Result {
 	}
 
 	tmp := full + ".tmp." + shortRand()
-	if r := WriteFile(tmp, []byte(content), 0644); !r.OK {
+	if r := WriteFile(tmp, AsBytes(content), 0644); !r.OK {
 		return r
 	}
 	if r := Rename(tmp, full); !r.OK {
@@ -503,7 +502,7 @@ func WriteAll(writer any, content string) Result {
 	if !ok {
 		return Result{E("core.WriteAll", "not a writer", nil), false}
 	}
-	_, err := wc.Write([]byte(content))
+	_, err := wc.Write(AsBytes(content))
 	if closer, ok := writer.(Closer); ok {
 		closer.Close()
 	}

@@ -78,6 +78,22 @@ func BenchmarkArray_Contains_Miss(b *B) {
 	}
 }
 
+func BenchmarkArray_IndexOf_Hit(b *B) {
+	a := NewArray(benchArrayStrings...)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = a.IndexOf("elderberry")
+	}
+}
+
+func BenchmarkArray_IndexOf_Miss(b *B) {
+	a := NewArray(benchArrayStrings...)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = a.IndexOf("nope")
+	}
+}
+
 // --- Filter / Each ---
 
 func BenchmarkArray_Filter_HalfHit(b *B) {
