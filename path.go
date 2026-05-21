@@ -47,13 +47,25 @@ var (
 //	core.Path("/tmp", "workspace")  // "/tmp/workspace"
 //	core.Path()                     // "/Users/snider"
 func Path(segments ...string) string {
+	if len(segments) == 0 {
+		home := Env("DIR_HOME")
+		if home == "" {
+			return "."
+		}
+		return home
+	}
+	// Absolute-first-segment fast path. The Env("DS") + Env("DIR_HOME")
+	// + CleanPath pipeline below only matters when we have to prefix
+	// the home directory; if the first segment is already absolute
+	// there is nothing to prefix and stdlib's filepath.Join cleans
+	// while joining.
+	if PathIsAbs(segments[0]) {
+		return PathJoin(segments...)
+	}
 	ds := Env("DS")
 	home := Env("DIR_HOME")
 	if home == "" {
 		home = "."
-	}
-	if len(segments) == 0 {
-		return home
 	}
 	p := Join(ds, segments...)
 	if PathIsAbs(p) {
