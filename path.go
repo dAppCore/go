@@ -95,8 +95,13 @@ func PathBase(p string) string {
 	if p == "" {
 		return ds
 	}
-	parts := Split(p, ds)
-	return parts[len(parts)-1]
+	// LastIndex + string-slice instead of Split — zero alloc instead
+	// of an N-element []string just to read the last entry.
+	i := lastIndex(p, ds)
+	if i < 0 {
+		return p
+	}
+	return p[i+len(ds):]
 }
 
 // PathDir returns all but the last element of a path.
