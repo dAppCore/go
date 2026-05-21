@@ -202,7 +202,11 @@ func NewWithFactories(app any, factories map[string]ServiceFactory) Result {
 //	runtime := r.Value.(*core.Runtime)
 //	_ = runtime.Core
 func NewRuntime(app any) Result {
-	return NewWithFactories(app, map[string]ServiceFactory{})
+	// Pass nil rather than an empty map literal — NewWithFactories
+	// handles nil correctly (MapKeys returns empty for nil, the range
+	// loop runs zero iterations) and we avoid the unnecessary map
+	// allocation per call.
+	return NewWithFactories(app, nil)
 }
 
 // ServiceName returns "Core" — the Runtime's service identity.
