@@ -125,8 +125,22 @@ func CopyN(dst Writer, src Reader, n int64) Result {
 // the number of bytes written (int).
 //
 //	r := core.WriteString(stdout, "hello\n")
+//
+// Fast path: when the writer exposes a WriteString method we delegate
+// straight to it (strings.Builder, bytes.Buffer, *os.File on most
+// platforms). For writers without one, we use AsBytes to skip the
+// []byte(s) copy that stdlib io.WriteString does in its fallback —
+// safe because the io.Writer contract forbids retention or mutation
+// of the slice past the call.
 func WriteString(w Writer, s string) Result {
-	n, err := io.WriteString(w, s)
+	if sw, ok := w.(interface{ WriteString(string) (int, error) }); ok {
+		n, err := sw.WriteString(s)
+		if err != nil {
+			return Result{err, false}
+		}
+		return Result{n, true}
+	}
+	n, err := w.Write(AsBytes(s))
 	if err != nil {
 		return Result{err, false}
 	}

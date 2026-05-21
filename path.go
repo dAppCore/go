@@ -155,9 +155,16 @@ func PathIsAbs(p string) bool {
 //
 //	core.CleanPath("/tmp//file", "/")     // "/tmp/file"
 //	core.CleanPath("a/b/../c", "/")       // "a/c"
+//
+// Fast path: when ds is the OS-native separator (the >99% case),
+// delegate to stdlib filepath.Clean — byte-level scan, 2 allocs vs
+// the Split/Join pipeline's 6.
 func CleanPath(p, ds string) string {
 	if p == "" {
 		return "."
+	}
+	if ds == string(PathSeparator) {
+		return filepath.Clean(p)
 	}
 
 	rooted := HasPrefix(p, ds)
