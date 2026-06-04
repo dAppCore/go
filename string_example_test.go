@@ -208,3 +208,37 @@ func ExampleLastIndex() {
 	// 16
 	// -1
 }
+
+// ExampleCut splits a header line on its first separator, taking both
+// halves and whether the separator was present in one pass.
+func ExampleCut() {
+	name, value, found := Cut("Authorization: Bearer abc", ": ")
+	Println(name)
+	Println(value)
+	Println(found)
+	// Output:
+	// Authorization
+	// Bearer abc
+	// true
+}
+
+// ExampleRepeat builds a fixed-width rule through `Repeat`.
+func ExampleRepeat() {
+	Println(Repeat("=", 8))
+	// Output: ========
+}
+
+// ExampleFields tokenises a command line on whitespace, collapsing any
+// run of spaces — unlike Split which needs an explicit separator and
+// keeps empties.
+func ExampleFields() {
+	Println(Join(",", Fields("  go   test ./... ")...))
+	// Output: go,test,./...
+}
+
+// ExampleEqualFold compares two scheme names case-insensitively without
+// allocating Lower copies of either.
+func ExampleEqualFold() {
+	Println(EqualFold("Bearer", "bearer"))
+	// Output: true
+}

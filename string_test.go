@@ -349,3 +349,155 @@ func TestString_HTMLUnescape_Bad(t *T) {
 func TestString_HTMLUnescape_Ugly(t *T) {
 	AssertEqual(t, "agent &unknown; dispatch", HTMLUnescape("agent &unknown; dispatch"))
 }
+
+func TestString_IndexAny_Good(t *T) {
+	AssertEqual(t, 1, IndexAny("a/b\\c", "/\\"))
+}
+
+func TestString_IndexAny_Bad(t *T) {
+	AssertEqual(t, -1, IndexAny("abc", "/\\"))
+}
+
+func TestString_IndexAny_Ugly(t *T) {
+	AssertEqual(t, -1, IndexAny("", "/"))
+	AssertEqual(t, -1, IndexAny("abc", ""))
+}
+
+func TestString_ContainsAny_Good(t *T) {
+	AssertTrue(t, ContainsAny("user@host", "@:"))
+}
+
+func TestString_ContainsAny_Bad(t *T) {
+	AssertFalse(t, ContainsAny("userhost", "@:"))
+}
+
+func TestString_ContainsAny_Ugly(t *T) {
+	AssertFalse(t, ContainsAny("", "@"))
+	AssertFalse(t, ContainsAny("abc", ""))
+}
+
+func TestString_ContainsRune_Good(t *T) {
+	AssertTrue(t, ContainsRune("café", 'é'))
+}
+
+func TestString_ContainsRune_Bad(t *T) {
+	AssertFalse(t, ContainsRune("cafe", 'é'))
+}
+
+func TestString_ContainsRune_Ugly(t *T) {
+	AssertFalse(t, ContainsRune("", 'a'))
+}
+
+func TestString_Count_Good(t *T) {
+	AssertEqual(t, 2, Count("a.b.c", "."))
+}
+
+func TestString_Count_Bad(t *T) {
+	AssertEqual(t, 0, Count("abc", "."))
+}
+
+func TestString_Count_Ugly(t *T) {
+	// Empty substr counts code-point boundaries: 1 + RuneCount.
+	AssertEqual(t, 4, Count("abc", ""))
+}
+
+func TestString_EqualFold_Good(t *T) {
+	AssertTrue(t, EqualFold("Bearer", "bearer"))
+}
+
+func TestString_EqualFold_Bad(t *T) {
+	AssertFalse(t, EqualFold("Bearer", "Basic"))
+}
+
+func TestString_EqualFold_Ugly(t *T) {
+	AssertTrue(t, EqualFold("", ""))
+}
+
+func TestString_Repeat_Good(t *T) {
+	AssertEqual(t, "========", Repeat("=", 8))
+}
+
+func TestString_Repeat_Bad(t *T) {
+	AssertEqual(t, "", Repeat("x", 0))
+}
+
+func TestString_Repeat_Ugly(t *T) {
+	// Negative count panics per stdlib contract.
+	AssertPanics(t, func() { Repeat("x", -1) })
+}
+
+func TestString_Fields_Good(t *T) {
+	AssertEqual(t, []string{"go", "test", "./..."}, Fields("  go   test ./... "))
+}
+
+func TestString_Fields_Bad(t *T) {
+	AssertLen(t, Fields("   "), 0)
+}
+
+func TestString_Fields_Ugly(t *T) {
+	AssertLen(t, Fields(""), 0)
+}
+
+func TestString_Cut_Good(t *T) {
+	before, after, found := Cut("port=8080", "=")
+	AssertTrue(t, found)
+	AssertEqual(t, "port", before)
+	AssertEqual(t, "8080", after)
+}
+
+func TestString_Cut_Bad(t *T) {
+	before, after, found := Cut("noseparator", "=")
+	AssertFalse(t, found)
+	AssertEqual(t, "noseparator", before)
+	AssertEqual(t, "", after)
+}
+
+func TestString_Cut_Ugly(t *T) {
+	// Empty sep cuts before the first byte.
+	before, after, found := Cut("abc", "")
+	AssertTrue(t, found)
+	AssertEqual(t, "", before)
+	AssertEqual(t, "abc", after)
+}
+
+func TestString_CutPrefix_Good(t *T) {
+	rest, found := CutPrefix("--verbose", "--")
+	AssertTrue(t, found)
+	AssertEqual(t, "verbose", rest)
+}
+
+func TestString_CutPrefix_Bad(t *T) {
+	rest, found := CutPrefix("verbose", "--")
+	AssertFalse(t, found)
+	AssertEqual(t, "verbose", rest)
+}
+
+func TestString_CutPrefix_Ugly(t *T) {
+	// Empty prefix always cuts, leaving s unchanged.
+	rest, found := CutPrefix("abc", "")
+	AssertTrue(t, found)
+	AssertEqual(t, "abc", rest)
+}
+
+func TestString_CutSuffix_Good(t *T) {
+	base, found := CutSuffix("main.go", ".go")
+	AssertTrue(t, found)
+	AssertEqual(t, "main", base)
+}
+
+func TestString_CutSuffix_Bad(t *T) {
+	base, found := CutSuffix("main.rs", ".go")
+	AssertFalse(t, found)
+	AssertEqual(t, "main.rs", base)
+}
+
+func TestString_CutSuffix_Ugly(t *T) {
+	base, found := CutSuffix("abc", "")
+	AssertTrue(t, found)
+	AssertEqual(t, "abc", base)
+}
+
+func TestString_StringReader_Good(t *T) {
+	var r *StringReader = NewReader("payload")
+	AssertEqual(t, 7, r.Len())
+}

@@ -216,6 +216,15 @@ func NewBuilder() *strings.Builder {
 	return &strings.Builder{}
 }
 
+// StringReader is an alias for strings.Reader — the io.Reader/Seeker
+// over an in-memory string returned by NewReader. Lets consumers
+// declare reader-typed fields without importing strings. Named
+// StringReader (not Reader) because core.Reader already aliases
+// io.Reader.
+//
+//	var r *core.StringReader = core.NewReader("payload")
+type StringReader = strings.Reader
+
 // NewReader returns a strings.NewReader for the given string.
 //
 //	r := core.NewReader("hello world")
@@ -266,4 +275,88 @@ func HTMLUnescape(s string) string {
 //	colon := core.LastIndex("host.example.com:8080", ":")  // 16
 func LastIndex(s, substr string) int {
 	return strings.LastIndex(s, substr)
+}
+
+// IndexAny returns the byte position of the first occurrence in s of
+// any Unicode code point in chars, or -1 when none are present. The
+// character-class form of Index.
+//
+//	core.IndexAny("a/b\\c", "/\\")  // 1
+func IndexAny(s, chars string) int {
+	return strings.IndexAny(s, chars)
+}
+
+// ContainsAny reports whether any Unicode code point in chars is in s.
+//
+//	core.ContainsAny("user@host", "@:")  // true
+func ContainsAny(s, chars string) bool {
+	return strings.ContainsAny(s, chars)
+}
+
+// ContainsRune reports whether the Unicode code point r is in s.
+//
+//	core.ContainsRune("café", 'é')  // true
+func ContainsRune(s string, r rune) bool {
+	return strings.ContainsRune(s, r)
+}
+
+// Count returns the number of non-overlapping instances of substr in s.
+// An empty substr returns 1 + the rune count of s (stdlib semantics).
+//
+//	core.Count("a.b.c", ".")  // 2
+func Count(s, substr string) int {
+	return strings.Count(s, substr)
+}
+
+// EqualFold reports whether s and t are equal under simple Unicode
+// case-folding — the case-insensitive comparison that avoids allocating
+// two Lower copies just to compare them.
+//
+//	core.EqualFold("Bearer", "bearer")  // true
+func EqualFold(s, t string) bool {
+	return strings.EqualFold(s, t)
+}
+
+// Repeat returns a new string consisting of count copies of s. It
+// panics when count is negative or the result overflows (stdlib
+// contract); callers control both inputs so this stays infallible.
+//
+//	core.Repeat("=", 8)  // "========"
+func Repeat(s string, count int) string {
+	return strings.Repeat(s, count)
+}
+
+// Fields splits s around runs of whitespace, returning the non-empty
+// substrings. The whitespace-delimited tokeniser — Split needs an
+// explicit separator and keeps empties, Fields collapses any run.
+//
+//	core.Fields("  go   test ./... ")  // ["go", "test", "./..."]
+func Fields(s string) []string {
+	return strings.Fields(s)
+}
+
+// Cut slices s around the first occurrence of sep, returning the text
+// before and after it and whether sep was found. The idiomatic
+// replacement for SplitN(s, sep, 2) when both halves are needed.
+//
+//	key, value, ok := core.Cut("port=8080", "=")  // "port", "8080", true
+func Cut(s, sep string) (before, after string, found bool) {
+	return strings.Cut(s, sep)
+}
+
+// CutPrefix returns s without the leading prefix and reports whether
+// the prefix was present. Unlike TrimPrefix it tells the caller whether
+// a cut actually happened.
+//
+//	rest, ok := core.CutPrefix("--verbose", "--")  // "verbose", true
+func CutPrefix(s, prefix string) (after string, found bool) {
+	return strings.CutPrefix(s, prefix)
+}
+
+// CutSuffix returns s without the trailing suffix and reports whether
+// the suffix was present — the trailing-end sibling of CutPrefix.
+//
+//	base, ok := core.CutSuffix("main.go", ".go")  // "main", true
+func CutSuffix(s, suffix string) (before string, found bool) {
+	return strings.CutSuffix(s, suffix)
 }

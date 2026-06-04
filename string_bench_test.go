@@ -293,3 +293,43 @@ func BenchmarkNewBuilder(b *B) {
 }
 
 // NewReader bench lives in io_bench_test.go (it is io-oriented).
+
+// --- Repeat / Count / Fields / EqualFold / Cut (hot scans) ---
+
+func BenchmarkRepeat(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = Repeat("=", 64)
+	}
+}
+
+func BenchmarkCount(b *B) {
+	s := "a.b.c.d.e.f.g.h"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = Count(s, ".")
+	}
+}
+
+func BenchmarkFields(b *B) {
+	s := "the quick brown fox jumps over the lazy dog"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = Fields(s)
+	}
+}
+
+func BenchmarkEqualFold_Hit(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = EqualFold("Authorization", "authorization")
+	}
+}
+
+func BenchmarkCut(b *B) {
+	s := "Authorization: Bearer abc123"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = Cut(s, ": ")
+	}
+}
