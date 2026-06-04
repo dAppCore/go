@@ -37,3 +37,25 @@ func ExampleStderr() {
 	Println(Stderr() != nil)
 	// Output: true
 }
+
+// ExampleChmod sets a file's permission bits at the OS boundary, then
+// reads them back through Stat. Chmod is the unsandboxed sibling of the
+// c.Fs() permission helpers.
+func ExampleChmod() {
+	path := PathJoin(TempDir(), "core-example-chmod")
+	WriteFile(path, []byte("#!/bin/sh\n"), 0o644)
+	defer Remove(path)
+
+	Chmod(path, 0o755)
+	info := Stat(path)
+	Println(info.Value.(FsFileInfo).Mode().Perm() == 0o755)
+	// Output: true
+}
+
+// ExampleErrNotExist matches a failed Open against the re-exported
+// sentinel without importing os.
+func ExampleErrNotExist() {
+	r := Open(PathJoin(TempDir(), "core-example-definitely-missing"))
+	Println(Is(r.Value.(error), ErrNotExist))
+	// Output: true
+}

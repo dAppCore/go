@@ -216,11 +216,53 @@ func Rename(oldPath, newPath string) Result {
 	return Result{OK: true}
 }
 
+// Chmod changes the mode of the named file. Unlike c.Fs() operations
+// this is unsandboxed boundary I/O — reach for it only when extracting
+// archives or fixing up permissions outside a workspace root.
+//
+//	r := core.Chmod("bin/agent", 0o755)
+func Chmod(p string, mode FileMode) Result {
+	if err := os.Chmod(p, mode); err != nil {
+		return Result{err, false}
+	}
+	return Result{OK: true}
+}
+
+// Symlink creates newPath as a symbolic link to oldPath.
+//
+//	r := core.Symlink("releases/v2", "current")
+func Symlink(oldPath, newPath string) Result {
+	if err := os.Symlink(oldPath, newPath); err != nil {
+		return Result{err, false}
+	}
+	return Result{OK: true}
+}
+
+// Readlink returns the destination of the named symbolic link. To
+// resolve a whole chain to its final target use core.PathEvalSymlinks;
+// Readlink reads only the single link's stored value.
+//
+//	r := core.Readlink("current")
+//	if r.OK { target := r.Value.(string); _ = target }
+func Readlink(p string) Result {
+	return Result{}.New(os.Readlink(p))
+}
+
 // MkdirTemp creates a new temporary directory.
 //
 //	r := core.MkdirTemp("", "agent-*")
 func MkdirTemp(dir, pattern string) Result {
 	return Result{}.New(os.MkdirTemp(dir, pattern))
+}
+
+// CreateTemp creates and opens a new temporary file. A "*" in pattern
+// is replaced by a random string; an empty dir uses TempDir(). The
+// file-form sibling of MkdirTemp — close and remove it when done.
+//
+//	r := core.CreateTemp("", "openapi-*.json")
+//	if r.OK { f := r.Value.(*core.OSFile); defer core.Remove(f.Name()) }
+func CreateTemp(dir, pattern string) Result {
+	return Result{}.New(os.CreateTemp(dir, pattern))
 }
 
 // TempDir returns the default directory for temporary files.
@@ -251,6 +293,22 @@ func IsPermission(err error) bool {
 	return os.IsPermission(err)
 }
 
+// Sentinel errors for the OS boundary, re-exported so consumers can
+// match against them with core.Is (errors.Is) without importing os.
+// These pair with the IsNotExist / IsExist / IsPermission predicates
+// above — use the predicate when wrapping an errno-bearing OS error,
+// use the sentinel when comparing a value you produced or received
+// directly.
+//
+//	if core.Is(err, core.ErrNotExist) { core.Println("missing") }
+var (
+	ErrNotExist   = os.ErrNotExist   // file or directory does not exist
+	ErrExist      = os.ErrExist      // file already exists
+	ErrPermission = os.ErrPermission // permission denied
+	ErrInvalid    = os.ErrInvalid    // invalid argument (e.g. nil *File method)
+	ErrClosed     = os.ErrClosed     // operation on an already-closed file
+)
+
 // DirFS returns an FS rooted at the given directory path.
 //
 //	fsys := core.DirFS("/path/to/templates")
@@ -270,6 +328,16 @@ func Args() []string {
 //	r := core.Hostname()
 func Hostname() Result {
 	return Result{}.New(os.Hostname())
+}
+
+// Executable returns the absolute path of the binary that started the
+// current process. Use it to locate sibling assets shipped next to the
+// binary; prefer Args()[0] only when the launch path itself matters.
+//
+//	r := core.Executable()
+//	if r.OK { dir := core.PathDir(r.Value.(string)); _ = dir }
+func Executable() Result {
+	return Result{}.New(os.Executable())
 }
 
 // Getpid returns the process id of the caller.

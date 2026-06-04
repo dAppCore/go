@@ -728,3 +728,165 @@ func TestOs_WriteFile_Ugly(t *T) {
 	AssertTrue(t, read.OK)
 	AssertEqual(t, []byte{}, read.Value.([]byte))
 }
+
+func TestOs_Chmod_Good(t *T) {
+	path := Path(t.TempDir(), "bin")
+	RequireTrue(t, WriteFile(path, []byte("#!/bin/sh\n"), 0o644).OK)
+
+	r := Chmod(path, 0o755)
+
+	AssertTrue(t, r.OK)
+	info := Stat(path)
+	RequireTrue(t, info.OK)
+	AssertEqual(t, FileMode(0o755), info.Value.(FsFileInfo).Mode().Perm())
+}
+
+func TestOs_Chmod_Bad(t *T) {
+	r := Chmod(Path(t.TempDir(), "missing"), 0o755)
+
+	AssertFalse(t, r.OK)
+}
+
+func TestOs_Chmod_Ugly(t *T) {
+	// Re-applying the same mode is a no-op that must still succeed.
+	path := Path(t.TempDir(), "f")
+	RequireTrue(t, WriteFile(path, nil, 0o600).OK)
+
+	AssertTrue(t, Chmod(path, 0o600).OK)
+	AssertTrue(t, Chmod(path, 0o600).OK)
+}
+
+func TestOs_Symlink_Good(t *T) {
+	dir := t.TempDir()
+	target := Path(dir, "target")
+	RequireTrue(t, WriteFile(target, []byte("ready"), 0o644).OK)
+	link := Path(dir, "link")
+
+	r := Symlink(target, link)
+
+	AssertTrue(t, r.OK)
+	read := ReadFile(link)
+	AssertTrue(t, read.OK)
+	AssertEqual(t, []byte("ready"), read.Value.([]byte))
+}
+
+func TestOs_Symlink_Bad(t *T) {
+	// A link path under a non-existent parent directory cannot be created.
+	r := Symlink("target", Path(t.TempDir(), "missing", "link"))
+
+	AssertFalse(t, r.OK)
+}
+
+func TestOs_Symlink_Ugly(t *T) {
+	// Creating a link where a file already exists must fail, not clobber.
+	dir := t.TempDir()
+	link := Path(dir, "link")
+	RequireTrue(t, WriteFile(link, nil, 0o644).OK)
+
+	AssertFalse(t, Symlink("target", link).OK)
+}
+
+func TestOs_Readlink_Good(t *T) {
+	dir := t.TempDir()
+	target := Path(dir, "target")
+	RequireTrue(t, WriteFile(target, nil, 0o644).OK)
+	link := Path(dir, "link")
+	RequireTrue(t, Symlink(target, link).OK)
+
+	r := Readlink(link)
+
+	AssertTrue(t, r.OK)
+	AssertEqual(t, target, r.Value.(string))
+}
+
+func TestOs_Readlink_Bad(t *T) {
+	r := Readlink(Path(t.TempDir(), "missing"))
+
+	AssertFalse(t, r.OK)
+}
+
+func TestOs_Readlink_Ugly(t *T) {
+	// A regular file is not a symlink — Readlink must report failure.
+	path := Path(t.TempDir(), "regular")
+	RequireTrue(t, WriteFile(path, nil, 0o644).OK)
+
+	AssertFalse(t, Readlink(path).OK)
+}
+
+func TestOs_CreateTemp_Good(t *T) {
+	r := CreateTemp(t.TempDir(), "agent-*.json")
+
+	AssertTrue(t, r.OK)
+	f := r.Value.(*OSFile)
+	defer CloseStream(f)
+	AssertTrue(t, HasSuffix(f.Name(), ".json"))
+}
+
+func TestOs_CreateTemp_Bad(t *T) {
+	r := CreateTemp(Path(t.TempDir(), "missing"), "agent-*")
+
+	AssertFalse(t, r.OK)
+}
+
+func TestOs_CreateTemp_Ugly(t *T) {
+	// Two calls with the same pattern must yield distinct files.
+	dir := t.TempDir()
+	first := CreateTemp(dir, "x-*")
+	RequireTrue(t, first.OK)
+	defer CloseStream(first.Value)
+	second := CreateTemp(dir, "x-*")
+	RequireTrue(t, second.OK)
+	defer CloseStream(second.Value)
+
+	AssertNotEqual(t, first.Value.(*OSFile).Name(), second.Value.(*OSFile).Name())
+}
+
+func TestOs_Executable_Good(t *T) {
+	r := Executable()
+
+	AssertTrue(t, r.OK)
+	AssertTrue(t, PathIsAbs(r.Value.(string)))
+}
+
+func TestOs_Executable_Bad(t *T) {
+	// Executable takes no input that could be made invalid; the contract
+	// is that it resolves on supported platforms. Assert the stable shape.
+	r := Executable()
+
+	AssertNotEmpty(t, r.Value.(string))
+}
+
+func TestOs_Executable_Ugly(t *T) {
+	// Repeated calls within a process return the same path.
+	first := Executable()
+	second := Executable()
+
+	RequireTrue(t, first.OK)
+	RequireTrue(t, second.OK)
+	AssertEqual(t, first.Value.(string), second.Value.(string))
+}
+
+func TestOs_ErrNotExist_Good(t *T) {
+	r := Open(Path(t.TempDir(), "missing"))
+
+	RequireTrue(t, !r.OK)
+	AssertTrue(t, Is(r.Value.(error), ErrNotExist))
+}
+
+func TestOs_ErrNotExist_Bad(t *T) {
+	// A successful open carries no error to match against the sentinel.
+	path := Path(t.TempDir(), "present")
+	RequireTrue(t, WriteFile(path, nil, 0o644).OK)
+	r := Open(path)
+
+	RequireTrue(t, r.OK)
+	CloseStream(r.Value)
+}
+
+func TestOs_ErrNotExist_Ugly(t *T) {
+	// The other sentinels are distinct from ErrNotExist.
+	AssertFalse(t, Is(ErrExist, ErrNotExist))
+	AssertFalse(t, Is(ErrPermission, ErrNotExist))
+	AssertFalse(t, Is(ErrInvalid, ErrNotExist))
+	AssertFalse(t, Is(ErrClosed, ErrNotExist))
+}
