@@ -700,3 +700,42 @@ func TestCore_Core_RunResult_Ugly(t *T) {
 	AssertContains(t, r.Error(), "boom")
 	AssertTrue(t, stopped)
 }
+
+// --- WithContext ---
+
+type withContextKey struct{}
+
+// Good — the request-scoped value round-trips on the clone, the parent's
+// Context is left untouched, and the heavy subsystems are shared by
+// pointer (here: the same *Config).
+func TestCore_WithContext_Good(t *T) {
+	c := New()
+	rc := c.WithContext(WithValue(c.Context(), withContextKey{}, "user-42"))
+
+	AssertEqual(t, "user-42", rc.Context().Value(withContextKey{}))
+	AssertNil(t, c.Context().Value(withContextKey{})) // parent not mutated
+	AssertSame(t, c.Config(), rc.Config())            // shared subsystem
+}
+
+// Bad — cancelling the derived Core must NOT cancel the parent: the
+// parent's lifecycle context stays live (Err() == nil) afterwards.
+func TestCore_WithContext_Bad(t *T) {
+	c := New()
+	rc := c.WithContext(c.Context())
+
+	rc.ServiceShutdown(Background()) // fires the derived cancel
+
+	AssertNotNil(t, rc.Context().Err()) // derived is cancelled
+	AssertNil(t, c.Context().Err())     // parent is not
+}
+
+// Ugly — a parent shutdown propagates DOWN to the derived context when
+// the derived ctx chains from the parent (the documented usual case).
+func TestCore_WithContext_Ugly(t *T) {
+	c := New()
+	rc := c.WithContext(WithValue(c.Context(), withContextKey{}, "scoped"))
+
+	c.ServiceShutdown(Background()) // cancels the parent's context
+
+	AssertNotNil(t, rc.Context().Err()) // propagated to the derived ctx
+}

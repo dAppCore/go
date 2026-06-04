@@ -115,6 +115,49 @@ func (c *Core) Env(key string) string { return Env(key) }
 //	ctx := c.Context()
 func (c *Core) Context() Context { return c.context }
 
+// WithContext returns a shallow clone of c whose lifecycle context is
+// derived from ctx — for request-scoped context derivation (auth
+// substrate etc.). The derived Core shares services/data/config (every
+// heavy subsystem) with the parent by pointer; only the context, its
+// cancel, and the per-Core lifecycle bookkeeping (waitGroup / shutdown
+// flag / task counter) are fresh.
+//
+// Cancellation is one-directional: the derived Core's cancel does NOT
+// cancel the parent, but a parent shutdown propagates DOWN to the
+// derived context when ctx chains from the parent (the usual case —
+// pass core.WithValue(c.Context(), …)). The clone re-wraps ctx in a
+// fresh WithCancel so callers that retain the parent stay unaffected.
+//
+//	type userKey struct{}
+//	rc := c.WithContext(core.WithValue(c.Context(), userKey{}, user))
+//	id := rc.Context().Value(userKey{})  // round-trips on the clone
+func (c *Core) WithContext(ctx Context) *Core {
+	derivedCtx, derivedCancel := WithCancel(ctx)
+	return &Core{
+		options:            c.options,
+		app:                c.app,
+		data:               c.data,
+		drive:              c.drive,
+		fs:                 c.fs,
+		config:             c.config,
+		error:              c.error,
+		log:                c.log,
+		commands:           c.commands,
+		services:           c.services,
+		lock:               c.lock,
+		ipc:                c.ipc,
+		api:                c.api,
+		info:               c.info,
+		i18n:               c.i18n,
+		entitlementChecker: c.entitlementChecker,
+		usageRecorder:      c.usageRecorder,
+		context:            derivedCtx,
+		cancel:             derivedCancel,
+		// taskIDCounter / waitGroup / shutdown intentionally start fresh —
+		// the derived Core owns its own request-scoped lifecycle.
+	}
+}
+
 // Core returns self — satisfies the ServiceRuntime interface.
 //
 //	c := s.Core()
