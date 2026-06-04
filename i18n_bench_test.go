@@ -31,9 +31,9 @@ func (t *benchTranslator) Translate(messageID string, args ...any) Result {
 	return Result{messageID + ":translated", true}
 }
 
-func (t *benchTranslator) SetLanguage(lang string) error { t.lang = lang; return nil }
-func (t *benchTranslator) Language() string              { return t.lang }
-func (t *benchTranslator) AvailableLanguages() []string  { return []string{"en", "en-GB", "de"} }
+func (t *benchTranslator) SetLanguage(lang string) Result { t.lang = lang; return Ok(nil) }
+func (t *benchTranslator) Language() string               { return t.lang }
+func (t *benchTranslator) AvailableLanguages() []string   { return []string{"en", "en-GB", "de"} }
 
 // --- Translate (default + with translator) ---
 

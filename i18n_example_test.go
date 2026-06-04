@@ -13,9 +13,9 @@ func (t *exampleTranslator) Translate(messageID string, args ...any) Result {
 	return Result{Value: Sprintf(messageID, args...), OK: true}
 }
 
-func (t *exampleTranslator) SetLanguage(lang string) error {
+func (t *exampleTranslator) SetLanguage(lang string) Result {
 	t.lang = lang
-	return nil
+	return Ok(nil)
 }
 
 func (t *exampleTranslator) Language() string {
