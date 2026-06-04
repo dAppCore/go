@@ -124,3 +124,23 @@ func BenchmarkParseDuration_Compound(b *B) {
 		timeSinkResult = ParseDuration("1h30m45s")
 	}
 }
+
+// --- Now (AX-11 named gate) / Date ---
+
+// BenchmarkTime_Now is the AX-11 named floor for the ecosystem's
+// hottest time call (~1800 reach). Must stay zero-alloc — the wrapper
+// is a direct passthrough to time.Now, so any allocation here is a
+// regression in the wrapper, not the stdlib.
+func BenchmarkTime_Now(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		timeSinkTime = Now()
+	}
+}
+
+func BenchmarkTime_Date(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		timeSinkTime = Date(2026, April, 28, 7, 0, 0, 0, UTC)
+	}
+}
