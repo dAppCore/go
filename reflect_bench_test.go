@@ -20,6 +20,7 @@ var (
 	reflectSinkValue Value
 	reflectSinkBool  bool
 	reflectSinkKind  Kind
+	reflectSinkInt   int
 )
 
 // Fixtures
@@ -120,5 +121,47 @@ func BenchmarkReflect_Zero_Struct(b *B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		reflectSinkValue = Zero(t)
+	}
+}
+
+// --- TypeFor / NewValue / MakeSlice / MakeMap / CopyValue ---
+
+func BenchmarkReflect_TypeFor_Struct(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		reflectSinkType = TypeFor[reflectStruct]()
+	}
+}
+
+func BenchmarkReflect_NewValue_Struct(b *B) {
+	t := TypeFor[reflectStruct]()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		reflectSinkValue = NewValue(t)
+	}
+}
+
+func BenchmarkReflect_MakeSlice_Int(b *B) {
+	t := TypeFor[[]int]()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		reflectSinkValue = MakeSlice(t, 0, 8)
+	}
+}
+
+func BenchmarkReflect_MakeMap_StringInt(b *B) {
+	t := TypeFor[map[string]int]()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		reflectSinkValue = MakeMap(t)
+	}
+}
+
+func BenchmarkReflect_CopyValue_Int(b *B) {
+	src := ValueOf(reflectFixSlice)
+	dst := MakeSlice(TypeFor[[]int](), len(reflectFixSlice), len(reflectFixSlice))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		reflectSinkInt = CopyValue(dst, src)
 	}
 }

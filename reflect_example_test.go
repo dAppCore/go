@@ -34,3 +34,20 @@ func ExampleKind() {
 	Println(k == KindString)
 	// Output: true
 }
+
+// ExampleTypeFor names a type at compile time through `TypeFor`, with no
+// nil-pointer dance. Reflection stays behind a narrow core surface for
+// rare inspection code.
+func ExampleTypeFor() {
+	Println(TypeFor[string]().Kind())
+	// Output: string
+}
+
+// ExampleNewValue allocates a zeroed value of a reflected type through
+// `NewValue` — the reflective new(T).
+func ExampleNewValue() {
+	ptr := NewValue(TypeFor[int]())
+	ptr.Elem().SetInt(7)
+	Println(ptr.Elem().Int())
+	// Output: 7
+}
