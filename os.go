@@ -70,6 +70,9 @@ const (
 	O_SYNC   = os.O_SYNC
 	O_TRUNC  = os.O_TRUNC
 	O_WRONLY = os.O_WRONLY
+	// O_NOFOLLOW (refuse a symlinked final path component) is declared in
+	// os_nofollow_{unix,windows}.go — it aliases syscall.O_NOFOLLOW on unix
+	// (banned import, sanctioned there per #1681) and 0 on Windows.
 )
 
 // Path separators exposed at core scope.
