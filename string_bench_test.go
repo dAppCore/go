@@ -333,3 +333,95 @@ func BenchmarkCut(b *B) {
 		_, _, _ = Cut(s, ": ")
 	}
 }
+
+// --- IndexAny / ContainsAny / ContainsRune (charset scans) ---
+//
+// IndexAny and ContainsAny scan s against a set of separators (O(n×m)
+// in the worst case), so their cost varies with where in s the first
+// match lands — _EarlyHit finds it near the front, _NoMatch walks the
+// whole string. ContainsRune is the single-rune scan variant.
+
+func BenchmarkIndexAny_EarlyHit(b *B) {
+	s := "user@host:port/path"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = IndexAny(s, "@:/")
+	}
+}
+
+func BenchmarkIndexAny_NoMatch(b *B) {
+	s := "the quick brown fox jumps over the lazy dog"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = IndexAny(s, "@:/")
+	}
+}
+
+func BenchmarkContainsAny_Hit(b *B) {
+	s := "user@host"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = ContainsAny(s, "@:")
+	}
+}
+
+func BenchmarkContainsAny_NoMatch(b *B) {
+	s := "the quick brown fox jumps over the lazy dog"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = ContainsAny(s, "@:")
+	}
+}
+
+func BenchmarkContainsRune_ASCII(b *B) {
+	s := "the quick brown fox jumps over the lazy dog"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = ContainsRune(s, 'z')
+	}
+}
+
+func BenchmarkContainsRune_NonASCII(b *B) {
+	s := "le renard brun rapide saute par-dessus le chien paresseux café"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = ContainsRune(s, 'é')
+	}
+}
+
+// --- CutPrefix / CutSuffix (prefix/suffix cuts) ---
+//
+// The reporting siblings of TrimPrefix/TrimSuffix — same scan, but they
+// also return whether the cut fired. _Hit lands the cut, _Miss does not.
+
+func BenchmarkCutPrefix_Hit(b *B) {
+	s := "--verbose"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, _ = CutPrefix(s, "--")
+	}
+}
+
+func BenchmarkCutPrefix_Miss(b *B) {
+	s := "verbose"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, _ = CutPrefix(s, "--")
+	}
+}
+
+func BenchmarkCutSuffix_Hit(b *B) {
+	s := "main.go"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, _ = CutSuffix(s, ".go")
+	}
+}
+
+func BenchmarkCutSuffix_Miss(b *B) {
+	s := "main.rs"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, _ = CutSuffix(s, ".go")
+	}
+}
