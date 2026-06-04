@@ -213,3 +213,29 @@ func BenchmarkJSONUnmarshal_IntoRawMessage(b *B) {
 		_ = JSONUnmarshal(jsonMedium, &v)
 	}
 }
+
+// --- Streaming Encoder / Decoder / Valid ---
+
+func BenchmarkJSONNewEncoder_Medium(b *B) {
+	bld := NewBuilder()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		bld.Reset()
+		_ = JSONNewEncoder(bld).Encode(fixtureMedium)
+	}
+}
+
+func BenchmarkJSONNewDecoder_Medium(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		var v benchJSONMedium
+		_ = JSONNewDecoder(NewReader(jsonMediumStr)).Decode(&v)
+	}
+}
+
+func BenchmarkJSONValid_Medium(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = JSONValid(jsonMedium)
+	}
+}

@@ -27,6 +27,82 @@ import "encoding/json"
 //	}
 type RawMessage = json.RawMessage
 
+// JSONNumber is an alias for json.Number — a JSON numeric literal kept
+// as its original string so callers choose int vs float decoding (and
+// avoid float64 precision loss on large integers). Pairs with the
+// UseNumber() option on JSONDecoder.
+//
+//	var n core.JSONNumber = "9007199254740993"
+//	r := n.Int64()  // exact, no float rounding
+type JSONNumber = json.Number
+
+// JSONDelim is an alias for json.Delim — one of the four structural
+// tokens ( [ ] { } ) returned by JSONDecoder.Token during streaming
+// token walks.
+//
+//	tok, _ := dec.Token()
+//	if d, ok := tok.(core.JSONDelim); ok && d == '[' { /* array start */ }
+type JSONDelim = json.Delim
+
+// JSONEncoder is an alias for json.Encoder — the streaming writer that
+// emits JSON values to an io.Writer one at a time. Construct via
+// JSONNewEncoder.
+//
+//	var enc *core.JSONEncoder = core.JSONNewEncoder(w)
+type JSONEncoder = json.Encoder
+
+// JSONDecoder is an alias for json.Decoder — the streaming reader that
+// pulls JSON values from an io.Reader. Construct via JSONNewDecoder.
+//
+//	var dec *core.JSONDecoder = core.JSONNewDecoder(r)
+type JSONDecoder = json.Decoder
+
+// JSONMarshaler is an alias for json.Marshaler — the interface a type
+// implements to control its own JSON encoding.
+//
+//	func (id AgentID) MarshalJSON() ([]byte, error) { ... }
+//	var _ core.JSONMarshaler = AgentID{}
+type JSONMarshaler = json.Marshaler
+
+// JSONUnmarshaler is an alias for json.Unmarshaler — the interface a
+// type implements to control its own JSON decoding.
+//
+//	func (id *AgentID) UnmarshalJSON(b []byte) error { ... }
+//	var _ core.JSONUnmarshaler = (*AgentID)(nil)
+type JSONUnmarshaler = json.Unmarshaler
+
+// JSONNewEncoder returns a streaming JSON encoder writing to w. Prefer
+// it over JSONMarshal when emitting many values to a stream (HTTP
+// response, JSONL file) — it writes incrementally without buffering
+// every value into one []byte.
+//
+//	enc := core.JSONNewEncoder(core.Stdout())
+//	for _, row := range rows { enc.Encode(row) }  // one JSON value per line
+func JSONNewEncoder(w Writer) *JSONEncoder {
+	return json.NewEncoder(w)
+}
+
+// JSONNewDecoder returns a streaming JSON decoder reading from r. Prefer
+// it over JSONUnmarshal when consuming a stream of values or a body of
+// unknown length — it decodes one value at a time and can switch to
+// JSONNumber mode via dec.UseNumber().
+//
+//	dec := core.JSONNewDecoder(resp.Body)
+//	var msg Message
+//	for dec.More() { if err := dec.Decode(&msg); err != nil { break } }
+func JSONNewDecoder(r Reader) *JSONDecoder {
+	return json.NewDecoder(r)
+}
+
+// JSONValid reports whether data is a well-formed JSON encoding. Use it
+// to gate a payload before storing or forwarding it without paying a
+// full Unmarshal into a throwaway target.
+//
+//	if !core.JSONValid(body) { return core.NewError("malformed JSON body") }
+func JSONValid(data []byte) bool {
+	return json.Valid(data)
+}
+
 // JSONMarshal serialises a value to JSON bytes.
 //
 //	r := core.JSONMarshal(myStruct)

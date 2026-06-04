@@ -70,3 +70,39 @@ func ExampleRawMessage() {
 	// ping
 	// {"port":8080}
 }
+
+// ExampleJSONNewEncoder streams two values straight to stdout as JSONL
+// — one JSON object per line — without buffering the whole batch. Encode
+// writes the trailing newline itself.
+func ExampleJSONNewEncoder() {
+	type row struct {
+		Name string `json:"name"`
+	}
+	enc := JSONNewEncoder(Stdout())
+	enc.Encode(row{Name: "a"})
+	enc.Encode(row{Name: "b"})
+	// Output:
+	// {"name":"a"}
+	// {"name":"b"}
+}
+
+// ExampleJSONNewDecoder pulls a single value from a reader, the
+// streaming counterpart to JSONUnmarshal.
+func ExampleJSONNewDecoder() {
+	type cfg struct {
+		Port int `json:"port"`
+	}
+	var c cfg
+	JSONNewDecoder(NewReader(`{"port":8080}`)).Decode(&c)
+	Println(c.Port)
+	// Output: 8080
+}
+
+// ExampleJSONValid gates a payload without decoding it.
+func ExampleJSONValid() {
+	Println(JSONValid([]byte(`{"ok":true}`)))
+	Println(JSONValid([]byte(`{"ok":`)))
+	// Output:
+	// true
+	// false
+}
