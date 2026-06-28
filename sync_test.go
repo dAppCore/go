@@ -226,6 +226,8 @@ func TestSync_Mutex_Unlock_Bad(t *T) {
 	var mu Mutex
 	mu.Lock()
 
+	// While held, a second acquisition fails; Unlock is what frees it.
+	AssertFalse(t, mu.TryLock().OK)
 	mu.Unlock()
 
 	r := mu.TryLock()
@@ -325,6 +327,8 @@ func TestSync_RWMutex_Unlock_Bad(t *T) {
 	var mu RWMutex
 	mu.Lock()
 
+	// A write-lock blocks another writer until Unlock releases it.
+	AssertFalse(t, mu.TryLock().OK)
 	mu.Unlock()
 
 	r := mu.TryLock()
@@ -390,6 +394,8 @@ func TestSync_RWMutex_RUnlock_Bad(t *T) {
 	var mu RWMutex
 	mu.RLock()
 
+	// A read-lock blocks a writer until RUnlock releases it.
+	AssertFalse(t, mu.TryLock().OK)
 	mu.RUnlock()
 
 	r := mu.TryLock()

@@ -298,6 +298,8 @@ func TestLock_Lock_Unlock_Bad(t *T) {
 	lock := New().Lock("agent.dispatch")
 	lock.Lock()
 
+	// While held, a second acquisition fails; Unlock is what releases it.
+	AssertFalse(t, lock.TryLock().OK)
 	lock.Unlock()
 
 	r := lock.TryLock()
@@ -363,6 +365,8 @@ func TestLock_Lock_RUnlock_Bad(t *T) {
 	lock := New().Lock("agent.dispatch")
 	lock.RLock()
 
+	// A read-lock blocks a write acquisition until RUnlock releases it.
+	AssertFalse(t, lock.TryLock().OK)
 	lock.RUnlock()
 
 	r := lock.TryLock()

@@ -650,7 +650,9 @@ func TestCore_Core_Run_Bad(t *T) {
 }
 
 func TestCore_Core_Run_Ugly(t *T) {
+	// A core carrying a registered command still runs without panic.
 	c := New(WithCli())
+	c.Command("noop", Command{Action: func(_ Options) Result { return Result{OK: true} }})
 	c.Cli().SetOutput(NewBuffer())
 	AssertNotPanics(t, func() {
 		c.Run()
