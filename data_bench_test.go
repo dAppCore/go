@@ -113,3 +113,20 @@ func BenchmarkData_New(b *B) {
 		))
 	}
 }
+
+func BenchmarkData_Extract(b *B) {
+	fsys := fstest.MapFS{
+		"tmpl/a.md": &fstest.MapFile{Data: []byte("content")},
+	}
+	c := New()
+	c.Data().New(NewOptions(
+		Option{Key: "name", Value: "bench"},
+		Option{Key: "source", Value: FS(fsys)},
+		Option{Key: "path", Value: "."},
+	))
+	base := b.TempDir()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		dataSinkResult = c.Data().Extract("tmpl", PathJoin(base, Itoa(i)), nil)
+	}
+}
