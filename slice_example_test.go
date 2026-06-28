@@ -107,6 +107,25 @@ func ExampleSliceAll() {
 // `SliceSortFunc` for agent lists. Use SliceSort when natural ordering
 // applies; SliceSortFunc covers the comparator-required cases (struct
 // fields, mixed-criteria orderings).
+// ExampleSliceClone returns an independent copy of a slice through `SliceClone`.
+func ExampleSliceClone() {
+	Println(SliceClone([]int{1, 2, 3}))
+	// Output: [1 2 3]
+}
+
+// ExampleSliceSorted collects an iterator into a sorted slice through `SliceSorted`.
+func ExampleSliceSorted() {
+	seq := func(yield func(int) bool) {
+		for _, v := range []int{3, 1, 2} {
+			if !yield(v) {
+				return
+			}
+		}
+	}
+	Println(SliceSorted(seq))
+	// Output: [1 2 3]
+}
+
 func ExampleSliceSortFunc() {
 	type item struct {
 		Path string
