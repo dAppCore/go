@@ -107,3 +107,12 @@ func BenchmarkTemplate_ParseFS(b *B) {
 		templateSinkResult = ParseTemplateFS(fsys, "doc.go")
 	}
 }
+
+func BenchmarkTemplate_ParseFiles(b *B) {
+	path := PathJoin(b.TempDir(), "greeting.tmpl")
+	WriteFile(path, []byte("hello {{.Name}}"), 0o644)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		templateSinkResult = ParseTemplateFiles(path)
+	}
+}
