@@ -191,3 +191,70 @@ func ExampleConfigVar() {
 	// 42 true
 	// 0 false
 }
+
+// ExampleConfig_Group scopes config keys under a group prefix through
+// `Config.Group` — the view reads and writes "<group>.<key>" in the shared store.
+func ExampleConfig_Group() {
+	c := New()
+	db := c.Config("database")
+	db.Set("host", "localhost")
+
+	Println(c.Config().String("database.host"))
+	Println(db.String("host"))
+	// Output:
+	// localhost
+	// localhost
+}
+
+// ExampleCore_Feature toggles a feature flag through a keyed handle from
+// `Core.Feature`.
+func ExampleCore_Feature() {
+	c := New()
+	c.Feature("dark-mode").Enable()
+	Println(c.Feature("dark-mode").Enabled())
+	// Output: true
+}
+
+// ExampleConfigVar_Get reads a typed config var through `ConfigVar.Get`.
+func ExampleConfigVar_Get() {
+	v := NewConfigVar("https://api.lthn.ai")
+	Println(v.Get())
+	// Output: https://api.lthn.ai
+}
+
+// ExampleConfigVar_IsSet reports whether a config var holds a value through `ConfigVar.IsSet`.
+func ExampleConfigVar_IsSet() {
+	v := NewConfigVar("ready")
+	Println(v.IsSet())
+	// Output: true
+}
+
+// ExampleFeature_Name returns the feature's name through `Feature.Name`.
+func ExampleFeature_Name() {
+	Println(New().Feature("dark-mode").Name())
+	// Output: dark-mode
+}
+
+// ExampleFeature_Enable activates a feature through `Feature.Enable`.
+func ExampleFeature_Enable() {
+	c := New()
+	c.Feature("beta").Enable()
+	Println(c.Feature("beta").Enabled())
+	// Output: true
+}
+
+// ExampleFeature_Disable deactivates a feature through `Feature.Disable`.
+func ExampleFeature_Disable() {
+	c := New()
+	f := c.Feature("beta")
+	f.Enable()
+	f.Disable()
+	Println(f.Enabled())
+	// Output: false
+}
+
+// ExampleFeature_Enabled reports whether a feature is active through `Feature.Enabled`.
+func ExampleFeature_Enabled() {
+	Println(New().Feature("unset").Enabled())
+	// Output: false
+}
