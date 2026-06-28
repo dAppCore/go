@@ -25,3 +25,11 @@ func ExampleNewLineScannerWithSize() {
 	// true
 	// alpha
 }
+
+// ExampleNewBufReader wraps a reader for buffered, line-oriented reads through `NewBufReader`.
+func ExampleNewBufReader() {
+	br := NewBufReader(NewReader("agent ready\n"))
+	line, _ := br.ReadString('\n')
+	Println(Trim(line))
+	// Output: agent ready
+}
