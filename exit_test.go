@@ -36,7 +36,42 @@ func waitForExitWithCleanup(t *T, done <-chan struct{}, release func(), timeout 
 	}
 }
 
+// --- package-level Exit ---
+
 func TestExit_Exit_Good(t *T) {
+	got, restore := captureExit(t)
+	defer restore()
+
+	Exit(0)
+
+	AssertEqual(t, 0, *got)
+}
+
+func TestExit_Exit_Bad(t *T) {
+	// package-level Exit with a non-zero code from a cli error helper.
+	got, restore := captureExit(t)
+	defer restore()
+
+	Exit(1)
+
+	AssertEqual(t, 1, *got)
+}
+
+func TestExit_Exit_Ugly(t *T) {
+	// package-level Exit called repeatedly; each call lands.
+	got, restore := captureExit(t)
+	defer restore()
+
+	Exit(1)
+	Exit(2)
+	Exit(3)
+
+	AssertEqual(t, 3, *got)
+}
+
+// --- Core.Exit ---
+
+func TestExit_Core_Exit_Good(t *T) {
 	got, restore := captureExit(t)
 	defer restore()
 
@@ -46,21 +81,18 @@ func TestExit_Exit_Good(t *T) {
 	AssertEqual(t, 0, *got)
 }
 
-func TestExit_Exit_Bad(t *T) {
-	// Bad: caller passes a non-zero code via a fatal error path.
-	// Recoverable boundary: we observe the captured code, no process death.
+func TestExit_Core_Exit_Bad(t *T) {
 	got, restore := captureExit(t)
 	defer restore()
 
 	c := New()
-	c.Exit(127)
+	c.Exit(70)
 
-	AssertEqual(t, 127, *got)
+	AssertEqual(t, 70, *got)
 }
 
-func TestExit_Exit_Ugly(t *T) {
-	// Ugly: Exit called twice (e.g. signal handler races user-triggered exit).
-	// Both calls land; second wins. ServiceShutdown is idempotent.
+func TestExit_Core_Exit_Ugly(t *T) {
+	// Exit called twice (signal handler races user-triggered exit); second wins.
 	got, restore := captureExit(t)
 	defer restore()
 
@@ -71,19 +103,21 @@ func TestExit_Exit_Ugly(t *T) {
 	AssertEqual(t, 2, *got)
 }
 
-func TestExit_ExitWith_Good(t *T) {
+// --- Core.ExitWith ---
+
+func TestExit_Core_ExitWith_Good(t *T) {
 	got, restore := captureExit(t)
 	defer restore()
 
 	c := New()
-	c.ExitWith(ExitOptions{Code: 5, Timeout: 100 * Millisecond})
+	c.ExitWith(ExitOptions{Code: 5, Timeout: 50 * Millisecond})
 
 	AssertEqual(t, 5, *got)
 }
 
-func TestExit_ExitWith_Bad(t *T) {
-	// Bad: zero timeout = wait forever. With a registered service whose OnStop
-	// returns immediately, ServiceShutdown completes; Exit lands.
+func TestExit_Core_ExitWith_Bad(t *T) {
+	// Zero timeout = legacy wait-forever; with no registered services the
+	// shutdown chain completes immediately, so the exit still lands.
 	got, restore := captureExit(t)
 	defer restore()
 
@@ -93,7 +127,27 @@ func TestExit_ExitWith_Bad(t *T) {
 	AssertEqual(t, 9, *got)
 }
 
-func TestExitWith_NegativeTimeout_Bad(t *T) {
+func TestExit_Core_ExitWith_Ugly(t *T) {
+	// Shutdown takes longer than the timeout: the service blocks 200ms, the
+	// timeout is 10ms — the process exits with the warning logged, no panic.
+	got, restore := captureExit(t)
+	defer restore()
+
+	c := New()
+	c.Service("slow", Service{OnStop: func() Result {
+		Sleep(200 * Millisecond)
+		return Result{OK: true}
+	}})
+	start := Now()
+	c.ExitWith(ExitOptions{Code: 3, Timeout: 10 * Millisecond})
+	elapsed := Since(start)
+
+	AssertEqual(t, 3, *got)
+	AssertLess(t, elapsed, 200*Millisecond,
+		"ExitWith must respect the timeout, not wait for slow shutdown")
+}
+
+func TestExit_Core_ExitWith_NegativeTimeout_Bad(t *T) {
 	got, restore := captureExit(t)
 	defer restore()
 
@@ -116,7 +170,7 @@ func TestExitWith_NegativeTimeout_Bad(t *T) {
 	AssertLess(t, elapsed, 100*Millisecond)
 }
 
-func TestExitWith_ZeroTimeout_Good(t *T) {
+func TestExit_Core_ExitWith_ZeroTimeout_Good(t *T) {
 	got, restore := captureExit(t)
 	defer restore()
 
@@ -145,7 +199,7 @@ func TestExitWith_ZeroTimeout_Good(t *T) {
 	AssertEqual(t, 8, *got)
 }
 
-func TestExitWith_PositiveTimeout_Good(t *T) {
+func TestExit_Core_ExitWith_PositiveTimeout_Good(t *T) {
 	got, restore := captureExit(t)
 	defer restore()
 
@@ -169,27 +223,9 @@ func TestExitWith_PositiveTimeout_Good(t *T) {
 	AssertLess(t, elapsed, 500*Millisecond)
 }
 
-func TestExit_ExitWith_Ugly(t *T) {
-	// Ugly: shutdown takes longer than the timeout. Service blocks for 200ms,
-	// timeout is 10ms — process exits with the warning logged, no panic.
-	got, restore := captureExit(t)
-	defer restore()
+// --- Core.ExitNow ---
 
-	c := New()
-	c.Service("slow", Service{OnStop: func() Result {
-		Sleep(200 * Millisecond)
-		return Result{OK: true}
-	}})
-	start := Now()
-	c.ExitWith(ExitOptions{Code: 3, Timeout: 10 * Millisecond})
-	elapsed := Since(start)
-
-	AssertEqual(t, 3, *got)
-	AssertLess(t, elapsed, 200*Millisecond,
-		"ExitWith must respect the timeout, not wait for slow shutdown")
-}
-
-func TestExit_ExitNow_Good(t *T) {
+func TestExit_Core_ExitNow_Good(t *T) {
 	got, restore := captureExit(t)
 	defer restore()
 
@@ -199,8 +235,8 @@ func TestExit_ExitNow_Good(t *T) {
 	AssertEqual(t, 0, *got)
 }
 
-func TestExit_ExitNow_Bad(t *T) {
-	// Bad: ExitNow called from a panic recovery path with non-zero code.
+func TestExit_Core_ExitNow_Bad(t *T) {
+	// ExitNow called from a panic-recovery path with a non-zero code.
 	got, restore := captureExit(t)
 	defer restore()
 
@@ -215,146 +251,8 @@ func TestExit_ExitNow_Bad(t *T) {
 	AssertEqual(t, 2, *got)
 }
 
-func TestExit_ExitNow_Ugly(t *T) {
-	// Ugly: ExitNow does NOT run shutdown — verify the OnStop hook is NOT called.
-	got, restore := captureExit(t)
-	defer restore()
-
-	stopped := false
-	c := New()
-	c.Service("hook", Service{OnStop: func() Result {
-		stopped = true
-		return Result{OK: true}
-	}})
-	c.ExitNow(4)
-
-	AssertEqual(t, 4, *got)
-	AssertFalse(t, stopped,
-		"ExitNow must skip the shutdown chain — OnStop must not run")
-}
-
-func TestExit_PackageExit_Good(t *T) {
-	got, restore := captureExit(t)
-	defer restore()
-
-	Exit(0)
-
-	AssertEqual(t, 0, *got)
-}
-
-func TestExit_PackageExit_Bad(t *T) {
-	// Bad: package-level Exit called with non-zero code from cli error helper.
-	got, restore := captureExit(t)
-	defer restore()
-
-	Exit(1)
-
-	AssertEqual(t, 1, *got)
-}
-
-func TestExit_PackageExit_Ugly(t *T) {
-	// Ugly: package-level Exit called repeatedly. Each call lands.
-	got, restore := captureExit(t)
-	defer restore()
-
-	Exit(1)
-	Exit(2)
-	Exit(3)
-
-	AssertEqual(t, 3, *got)
-}
-
-func TestExit_Core_Exit_Good(t *T) {
-	got, restore := captureExit(t)
-	defer restore()
-
-	c := New()
-	c.Exit(0)
-
-	AssertEqual(t, 0, *got)
-}
-
-func TestExit_Core_Exit_Bad(t *T) {
-	got, restore := captureExit(t)
-	defer restore()
-
-	c := New()
-	c.Exit(70)
-
-	AssertEqual(t, 70, *got)
-}
-
-func TestExit_Core_Exit_Ugly(t *T) {
-	got, restore := captureExit(t)
-	defer restore()
-
-	c := New()
-	c.Exit(1)
-	c.Exit(2)
-
-	AssertEqual(t, 2, *got)
-}
-
-func TestExit_Core_ExitWith_Good(t *T) {
-	got, restore := captureExit(t)
-	defer restore()
-
-	c := New()
-	c.ExitWith(ExitOptions{Code: 5, Timeout: 50 * Millisecond})
-
-	AssertEqual(t, 5, *got)
-}
-
-func TestExit_Core_ExitWith_Bad(t *T) {
-	got, restore := captureExit(t)
-	defer restore()
-
-	c := New()
-	c.ExitWith(ExitOptions{Code: 9, Timeout: 0})
-
-	AssertEqual(t, 9, *got)
-}
-
-func TestExit_Core_ExitWith_Ugly(t *T) {
-	got, restore := captureExit(t)
-	defer restore()
-
-	c := New()
-	release := blockShutdown(c)
-	defer release()
-	done := make(chan struct{})
-
-	go func() {
-		c.ExitWith(ExitOptions{Code: 6, Timeout: 10 * Millisecond})
-		close(done)
-	}()
-
-	waitForExitWithCleanup(t, done, release, 500*Millisecond,
-		"ExitWith timeout did not unblock forced termination")
-	AssertEqual(t, 6, *got)
-}
-
-func TestExit_Core_ExitNow_Good(t *T) {
-	got, restore := captureExit(t)
-	defer restore()
-
-	c := New()
-	c.ExitNow(0)
-
-	AssertEqual(t, 0, *got)
-}
-
-func TestExit_Core_ExitNow_Bad(t *T) {
-	got, restore := captureExit(t)
-	defer restore()
-
-	c := New()
-	c.ExitNow(2)
-
-	AssertEqual(t, 2, *got)
-}
-
 func TestExit_Core_ExitNow_Ugly(t *T) {
+	// ExitNow does NOT run the shutdown chain — the OnStop hook must not fire.
 	got, restore := captureExit(t)
 	defer restore()
 
@@ -364,9 +262,9 @@ func TestExit_Core_ExitNow_Ugly(t *T) {
 		stopped = true
 		return Result{OK: true}
 	}})
+	c.ExitNow(4)
 
-	c.ExitNow(3)
-
-	AssertEqual(t, 3, *got)
-	AssertFalse(t, stopped)
+	AssertEqual(t, 4, *got)
+	AssertFalse(t, stopped,
+		"ExitNow must skip the shutdown chain — OnStop must not run")
 }
