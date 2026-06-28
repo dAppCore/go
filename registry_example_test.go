@@ -208,6 +208,26 @@ func ExampleRegistry_Sealed() {
 
 // ExampleRegistry_Open reopens a locked registry so later writes can succeed. Registries
 // can list, lock, seal, disable, and reopen named services predictably.
+// ExampleRegistry_GetOrSet returns an existing entry or creates one through `Registry.GetOrSet`.
+func ExampleRegistry_GetOrSet() {
+	r := NewRegistry[int]()
+	v := r.GetOrSet("count", func() int { return 5 })
+	Println(v.Value)
+	// Output: 5
+}
+
+// ExampleRegistry_GetIncludingDisabled resolves even soft-disabled entries through `Registry.GetIncludingDisabled`.
+func ExampleRegistry_GetIncludingDisabled() {
+	r := NewRegistry[string]()
+	r.Set("agent", "codex")
+	r.Disable("agent")
+	Println(r.Get("agent").OK)
+	Println(r.GetIncludingDisabled("agent").OK)
+	// Output:
+	// false
+	// true
+}
+
 func ExampleRegistry_Open() {
 	r := NewRegistry[string]()
 	r.Lock()

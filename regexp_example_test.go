@@ -53,6 +53,20 @@ func ExampleRegexp_Split() {
 // ExampleRegexp_String renders `Regexp.String` as a stable string for route parsing.
 // Compiled patterns expose common matching and replacement operations through core
 // wrappers.
+// ExampleRegexp_MatchString reports whether a string matches through `Regexp.MatchString`.
+func ExampleRegexp_MatchString() {
+	rx := Regex(`\d+`).Value.(*Regexp)
+	Println(rx.MatchString("abc123"))
+	// Output: true
+}
+
+// ExampleRegexp_FindString returns the leftmost match through `Regexp.FindString`.
+func ExampleRegexp_FindString() {
+	rx := Regex(`\d+`).Value.(*Regexp)
+	Println(rx.FindString("abc123def"))
+	// Output: 123
+}
+
 func ExampleRegexp_String() {
 	rx := Regex(`\d+`).Value.(*Regexp)
 	Println(rx.String())
