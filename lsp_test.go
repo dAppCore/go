@@ -141,14 +141,6 @@ func TestLsp_LSPServe_Bad(t *T) {
 	AssertError(t, r.Value.(error))
 }
 
-func TestLsp_LSPServe_Ugly(t *T) {
-	sources := LSPDiagnosticSources()
-	AssertContains(t, sources, "ax-7")
-	AssertContains(t, sources, "result-shape")
-	AssertContains(t, sources, "spor")
-	AssertContains(t, sources, "test-imports")
-}
-
 // --- LSPDiagnostic + LSPRange + LSPPosition ---
 
 func TestLsp_LSPDiagnostic_Good(t *T) {

@@ -17,10 +17,12 @@ func TestScanner_NewLineScanner_Good(t *T) {
 }
 
 func TestScanner_NewLineScanner_Bad(t *T) {
-	scanner := NewLineScannerWithSize(NewReader("too long\n"), 4)
+	// Empty input: nothing to scan, and no error (the too-small-buffer error
+	// case belongs to NewLineScannerWithSize, tested there).
+	scanner := NewLineScanner(NewReader(""))
 
 	AssertFalse(t, scanner.Scan())
-	AssertError(t, scanner.Err())
+	AssertNoError(t, scanner.Err())
 }
 
 func TestScanner_NewLineScanner_Ugly(t *T) {
