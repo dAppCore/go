@@ -54,6 +54,12 @@ func ExampleChmod() {
 
 // ExampleErrNotExist matches a failed Open against the re-exported
 // sentinel without importing os.
+// ExampleTempDir returns the system temporary directory through `TempDir`.
+func ExampleTempDir() {
+	Println(TempDir() != "")
+	// Output: true
+}
+
 func ExampleErrNotExist() {
 	r := Open(PathJoin(TempDir(), "core-example-definitely-missing"))
 	Println(Is(r.Value.(error), ErrNotExist))
