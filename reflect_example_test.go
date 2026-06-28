@@ -51,3 +51,41 @@ func ExampleNewValue() {
 	Println(ptr.Elem().Int())
 	// Output: 7
 }
+
+// ExampleZero builds the zero Value of a type through `Zero`.
+func ExampleZero() {
+	Println(Zero(TypeFor[int]()).Int())
+	// Output: 0
+}
+
+// ExampleMakeSlice allocates a typed slice Value through `MakeSlice`.
+func ExampleMakeSlice() {
+	s := MakeSlice(TypeFor[[]int](), 0, 4)
+	Println(s.Cap())
+	// Output: 4
+}
+
+// ExampleMakeMap allocates a typed map Value through `MakeMap`.
+func ExampleMakeMap() {
+	Println(MakeMap(TypeFor[map[string]int]()).Len())
+	// Output: 0
+}
+
+// ExampleMakeMapWithSize allocates a sized map Value through `MakeMapWithSize`.
+func ExampleMakeMapWithSize() {
+	Println(MakeMapWithSize(TypeFor[map[string]int](), 8).Len())
+	// Output: 0
+}
+
+// ExampleCopyValue copies between slice Values through `CopyValue`.
+func ExampleCopyValue() {
+	dst := MakeSlice(TypeFor[[]int](), 3, 3)
+	Println(CopyValue(dst, dst))
+	// Output: 3
+}
+
+// ExampleMakeFunc builds a callable Value at runtime through `MakeFunc`.
+func ExampleMakeFunc() {
+	fn := MakeFunc(TypeFor[func()](), func(args []Value) []Value { return nil })
+	_ = fn // an invokable reflect.Value wrapping the synthesised function
+}
