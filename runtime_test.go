@@ -128,6 +128,75 @@ func TestRuntime_Core_ServiceStartup_Ugly(t *T) {
 	AssertTrue(t, sawStartup)
 }
 
+func TestRuntime_Core_Go_Good(t *T) {
+	c := New()
+	done := make(chan bool, 1)
+	c.Go(func() { done <- true })
+	select {
+	case <-done:
+	case <-After(2 * Second):
+		t.Fatal("c.Go did not run the function")
+	}
+}
+
+func TestRuntime_Core_Go_Bad(t *T) {
+	// Go returns immediately; the fn runs asynchronously, not inline.
+	c := New()
+	release := make(chan bool)
+	observed := make(chan bool, 1)
+	c.Go(func() {
+		<-release // still blocked when Go has already returned
+		observed <- true
+	})
+	close(release)
+	select {
+	case <-observed:
+	case <-After(2 * Second):
+		t.Fatal("goroutine did not complete after release")
+	}
+}
+
+func TestRuntime_Core_Go_Ugly(t *T) {
+	// Many concurrent goroutines all run.
+	c := New()
+	const n = 16
+	done := make(chan int, n)
+	for i := 0; i < n; i++ {
+		c.Go(func() { done <- 1 })
+	}
+	sum := 0
+	for i := 0; i < n; i++ {
+		select {
+		case <-done:
+			sum++
+		case <-After(2 * Second):
+			t.Fatal("a goroutine did not run")
+		}
+	}
+	AssertEqual(t, n, sum)
+}
+
+func TestRuntime_Core_IsShutdown_Good(t *T) {
+	// A fresh core is running, not shut down.
+	AssertFalse(t, New().IsShutdown())
+}
+
+func TestRuntime_Core_IsShutdown_Bad(t *T) {
+	c := New()
+	c.ServiceShutdown(Background())
+	AssertTrue(t, c.IsShutdown())
+}
+
+func TestRuntime_Core_IsShutdown_Ugly(t *T) {
+	// Shutdown is sticky and idempotent.
+	c := New()
+	AssertFalse(t, c.IsShutdown())
+	c.ServiceShutdown(Background())
+	AssertTrue(t, c.IsShutdown())
+	c.ServiceShutdown(Background())
+	AssertTrue(t, c.IsShutdown())
+}
+
 func TestRuntime_ServiceRuntime_Config_Good(t *T) {
 	c := New()
 	rt := NewServiceRuntime(c, testOpts{})

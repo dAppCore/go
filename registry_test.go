@@ -59,6 +59,51 @@ func TestRegistry_Set_Ugly_ConcurrentWrites(t *T) {
 	AssertEqual(t, 100, r.Len())
 }
 
+// --- GetOrSet ---
+
+func TestRegistry_GetOrSet_Good(t *T) {
+	r := NewRegistry[*Lock]()
+	calls := 0
+	mk := func() *Lock { calls++; return &Lock{Name: "drain", Mutex: &RWMutex{}} }
+
+	first := r.GetOrSet("drain", mk)
+	AssertTrue(t, first.OK)
+	second := r.GetOrSet("drain", mk)
+	AssertTrue(t, second.OK)
+
+	// mk() runs once; both calls return the same cached pointer.
+	AssertEqual(t, 1, calls)
+	AssertSame(t, first.Value.(*Lock), second.Value.(*Lock))
+}
+
+func TestRegistry_GetOrSet_Bad(t *T) {
+	r := NewRegistry[int]()
+	r.Lock()
+	res := r.GetOrSet("late", func() int { return 1 })
+	AssertFalse(t, res.OK)
+}
+
+func TestRegistry_GetOrSet_Ugly(t *T) {
+	r := NewRegistry[*Lock]()
+	var wg WaitGroup
+	results := make([]*Lock, 50)
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			results[n] = r.GetOrSet("shared", func() *Lock {
+				return &Lock{Name: "shared", Mutex: &RWMutex{}}
+			}).Value.(*Lock)
+		}(i)
+	}
+	wg.Wait()
+	// Every racing caller converges on the single stored *Lock.
+	for i := 1; i < 50; i++ {
+		AssertSame(t, results[0], results[i])
+	}
+	AssertEqual(t, 1, r.Len())
+}
+
 // --- Get ---
 
 func TestRegistry_Get_Good(t *T) {
@@ -246,9 +291,11 @@ func TestRegistry_Disable_Good(t *T) {
 	res := r.Disable("alpha")
 	AssertTrue(t, res.OK)
 	AssertTrue(t, r.Disabled("alpha"))
-	// Still exists via Get/Has
-	AssertTrue(t, r.Has("alpha"))
-	AssertTrue(t, r.Get("alpha").OK)
+	// Disabled entries are invisible to Get/Has so dispatch skips them...
+	AssertFalse(t, r.Has("alpha"))
+	AssertFalse(t, r.Get("alpha").OK)
+	// ...but stay inspectable via GetIncludingDisabled for re-enable.
+	AssertTrue(t, r.GetIncludingDisabled("alpha").OK)
 }
 
 func TestRegistry_Disable_Bad_NotFound(t *T) {
@@ -277,6 +324,27 @@ func TestRegistry_Enable_Bad_NotFound(t *T) {
 	r := NewRegistry[string]()
 	res := r.Enable("missing")
 	AssertFalse(t, res.OK)
+}
+
+func TestRegistry_GetIncludingDisabled_Good(t *T) {
+	r := NewRegistry[string]()
+	r.Set("alpha", "value")
+	r.Disable("alpha")
+	res := r.GetIncludingDisabled("alpha")
+	AssertTrue(t, res.OK)
+	AssertEqual(t, "value", res.Value.(string))
+}
+
+func TestRegistry_GetIncludingDisabled_Bad(t *T) {
+	r := NewRegistry[string]()
+	AssertFalse(t, r.GetIncludingDisabled("missing").OK)
+}
+
+func TestRegistry_GetIncludingDisabled_Ugly(t *T) {
+	// An enabled entry resolves identically through Get and GetIncludingDisabled.
+	r := NewRegistry[string]()
+	r.Set("alpha", "value")
+	AssertEqual(t, r.Get("alpha").Value, r.GetIncludingDisabled("alpha").Value)
 }
 
 // --- Lock ---
@@ -609,8 +677,9 @@ func TestRegistry_Registry_Disable_Ugly(t *T) {
 	r := NewRegistry[string]()
 	r.Set("agent.dispatch", "dispatch")
 	r.Disable("agent.dispatch")
-	AssertTrue(t, r.Get("agent.dispatch").OK)
-	AssertEmpty(t, r.List("agent.*"))
+	AssertFalse(t, r.Get("agent.dispatch").OK)                 // resolution skips it
+	AssertTrue(t, r.GetIncludingDisabled("agent.dispatch").OK) // still inspectable
+	AssertEmpty(t, r.List("agent.*"))                          // listing skips it
 }
 
 func TestRegistry_Registry_Enable_Good(t *T) {
