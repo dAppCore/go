@@ -11,6 +11,7 @@ package core_test
 
 import (
 	"bytes"
+	"os"
 
 	. "dappco.re/go"
 )
@@ -87,5 +88,24 @@ func BenchmarkFormat_Errorf_Wrap(b *B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		formatSinkErr = Errorf("connect %s: %w", "homelab", cause)
+	}
+}
+
+// Println writes to os.Stdout; redirect to /dev/null so the bench measures
+// the formatting + write cost, not terminal scroll.
+func BenchmarkPrintln(b *B) {
+	devnull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+	if err != nil {
+		b.Skip("no /dev/null")
+	}
+	old := os.Stdout
+	os.Stdout = devnull
+	defer func() {
+		os.Stdout = old
+		devnull.Close()
+	}()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		Println("agent ready", 42)
 	}
 }

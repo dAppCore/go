@@ -308,6 +308,12 @@ func BenchmarkCore_RemoteAction(b *B) {
 	}
 }
 
-// HTTPListenAndServe + RemoteAction are not benched — they bind a real
-// socket / make a real outbound HTTP call. A unit-bench cannot do that
-// deterministically. They are exercised end-to-end in api_test.go.
+// HTTPListenAndServe is benched on its error path: an invalid address
+// fails the bind immediately and returns the error Result, with no real
+// socket. The success path blocks serving, so it can't be unit-benched.
+func BenchmarkHTTPListenAndServe(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		apiSinkResult = HTTPListenAndServe("127.0.0.1:-1", nil)
+	}
+}
