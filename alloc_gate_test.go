@@ -117,3 +117,15 @@ func TestAllocs_LSPComputeDiagnostics(t *T) {
 	}))
 	AssertLessOrEqual(t, avg, 70, "LSPComputeDiagnostics")
 }
+
+var gateStrSlice []string
+
+// TestAllocs_FilterArgs locks the pre-size win (1f59e31): was an unpresized
+// 'var clean []string' + append (geometric regrow), now the single presized
+// result allocation. (Typed sink — assigning to `any` would box and add a
+// spurious alloc.)
+func TestAllocs_FilterArgs(t *T) {
+	args := []string{"deploy", "--target", "homelab", "-v"}
+	fa := int(testing.AllocsPerRun(1000, func() { gateStrSlice = FilterArgs(args) }))
+	AssertLessOrEqual(t, fa, 1, "FilterArgs")
+}
