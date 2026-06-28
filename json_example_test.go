@@ -106,3 +106,13 @@ func ExampleJSONValid() {
 	// true
 	// false
 }
+
+// ExampleJSONMarshalIndent renders indented JSON through `JSONMarshalIndent`.
+func ExampleJSONMarshalIndent() {
+	r := JSONMarshalIndent(map[string]int{"count": 3}, "", "  ")
+	Println(string(r.Value.([]byte)))
+	// Output:
+	// {
+	//   "count": 3
+	// }
+}
