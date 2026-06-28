@@ -30,22 +30,6 @@ func ExampleSanitisePath_base() {
 	// invalid
 }
 
-// ExamplePrintln writes a line through `Println` for CLI utility parsing. Small CLI
-// argument utilities have predictable string and flag behaviour.
-func ExamplePrintln() {
-	Println("hello", "codex")
-	// Output: hello codex
-}
-
-// ExamplePrint writes text through `Print` for CLI utility parsing. Small CLI argument
-// utilities have predictable string and flag behaviour.
-func ExamplePrint() {
-	buf := NewBuffer()
-	Print(buf, "port=%d", 8080)
-	Println(TrimSuffix(buf.String(), "\n"))
-	// Output: port=8080
-}
-
 // ExampleJoinPath_utils joins path segments through `JoinPath` for CLI utility parsing.
 // Small CLI argument utilities have predictable string and flag behaviour.
 func ExampleJoinPath_utils() {

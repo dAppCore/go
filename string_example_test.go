@@ -127,20 +127,6 @@ func ExampleNewReader() {
 	// Output: hello
 }
 
-// ExampleSprint formats values as text through `Sprint` for command text handling. Text
-// predicates and transforms stay on the core string wrapper surface.
-func ExampleSprint() {
-	Println(Sprint("port=", 8080))
-	// Output: port=8080
-}
-
-// ExampleSprintf formats templated text through `Sprintf` for command text handling. Text
-// predicates and transforms stay on the core string wrapper surface.
-func ExampleSprintf() {
-	Println(Sprintf("port=%d", 8080))
-	// Output: port=8080
-}
-
 // ExampleHTMLEscape escapes dashboard text through `HTMLEscape` for dashboard HTML text.
 // UI-bound strings are escaped and unescaped without importing html directly.
 func ExampleHTMLEscape() {
