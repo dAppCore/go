@@ -96,6 +96,27 @@ func TestRandom_RandIntn_Bad(t *T) {
 	})
 }
 
+func TestRandom_RandRead_Good(t *T) {
+	// Fills the buffer and reports success.
+	b := make([]byte, 32)
+	AssertTrue(t, RandRead(b).OK)
+}
+
+func TestRandom_RandRead_Bad(t *T) {
+	// An empty buffer is a valid no-op success.
+	AssertTrue(t, RandRead([]byte{}).OK)
+}
+
+func TestRandom_RandRead_Ugly(t *T) {
+	// Two reads of a sizable buffer are overwhelmingly unlikely to match —
+	// confirms real entropy is written, not zeros.
+	a := make([]byte, 32)
+	b := make([]byte, 32)
+	RequireTrue(t, RandRead(a).OK)
+	RequireTrue(t, RandRead(b).OK)
+	AssertNotEqual(t, a, b)
+}
+
 func TestRandom_RandIntn_Ugly(t *T) {
 	for i := 0; i < 100; i++ {
 		value := RandIntn(5)

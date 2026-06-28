@@ -298,6 +298,25 @@ func TestArray_Array_Remove_Bad(t *T) {
 	AssertEqual(t, []string{"codex"}, agents.AsSlice())
 }
 
+func TestArray_Array_IndexOf_Good(t *T) {
+	a := NewArray("codex", "hades", "homelab")
+	AssertEqual(t, 0, a.IndexOf("codex"))
+	AssertEqual(t, 2, a.IndexOf("homelab"))
+}
+
+func TestArray_Array_IndexOf_Bad(t *T) {
+	a := NewArray("codex", "hades")
+	AssertEqual(t, -1, a.IndexOf("missing"))
+}
+
+func TestArray_Array_IndexOf_Ugly(t *T) {
+	// First matching index for duplicates; -1 on an empty array.
+	a := NewArray("x", "y", "x")
+	AssertEqual(t, 0, a.IndexOf("x"))
+	empty := NewArray[string]()
+	AssertEqual(t, -1, empty.IndexOf("x"))
+}
+
 func TestArray_Array_Remove_Ugly(t *T) {
 	agents := NewArray("codex", "codex", "hades")
 	agents.Remove("codex")
