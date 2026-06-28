@@ -370,6 +370,31 @@ func TestCore_Core_Env_Ugly(t *T) {
 	AssertEqual(t, "token", c.Env("CORE_TEST_SESSION"))
 }
 
+func TestCore_Core_Feature_Good(t *T) {
+	c := New()
+	f := c.Feature("dark-mode")
+	AssertEqual(t, "dark-mode", f.Name())
+	f.Enable()
+	AssertTrue(t, c.Feature("dark-mode").Enabled())
+}
+
+func TestCore_Core_Feature_Bad(t *T) {
+	c := New()
+	// An empty name yields a usable handle that is never enabled.
+	f := c.Feature("")
+	AssertEqual(t, "", f.Name())
+	AssertFalse(t, f.Enabled())
+}
+
+func TestCore_Core_Feature_Ugly(t *T) {
+	c := New()
+	// Separate handles to the same name share one backing store.
+	c.Feature("beta").Enable()
+	AssertTrue(t, c.Feature("beta").Enabled())
+	c.Feature("beta").Disable()
+	AssertFalse(t, c.Feature("beta").Enabled())
+}
+
 func TestCore_Core_Error_Good(t *T) {
 	c := New()
 	AssertNotNil(t, c.Error())

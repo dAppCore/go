@@ -73,41 +73,84 @@ func TestConfig_Group_Ugly(t *T) {
 
 // --- Feature (G1) ---
 
-func TestConfig_Feature_Good(t *T) {
-	c := New()
-	c.Feature("dark-mode").Enable()
-
-	AssertTrue(t, c.Feature("dark-mode").Enabled())
-	AssertTrue(t, c.Config().Enabled("dark-mode")) // same backing store
-	AssertEqual(t, "dark-mode", c.Feature("dark-mode").Name())
+func TestConfig_Feature_Name_Good(t *T) {
+	AssertEqual(t, "dark-mode", New().Feature("dark-mode").Name())
 }
 
-func TestConfig_Feature_Bad(t *T) {
+func TestConfig_Feature_Name_Bad(t *T) {
+	AssertEqual(t, "", New().Feature("").Name())
+}
+
+func TestConfig_Feature_Name_Ugly(t *T) {
+	// The handle reports its raw name verbatim, dots and all, set or not.
+	AssertEqual(t, "ns.sub.flag", New().Feature("ns.sub.flag").Name())
+}
+
+func TestConfig_Feature_Enable_Good(t *T) {
 	c := New()
-	// An unset feature reads as disabled.
-	f := c.Feature("never-set")
-	AssertFalse(t, f.Enabled())
-	// The handle still reports its name even when the flag was never set.
-	AssertEqual(t, "never-set", f.Name())
-	// Explicitly disabling a never-set feature keeps it off and absent from the active set.
-	f.Disable()
-	AssertFalse(t, f.Enabled())
+	c.Feature("dark-mode").Enable()
+	AssertTrue(t, c.Feature("dark-mode").Enabled())
+	AssertTrue(t, c.Config().Enabled("dark-mode")) // same backing store
+}
+
+func TestConfig_Feature_Enable_Bad(t *T) {
+	c := New()
+	// Enabling one feature leaves an unrelated one off.
+	c.Feature("a").Enable()
+	AssertFalse(t, c.Feature("b").Enabled())
+}
+
+func TestConfig_Feature_Enable_Ugly(t *T) {
+	c := New()
+	// Enable is idempotent — re-enabling keeps it on, listed once.
+	c.Feature("beta").Enable()
+	c.Feature("beta").Enable()
+	AssertTrue(t, c.Feature("beta").Enabled())
+	AssertContains(t, c.Config().EnabledFeatures(), "beta")
+}
+
+func TestConfig_Feature_Disable_Good(t *T) {
+	c := New()
+	c.Feature("beta").Enable()
+	c.Feature("beta").Disable()
+	AssertFalse(t, c.Feature("beta").Enabled())
+}
+
+func TestConfig_Feature_Disable_Bad(t *T) {
+	c := New()
+	// Disabling a never-set feature keeps it off and absent from the set.
+	c.Feature("never-set").Disable()
+	AssertFalse(t, c.Feature("never-set").Enabled())
 	AssertNotContains(t, c.Config().EnabledFeatures(), "never-set")
 }
 
-func TestConfig_Feature_Ugly(t *T) {
+func TestConfig_Feature_Disable_Ugly(t *T) {
 	c := New()
-	// A grouped feature is namespaced — the ungrouped handle does not see it.
+	// Double-disable is safe and stays off.
+	c.Feature("beta").Enable()
+	c.Feature("beta").Disable()
+	c.Feature("beta").Disable()
+	AssertFalse(t, c.Feature("beta").Enabled())
+}
+
+func TestConfig_Feature_Enabled_Good(t *T) {
+	c := New()
+	c.Feature("dark-mode").Enable()
+	AssertTrue(t, c.Feature("dark-mode").Enabled())
+}
+
+func TestConfig_Feature_Enabled_Bad(t *T) {
+	// An unset feature reads as disabled.
+	AssertFalse(t, New().Feature("never-set").Enabled())
+}
+
+func TestConfig_Feature_Enabled_Ugly(t *T) {
+	c := New()
+	// Feature handles are NOT auto-namespaced: a grouped flag is invisible
+	// to the ungrouped handle of the same leaf name.
 	c.Config("ui").Enable("dark")
 	AssertTrue(t, c.Config().Enabled("ui.dark"))
 	AssertFalse(t, c.Feature("dark").Enabled())
-
-	// Enable/Disable roundtrip on the handle.
-	f := c.Feature("beta")
-	f.Enable()
-	AssertTrue(t, f.Enabled())
-	f.Disable()
-	AssertFalse(t, f.Enabled())
 }
 
 // --- AX-7 canonical triplets ---
