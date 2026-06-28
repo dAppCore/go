@@ -6,14 +6,14 @@ import (
 
 // --- AtomicBool ---
 
-func TestAtomic_Bool_Good(t *T) {
+func TestAtomic_AtomicBool_Good(t *T) {
 	var a AtomicBool
 	AssertFalse(t, a.Load())
 	a.Store(true)
 	AssertTrue(t, a.Load())
 }
 
-func TestAtomic_Bool_Bad(t *T) {
+func TestAtomic_AtomicBool_Bad(t *T) {
 	// Bad: CompareAndSwap with wrong old returns false, no change.
 	var a AtomicBool
 	a.Store(true)
@@ -22,7 +22,7 @@ func TestAtomic_Bool_Bad(t *T) {
 	AssertTrue(t, a.Load(), "CAS with wrong old must not mutate")
 }
 
-func TestAtomic_Bool_Ugly(t *T) {
+func TestAtomic_AtomicBool_Ugly(t *T) {
 	// Ugly: 100 goroutines racing CompareAndSwap to claim a one-shot flag.
 	// Exactly one must win.
 	var a AtomicBool
@@ -44,7 +44,7 @@ func TestAtomic_Bool_Ugly(t *T) {
 
 // --- AtomicInt32 ---
 
-func TestAtomic_Int32_Good(t *T) {
+func TestAtomic_AtomicInt32_Good(t *T) {
 	var a AtomicInt32
 	a.Store(5)
 	AssertEqual(t, int32(5), a.Load())
@@ -52,7 +52,7 @@ func TestAtomic_Int32_Good(t *T) {
 	AssertEqual(t, int32(8), got)
 }
 
-func TestAtomic_Int32_Bad(t *T) {
+func TestAtomic_AtomicInt32_Bad(t *T) {
 	// Bad: Swap returns previous value, not new.
 	var a AtomicInt32
 	a.Store(10)
@@ -61,7 +61,7 @@ func TestAtomic_Int32_Bad(t *T) {
 	AssertEqual(t, int32(20), a.Load())
 }
 
-func TestAtomic_Int32_Ugly(t *T) {
+func TestAtomic_AtomicInt32_Ugly(t *T) {
 	// Ugly: 1000 concurrent Adds. Final value must be exact (race-free).
 	var a AtomicInt32
 	var wg WaitGroup
@@ -78,13 +78,13 @@ func TestAtomic_Int32_Ugly(t *T) {
 
 // --- AtomicInt64 ---
 
-func TestAtomic_Int64_Good(t *T) {
+func TestAtomic_AtomicInt64_Good(t *T) {
 	var a AtomicInt64
 	a.Store(1 << 40)
 	AssertEqual(t, int64(1<<40), a.Load())
 }
 
-func TestAtomic_Int64_Bad(t *T) {
+func TestAtomic_AtomicInt64_Bad(t *T) {
 	var a AtomicInt64
 	a.Store(100)
 	swapped := a.CompareAndSwap(99, 200)
@@ -92,7 +92,7 @@ func TestAtomic_Int64_Bad(t *T) {
 	AssertEqual(t, int64(100), a.Load())
 }
 
-func TestAtomic_Int64_Ugly(t *T) {
+func TestAtomic_AtomicInt64_Ugly(t *T) {
 	var a AtomicInt64
 	var wg WaitGroup
 	for i := 0; i < 1000; i++ {
@@ -108,7 +108,7 @@ func TestAtomic_Int64_Ugly(t *T) {
 
 // --- AtomicUint32 ---
 
-func TestAtomic_Uint32_Good(t *T) {
+func TestAtomic_AtomicUint32_Good(t *T) {
 	var a AtomicUint32
 	a.Store(7)
 	AssertEqual(t, uint32(7), a.Load())
@@ -116,7 +116,7 @@ func TestAtomic_Uint32_Good(t *T) {
 	AssertEqual(t, uint32(10), a.Load())
 }
 
-func TestAtomic_Uint32_Bad(t *T) {
+func TestAtomic_AtomicUint32_Bad(t *T) {
 	var a AtomicUint32
 	a.Store(5)
 	swapped := a.CompareAndSwap(99, 10)
@@ -124,7 +124,7 @@ func TestAtomic_Uint32_Bad(t *T) {
 	AssertEqual(t, uint32(5), a.Load())
 }
 
-func TestAtomic_Uint32_Ugly(t *T) {
+func TestAtomic_AtomicUint32_Ugly(t *T) {
 	var a AtomicUint32
 	var wg WaitGroup
 	for i := 0; i < 500; i++ {
@@ -140,20 +140,20 @@ func TestAtomic_Uint32_Ugly(t *T) {
 
 // --- AtomicUint64 ---
 
-func TestAtomic_Uint64_Good(t *T) {
+func TestAtomic_AtomicUint64_Good(t *T) {
 	var a AtomicUint64
 	a.Store(1 << 50)
 	AssertEqual(t, uint64(1<<50), a.Load())
 }
 
-func TestAtomic_Uint64_Bad(t *T) {
+func TestAtomic_AtomicUint64_Bad(t *T) {
 	var a AtomicUint64
 	a.Store(100)
 	prev := a.Swap(200)
 	AssertEqual(t, uint64(100), prev)
 }
 
-func TestAtomic_Uint64_Ugly(t *T) {
+func TestAtomic_AtomicUint64_Ugly(t *T) {
 	var a AtomicUint64
 	var wg WaitGroup
 	for i := 0; i < 1000; i++ {
@@ -173,7 +173,7 @@ type pointerVal struct {
 	n int
 }
 
-func TestAtomic_Pointer_Good(t *T) {
+func TestAtomic_AtomicPointer_Good(t *T) {
 	var a AtomicPointer[pointerVal]
 	AssertNil(t, a.Load())
 	v := &pointerVal{n: 42}
@@ -181,14 +181,14 @@ func TestAtomic_Pointer_Good(t *T) {
 	AssertEqual(t, 42, a.Load().n)
 }
 
-func TestAtomic_Pointer_Bad(t *T) {
+func TestAtomic_AtomicPointer_Bad(t *T) {
 	// Bad: Swap returns nil if no prior value.
 	var a AtomicPointer[pointerVal]
 	prev := a.Swap(&pointerVal{n: 1})
 	AssertNil(t, prev)
 }
 
-func TestAtomic_Pointer_Ugly(t *T) {
+func TestAtomic_AtomicPointer_Ugly(t *T) {
 	// Ugly: 100 goroutines racing Store; Load at the end returns one of them.
 	var a AtomicPointer[pointerVal]
 	var wg WaitGroup
