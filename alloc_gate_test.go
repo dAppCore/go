@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: EUPL-1.2
+
+// Allocation regression gates. Unlike a Benchmark (which only prints a
+// number nobody compares), each case here asserts a hard ceiling on
+// allocations-per-call via testing.AllocsPerRun — so the suite FAILS if a
+// hot primitive starts allocating where it didn't before. ns/op is
+// deliberately not gated (machine-dependent); allocs are stable.
+//
+// Ceilings are the measured floor as of this commit:
+//   0 — pure / zero-copy primitive (no heap touch)
+//   1 — one unavoidable alloc: Result{Value:<non-pointer>} boxes the value
+//       into `any` (string/int → 1 alloc; pointer values box for free)
+//
+// Tightening a ceiling that's been beaten is welcome; raising one is a
+// regression that needs justifying in review.
+//
+// Run:    go test -run 'TestAllocs_' .
+
+package core_test
+
+import (
+	"testing"
+
+	. "dappco.re/go"
+)
+
+// gate sinks — keep the measured call from being elided as dead code.
+var (
+	gateInt    int
+	gateBool   bool
+	gateStr    string
+	gateBytes  []byte
+	gateResult Result
+)
+
+func TestAllocs_HotPrimitives(t *T) {
+	ptr := &struct{ n int }{}
+	bs := []byte("homelab")
+	cases := []struct {
+		name    string
+		ceiling int
+		fn      func()
+	}{
+		// math / ordering — pure, must stay 0
+		{"Compare", 0, func() { gateInt = Compare(3, 7) }},
+		{"Min", 0, func() { gateInt = Min(3, 7) }},
+		{"Max", 0, func() { gateInt = Max(3, 7) }},
+		{"Abs", 0, func() { gateInt = Abs(-42) }},
+		{"Clamp", 0, func() { gateInt = Clamp(15, 0, 10) }},
+		{"Sign", 0, func() { gateInt = Sign(-3) }},
+
+		// string predicates / index — pure, must stay 0
+		{"Contains", 0, func() { gateBool = Contains("agent ready", "ready") }},
+		{"HasPrefix", 0, func() { gateBool = HasPrefix("agent.go", "agent") }},
+		{"HasSuffix", 0, func() { gateBool = HasSuffix("agent.go", ".go") }},
+		{"EqualFold", 0, func() { gateBool = EqualFold("Bearer", "bearer") }},
+		{"Index", 0, func() { gateInt = Index("agent", "e") }},
+		{"Count", 0, func() { gateInt = Count("banana", "a") }},
+		{"Trim", 0, func() { gateStr = Trim("  x  ") }},
+
+		// slice search — pure, must stay 0
+		{"SliceContains", 0, func() { gateBool = SliceContains([]int{1, 2, 3}, 2) }},
+		{"SliceIndex", 0, func() { gateInt = SliceIndex([]int{1, 2, 3}, 2) }},
+
+		// unsafe zero-copy conversions — must stay 0
+		{"AsBytes", 0, func() { gateBytes = AsBytes("homelab") }},
+		{"AsString", 0, func() { gateStr = AsString(bs) }},
+
+		// Result constructors — pointer value boxes for free (0); a
+		// non-pointer value pays the one inherent Result-boxing alloc.
+		{"Ok_Pointer", 0, func() { gateResult = Ok(ptr) }},
+		{"Fail", 0, func() { gateResult = Fail(AnError) }},
+		{"Ok_String", 1, func() { gateResult = Ok("ready") }},
+		{"ResultOf_String", 1, func() { gateResult = ResultOf("ready", nil) }},
+	}
+	for _, c := range cases {
+		avg := int(testing.AllocsPerRun(1000, c.fn))
+		AssertLessOrEqual(t, avg, c.ceiling, c.name)
+	}
+}
