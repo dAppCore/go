@@ -507,9 +507,10 @@ func TestSync_Once_Reset_Bad(t *T) {
 	var once Once
 
 	once.Reset()
-	once.Do(func() { /* no-op action marks Once as used after reset */ })
+	ran := false
+	once.Do(func() { ran = true })
 
-	AssertTrue(t, true)
+	AssertTrue(t, ran) // Do runs again after Reset
 }
 
 func TestSync_Once_Reset_Ugly(t *T) {
@@ -546,21 +547,24 @@ func TestSync_WaitGroup_Add_Bad(t *T) {
 
 func TestSync_WaitGroup_Add_Ugly(t *T) {
 	var wg WaitGroup
+	var done AtomicBool
 
-	wg.Add(0)
+	wg.Add(0) // a zero delta leaves the group immediately ready
+	wg.Go(func() { done.Store(true) })
 	wg.Wait()
 
-	AssertTrue(t, true)
+	AssertTrue(t, done.Load())
 }
 
 func TestSync_WaitGroup_Done_Good(t *T) {
 	var wg WaitGroup
+	var count AtomicInt32
 
 	wg.Add(1)
-	wg.Done()
+	go func() { count.Add(1); wg.Done() }()
 	wg.Wait()
 
-	AssertTrue(t, true)
+	AssertEqual(t, int32(1), count.Load()) // Wait returns after Done; the increment is visible
 }
 
 func TestSync_WaitGroup_Done_Bad(t *T) {
@@ -573,14 +577,15 @@ func TestSync_WaitGroup_Done_Bad(t *T) {
 
 func TestSync_WaitGroup_Done_Ugly(t *T) {
 	var wg WaitGroup
+	var count AtomicInt32
 
 	for i := 0; i < 3; i++ {
 		wg.Add(1)
-		wg.Done()
+		go func() { count.Add(1); wg.Done() }()
 	}
 	wg.Wait()
 
-	AssertTrue(t, true)
+	AssertEqual(t, int32(3), count.Load())
 }
 
 func TestSync_WaitGroup_Wait_Good(t *T) {
@@ -595,10 +600,15 @@ func TestSync_WaitGroup_Wait_Good(t *T) {
 
 func TestSync_WaitGroup_Wait_Bad(t *T) {
 	var wg WaitGroup
+	done := make(chan bool, 1)
 
-	wg.Wait()
+	go func() { wg.Wait(); done <- true }()
 
-	AssertTrue(t, true)
+	select {
+	case <-done:
+	case <-After(2 * Second):
+		t.Fatal("Wait blocked on a zero-counter group")
+	}
 }
 
 func TestSync_WaitGroup_Wait_Ugly(t *T) {
@@ -781,9 +791,10 @@ func TestSync_SyncMap_Delete_Good(t *T) {
 func TestSync_SyncMap_Delete_Bad(t *T) {
 	var cache SyncMap
 
-	cache.Delete("agent")
+	cache.Delete("agent") // deleting an absent key is a safe no-op
 
-	AssertTrue(t, true)
+	_, ok := cache.Load("agent")
+	AssertFalse(t, ok)
 }
 
 func TestSync_SyncMap_Delete_Ugly(t *T) {
@@ -949,9 +960,11 @@ func TestSync_SyncMap_Clear_Good(t *T) {
 func TestSync_SyncMap_Clear_Bad(t *T) {
 	var cache SyncMap
 
-	cache.Clear()
+	cache.Clear() // clearing an empty map is a safe no-op
 
-	AssertTrue(t, true)
+	count := 0
+	cache.Range(func(_, _ any) bool { count++; return true })
+	AssertEqual(t, 0, count)
 }
 
 func TestSync_SyncMap_Clear_Ugly(t *T) {

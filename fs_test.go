@@ -499,15 +499,13 @@ func TestFs_CloseStream_Good(t *T) {
 }
 
 func TestFs_CloseStream_Bad(t *T) {
-	CloseStream("not a stream")
-
-	AssertTrue(t, true)
+	// Closing a non-stream value is a safe no-op, not a panic.
+	AssertNotPanics(t, func() { CloseStream("not a stream") })
 }
 
 func TestFs_CloseStream_Ugly(t *T) {
-	CloseStream(nil)
-
-	AssertTrue(t, true)
+	// Closing nil is a safe no-op.
+	AssertNotPanics(t, func() { CloseStream(nil) })
 }
 
 func TestFs_Fs_New_Good(t *T) {

@@ -278,9 +278,12 @@ func TestJson_JSONValid_Ugly(t *T) {
 }
 
 func TestJson_JSONUnmarshaler_Good(t *T) {
-	// The interface alias is satisfied by *testJSON's pointer receiver
-	// chain via json's default decoding path (structural smoke).
-	var _ JSONUnmarshaler = (*RawMessage)(nil)
-	var _ JSONMarshaler = RawMessage(nil)
-	AssertTrue(t, true)
+	// RawMessage satisfies both interfaces and round-trips JSON verbatim.
+	var raw RawMessage
+	var um JSONUnmarshaler = &raw
+	RequireNoError(t, um.UnmarshalJSON([]byte(`{"k":1}`)))
+	var m JSONMarshaler = raw
+	out, err := m.MarshalJSON()
+	AssertNoError(t, err)
+	AssertEqual(t, `{"k":1}`, string(out))
 }
