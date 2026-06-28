@@ -1,8 +1,4 @@
-package core_test
-
-import (
-	. "dappco.re/go"
-)
+package core
 
 type logTestWriteCloser struct {
 	w Writer
@@ -77,13 +73,16 @@ func TestLog_SetDefault_Good(t *T) {
 	AssertEqual(t, custom, Default())
 }
 
-func TestLog_PackageLevelFunctions_Good(t *T) {
-	// Package-level log functions use the default logger
-	Debug("debug msg")
-	Info("info msg")
-	Warn("warn msg")
-	Error("error msg")
-	Security("security msg")
+func TestLog_Warn_Good(t *T) {
+	original := Default()
+	defer SetDefault(original)
+	out := NewBuffer()
+	SetDefault(NewLog(LogOptions{Level: LevelWarn, Output: out}))
+
+	Warn("disk low", "free", "2%")
+
+	AssertContains(t, out.String(), "[WRN]")
+	AssertContains(t, out.String(), "disk low")
 }
 
 func TestLog_SetLevel_Package_Good(t *T) {
@@ -763,4 +762,55 @@ func TestLog_Warn_Ugly(t *T) {
 	Warn("odd", "key")
 
 	AssertContains(t, out.String(), "key=<nil>")
+}
+
+func TestLog_Log_log_Good(t *T) {
+	out := NewBuffer()
+	log := NewLog(LogOptions{Level: LevelInfo, Output: out})
+
+	log.log(LevelInfo, "[INF]", "agent ready", "site", "homelab")
+
+	AssertContains(t, out.String(), "[INF]")
+	AssertContains(t, out.String(), `site="homelab"`)
+}
+func TestLog_Log_log_Bad(t *T) {
+	out := NewBuffer()
+	log := NewLog(LogOptions{Level: LevelInfo, Output: out})
+
+	log.log(LevelInfo, "[INF]", "dangling key", "session")
+
+	AssertContains(t, out.String(), "session=<nil>")
+}
+func TestLog_Log_log_Ugly(t *T) {
+	out := NewBuffer()
+	log := NewLog(LogOptions{Level: LevelInfo, Output: out, RedactKeys: []string{"token"}})
+
+	log.log(LevelInfo, "[INF]", "auth", "token", "secret", "agent", "codex")
+
+	AssertContains(t, out.String(), `token="[REDACTED]"`)
+	AssertNotContains(t, out.String(), "secret")
+}
+func TestLog_Log_shouldLog_Good(t *T) {
+	log := NewLog(LogOptions{Level: LevelInfo})
+
+	AssertTrue(t, log.shouldLog(LevelWarn))
+}
+func TestLog_Log_shouldLog_Bad(t *T) {
+	log := NewLog(LogOptions{Level: LevelWarn})
+
+	AssertFalse(t, log.shouldLog(LevelDebug))
+}
+func TestLog_Log_shouldLog_Ugly(t *T) {
+	log := NewLog(LogOptions{Level: LevelQuiet})
+
+	AssertFalse(t, log.shouldLog(LevelError))
+}
+func TestLog_identity_Good(t *T) {
+	AssertEqual(t, "agent", identity("agent"))
+}
+func TestLog_identity_Bad(t *T) {
+	AssertEqual(t, "", identity(""))
+}
+func TestLog_identity_Ugly(t *T) {
+	AssertEqual(t, "colour", identity("colour"))
 }
