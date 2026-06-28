@@ -6,16 +6,6 @@ import (
 
 // --- Config ---
 
-func TestConfig_SetGet_Good(t *T) {
-	c := New()
-	c.Config().Set("api_url", "https://api.lthn.ai")
-	c.Config().Set("max_agents", 5)
-
-	r := c.Config().Get("api_url")
-	AssertTrue(t, r.OK)
-	AssertEqual(t, "https://api.lthn.ai", r.Value)
-}
-
 func TestConfig_Get_Bad(t *T) {
 	c := New()
 	r := c.Config().Get("missing")
@@ -23,36 +13,7 @@ func TestConfig_Get_Bad(t *T) {
 	AssertNil(t, r.Value)
 }
 
-func TestConfig_TypedAccessors_Good(t *T) {
-	c := New()
-	c.Config().Set("url", "https://lthn.ai")
-	c.Config().Set("port", 8080)
-	c.Config().Set("debug", true)
-
-	AssertEqual(t, "https://lthn.ai", c.Config().String("url"))
-	AssertEqual(t, 8080, c.Config().Int("port"))
-	AssertTrue(t, c.Config().Bool("debug"))
-}
-
-func TestConfig_TypedAccessors_Bad(t *T) {
-	c := New()
-	// Missing keys return zero values
-	AssertEqual(t, "", c.Config().String("missing"))
-	AssertEqual(t, 0, c.Config().Int("missing"))
-	AssertFalse(t, c.Config().Bool("missing"))
-}
-
 // --- Feature Flags ---
-
-func TestConfig_Features_Good(t *T) {
-	c := New()
-	c.Config().Enable("dark-mode")
-	c.Config().Enable("beta")
-
-	AssertTrue(t, c.Config().Enabled("dark-mode"))
-	AssertTrue(t, c.Config().Enabled("beta"))
-	AssertFalse(t, c.Config().Enabled("missing"))
-}
 
 func TestConfig_Features_Disable_Good(t *T) {
 	c := New()
@@ -83,19 +44,70 @@ func TestConfig_EnabledFeatures_Good(t *T) {
 	AssertNotContains(t, features, "b")
 }
 
-// --- ConfigVar ---
+// --- Group (G1) ---
 
-func TestConfig_ConfigVar_Good(t *T) {
-	v := NewConfigVar("hello")
-	AssertTrue(t, v.IsSet())
-	AssertEqual(t, "hello", v.Get())
+func TestConfig_Group_Good(t *T) {
+	c := New()
+	c.Config().Group("database").Set("host", "localhost")
 
-	v.Set("world")
-	AssertEqual(t, "world", v.Get())
+	// Stored under the prefixed key, readable via root, .Group(), or shortcut.
+	AssertEqual(t, "localhost", c.Config().String("database.host"))
+	AssertEqual(t, "localhost", c.Config().Group("database").String("host"))
+	AssertEqual(t, "localhost", c.Config("database").String("host"))
+}
 
-	v.Unset()
-	AssertFalse(t, v.IsSet())
-	AssertEqual(t, "", v.Get())
+func TestConfig_Group_Bad(t *T) {
+	c := New()
+	// An empty group name is the root — no prefix applied.
+	c.Config().Group("").Set("host", "localhost")
+	AssertEqual(t, "localhost", c.Config().String("host"))
+}
+
+func TestConfig_Group_Ugly(t *T) {
+	c := New()
+	// Nested groups compose into a dotted prefix.
+	c.Config("a").Group("b").Set("k", "v")
+	AssertEqual(t, "v", c.Config().String("a.b.k"))
+	AssertEqual(t, "v", c.Config("a").String("b.k"))
+}
+
+// --- Feature (G1) ---
+
+func TestConfig_Feature_Good(t *T) {
+	c := New()
+	c.Feature("dark-mode").Enable()
+
+	AssertTrue(t, c.Feature("dark-mode").Enabled())
+	AssertTrue(t, c.Config().Enabled("dark-mode")) // same backing store
+	AssertEqual(t, "dark-mode", c.Feature("dark-mode").Name())
+}
+
+func TestConfig_Feature_Bad(t *T) {
+	c := New()
+	// An unset feature reads as disabled.
+	f := c.Feature("never-set")
+	AssertFalse(t, f.Enabled())
+	// The handle still reports its name even when the flag was never set.
+	AssertEqual(t, "never-set", f.Name())
+	// Explicitly disabling a never-set feature keeps it off and absent from the active set.
+	f.Disable()
+	AssertFalse(t, f.Enabled())
+	AssertNotContains(t, c.Config().EnabledFeatures(), "never-set")
+}
+
+func TestConfig_Feature_Ugly(t *T) {
+	c := New()
+	// A grouped feature is namespaced — the ungrouped handle does not see it.
+	c.Config("ui").Enable("dark")
+	AssertTrue(t, c.Config().Enabled("ui.dark"))
+	AssertFalse(t, c.Feature("dark").Enabled())
+
+	// Enable/Disable roundtrip on the handle.
+	f := c.Feature("beta")
+	f.Enable()
+	AssertTrue(t, f.Enabled())
+	f.Disable()
+	AssertFalse(t, f.Enabled())
 }
 
 // --- AX-7 canonical triplets ---
@@ -179,7 +191,14 @@ func TestConfig_Config_String_Bad(t *T) {
 
 func TestConfig_Config_String_Ugly(t *T) {
 	var cfg Config
+	// Zero-value Config: missing key yields the empty string, no panic.
 	AssertEqual(t, "", cfg.String("agent.host"))
+	// Set lazily initialises the store, so a later String read sees the value.
+	cfg.Set("agent.host", "homelab.lthn.sh")
+	AssertEqual(t, "homelab.lthn.sh", cfg.String("agent.host"))
+	// A non-string value reads back as the empty string (type mismatch).
+	cfg.Set("agent.port", 9101)
+	AssertEqual(t, "", cfg.String("agent.port"))
 }
 
 func TestConfig_Config_Int_Good(t *T) {
@@ -196,7 +215,14 @@ func TestConfig_Config_Int_Bad(t *T) {
 
 func TestConfig_Config_Int_Ugly(t *T) {
 	var cfg Config
+	// Zero-value Config: missing key yields 0, no panic.
 	AssertEqual(t, 0, cfg.Int("agent.port"))
+	// Set lazily initialises the store, so a later Int read sees the value.
+	cfg.Set("agent.port", 9101)
+	AssertEqual(t, 9101, cfg.Int("agent.port"))
+	// A non-int value reads back as 0 (type mismatch).
+	cfg.Set("agent.host", "homelab.lthn.sh")
+	AssertEqual(t, 0, cfg.Int("agent.host"))
 }
 
 func TestConfig_Config_Bool_Good(t *T) {
@@ -213,7 +239,14 @@ func TestConfig_Config_Bool_Bad(t *T) {
 
 func TestConfig_Config_Bool_Ugly(t *T) {
 	var cfg Config
+	// Zero-value Config: missing key yields false, no panic.
 	AssertFalse(t, cfg.Bool("agent.enabled"))
+	// Set lazily initialises the store, so a later Bool read sees the value.
+	cfg.Set("agent.enabled", true)
+	AssertTrue(t, cfg.Bool("agent.enabled"))
+	// A non-bool value reads back as false (type mismatch).
+	cfg.Set("agent.mode", "true")
+	AssertFalse(t, cfg.Bool("agent.mode"))
 }
 
 func TestConfig_ConfigGet_Good(t *T) {
@@ -279,11 +312,26 @@ func TestConfig_Config_Enabled_Good(t *T) {
 
 func TestConfig_Config_Enabled_Bad(t *T) {
 	cfg := (&Config{}).New()
+	// Never-set feature is not enabled.
+	AssertFalse(t, cfg.Enabled("agent.dispatch"))
+	// Explicitly disabled feature is not enabled.
+	cfg.Disable("agent.review")
+	AssertFalse(t, cfg.Enabled("agent.review"))
+	// Enabled-then-disabled reverts to not enabled.
+	cfg.Enable("agent.dispatch")
+	cfg.Disable("agent.dispatch")
 	AssertFalse(t, cfg.Enabled("agent.dispatch"))
 }
 
 func TestConfig_Config_Enabled_Ugly(t *T) {
 	var cfg Config
+	// Zero-value Config: querying an unset feature is false, no panic.
+	AssertFalse(t, cfg.Enabled("agent.dispatch"))
+	// Enable lazily initialises the feature store on a zero-value Config.
+	cfg.Enable("agent.dispatch")
+	AssertTrue(t, cfg.Enabled("agent.dispatch"))
+	// Disable flips it back off.
+	cfg.Disable("agent.dispatch")
 	AssertFalse(t, cfg.Enabled("agent.dispatch"))
 }
 
@@ -298,6 +346,15 @@ func TestConfig_Config_EnabledFeatures_Good(t *T) {
 
 func TestConfig_Config_EnabledFeatures_Bad(t *T) {
 	cfg := (&Config{}).New()
+	// Nothing enabled yet.
+	AssertEmpty(t, cfg.EnabledFeatures())
+	// Disabling features (without enabling) leaves the active set empty.
+	cfg.Disable("agent.dispatch")
+	cfg.Disable("agent.review")
+	AssertEmpty(t, cfg.EnabledFeatures())
+	// Enabling then disabling the same feature drops it from the active set.
+	cfg.Enable("agent.dispatch")
+	cfg.Disable("agent.dispatch")
 	AssertEmpty(t, cfg.EnabledFeatures())
 }
 
@@ -331,11 +388,23 @@ func TestConfig_NewConfigVar_Ugly(t *T) {
 func TestConfig_ConfigVar_Get_Good(t *T) {
 	v := NewConfigVar("codex")
 	AssertEqual(t, "codex", v.Get())
+	// Get reflects the latest Set value.
+	v.Set("virgil")
+	AssertEqual(t, "virgil", v.Get())
+	// Get is non-destructive: repeated reads return the same value and keep it set.
+	AssertEqual(t, "virgil", v.Get())
+	AssertTrue(t, v.IsSet())
 }
 
 func TestConfig_ConfigVar_Get_Bad(t *T) {
+	// Zero-value ConfigVar returns the type's zero and reports unset.
 	var v ConfigVar[string]
 	AssertEqual(t, "", v.Get())
+	AssertFalse(t, v.IsSet())
+	// A numeric ConfigVar zero-value is 0, also unset.
+	var n ConfigVar[int]
+	AssertEqual(t, 0, n.Get())
+	AssertFalse(t, n.IsSet())
 }
 
 func TestConfig_ConfigVar_Get_Ugly(t *T) {
@@ -368,10 +437,24 @@ func TestConfig_ConfigVar_Set_Ugly(t *T) {
 func TestConfig_ConfigVar_IsSet_Good(t *T) {
 	v := NewConfigVar(true)
 	AssertTrue(t, v.IsSet())
+	// NewConfigVar marks the var set even when the value is the zero value.
+	z := NewConfigVar(false)
+	AssertTrue(t, z.IsSet())
+	AssertFalse(t, z.Get())
+	// Set on an existing var keeps it set.
+	v.Set(false)
+	AssertTrue(t, v.IsSet())
 }
 
 func TestConfig_ConfigVar_IsSet_Bad(t *T) {
+	// Zero-value ConfigVar is not set.
 	var v ConfigVar[bool]
+	AssertFalse(t, v.IsSet())
+	// Setting it (even to the zero value) marks it set.
+	v.Set(false)
+	AssertTrue(t, v.IsSet())
+	// Unset reverts it to not-set.
+	v.Unset()
 	AssertFalse(t, v.IsSet())
 }
 
