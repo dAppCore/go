@@ -185,7 +185,7 @@ func ReadAll(reader any) Result {
 	} else {
 		data, err := io.ReadAll(rc)
 		if err != nil {
-			return Result{err, false}
+			return Result{Value: WrapCode(err, "io.read.failed", "ReadAll", "read failed"), OK: false}
 		}
 		r = Result{Value: data, OK: true}
 	}
@@ -212,7 +212,7 @@ func readAllSized(r Reader, n int) Result {
 			if err == io.EOF {
 				return Result{Value: buf[:read], OK: true}
 			}
-			return Result{Value: err, OK: false}
+			return Result{Value: WrapCode(err, "io.read.failed", "readAllSized", "read failed"), OK: false}
 		}
 	}
 	return Result{Value: buf, OK: true}

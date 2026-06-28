@@ -264,7 +264,7 @@ func (s *lspServer) writeMessage(payload any) Result {
 		return rh
 	}
 	if _, err := s.out.Write(body); err != nil {
-		return Result{Value: err, OK: false}
+		return Result{Value: WrapCode(err, "lsp.write.failed", "writeMessage", "write failed"), OK: false}
 	}
 	return Result{OK: true}
 }

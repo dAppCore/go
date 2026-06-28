@@ -294,14 +294,14 @@ func compress(input string) Result {
 	buf := NewBuffer()
 	gz, err := gzip.NewWriterLevel(buf, gzip.BestCompression)
 	if err != nil {
-		return Result{Value: err, OK: false}
+		return Result{Value: WrapCode(err, "embed.compress.failed", "compress", "gzip writer init failed"), OK: false}
 	}
 	if _, err := gz.Write(AsBytes(input)); err != nil {
 		_ = gz.Close()
-		return Result{Value: err, OK: false}
+		return Result{Value: WrapCode(err, "embed.compress.failed", "compress", "gzip write failed"), OK: false}
 	}
 	if err := gz.Close(); err != nil {
-		return Result{Value: err, OK: false}
+		return Result{Value: WrapCode(err, "embed.compress.failed", "compress", "gzip close failed"), OK: false}
 	}
 	return Result{Value: Base64Encode(buf.Bytes()), OK: true}
 }
@@ -313,7 +313,7 @@ func decompress(input string) Result {
 	}
 	gz, err := gzip.NewReader(NewBuffer(data.Value.([]byte)))
 	if err != nil {
-		return Result{Value: err, OK: false}
+		return Result{Value: WrapCode(err, "embed.decompress.failed", "decompress", "gzip reader init failed"), OK: false}
 	}
 
 	return ReadAll(gz)
@@ -331,7 +331,7 @@ func getAllFiles(dir string) Result {
 		return nil
 	})
 	if err != nil {
-		return Result{Value: err, OK: false}
+		return Result{Value: WrapCode(err, "embed.walk.failed", "getAllFiles", "directory walk failed"), OK: false}
 	}
 	return Result{Value: result, OK: true}
 }
@@ -707,7 +707,7 @@ func renderPath(path string, data any) string {
 func copyFile(fsys FS, source, target string) Result {
 	s, err := fsys.Open(source)
 	if err != nil {
-		return Result{Value: err, OK: false}
+		return Result{Value: WrapCode(err, "embed.copy.failed", "copyFile", "open source failed"), OK: false}
 	}
 	defer s.Close()
 
