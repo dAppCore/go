@@ -242,3 +242,50 @@ func ExampleEqualFold() {
 	Println(EqualFold("Bearer", "bearer"))
 	// Output: true
 }
+
+// ExampleClone returns an independent copy of a string through `Clone`.
+func ExampleClone() {
+	Println(Clone("agent"))
+	// Output: agent
+}
+
+// ExampleIndexAny returns the first index of any listed rune through `IndexAny`.
+func ExampleIndexAny() {
+	Println(IndexAny("agent", "ge"))
+	// Output: 1
+}
+
+// ExampleContainsAny reports whether any listed rune is present through `ContainsAny`.
+func ExampleContainsAny() {
+	Println(ContainsAny("agent", "xyz"))
+	Println(ContainsAny("agent", "ge"))
+	// Output:
+	// false
+	// true
+}
+
+// ExampleContainsRune reports whether a rune is present through `ContainsRune`.
+func ExampleContainsRune() {
+	Println(ContainsRune("agent", 'g'))
+	// Output: true
+}
+
+// ExampleCount counts non-overlapping occurrences through `Count`.
+func ExampleCount() {
+	Println(Count("banana", "a"))
+	// Output: 3
+}
+
+// ExampleCutPrefix splits off a leading prefix through `CutPrefix`.
+func ExampleCutPrefix() {
+	after, found := CutPrefix("agent.go", "agent.")
+	Println(after, found)
+	// Output: go true
+}
+
+// ExampleCutSuffix splits off a trailing suffix through `CutSuffix`.
+func ExampleCutSuffix() {
+	before, found := CutSuffix("agent.go", ".go")
+	Println(before, found)
+	// Output: agent true
+}
