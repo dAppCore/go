@@ -4,77 +4,6 @@ import (
 	. "dappco.re/go"
 )
 
-// --- Service Registration ---
-
-func TestService_Register_Good(t *T) {
-	c := New()
-	r := c.Service("auth", Service{})
-	AssertTrue(t, r.OK)
-}
-
-func TestService_Register_Duplicate_Bad(t *T) {
-	c := New()
-	c.Service("auth", Service{})
-	r := c.Service("auth", Service{})
-	AssertFalse(t, r.OK)
-}
-
-func TestService_Register_Empty_Bad(t *T) {
-	c := New()
-	r := c.Service("", Service{})
-	AssertFalse(t, r.OK)
-}
-
-func TestService_Get_Good(t *T) {
-	c := New()
-	c.Service("brain", Service{OnStart: func() Result { return Result{OK: true} }})
-	r := c.Service("brain")
-	AssertTrue(t, r.OK)
-	AssertNotNil(t, r.Value)
-}
-
-func TestService_Get_Bad(t *T) {
-	c := New()
-	r := c.Service("nonexistent")
-	AssertFalse(t, r.OK)
-}
-
-func TestService_Names_Good(t *T) {
-	c := New()
-	c.Service("a", Service{})
-	c.Service("b", Service{})
-	names := c.Services()
-	AssertContains(t, names, "a")
-	AssertContains(t, names, "b")
-	AssertContains(t, names, "cli") // auto-registered by CliRegister in New()
-}
-
-// --- Service Lifecycle ---
-
-func TestService_Lifecycle_Good(t *T) {
-	c := New()
-	started := false
-	stopped := false
-	c.Service("lifecycle", Service{
-		OnStart: func() Result { started = true; return Result{OK: true} },
-		OnStop:  func() Result { stopped = true; return Result{OK: true} },
-	})
-
-	sr := c.Startables()
-	AssertTrue(t, sr.OK)
-	startables := sr.Value.([]*Service)
-	AssertLen(t, startables, 1)
-	startables[0].OnStart()
-	AssertTrue(t, started)
-
-	tr := c.Stoppables()
-	AssertTrue(t, tr.OK)
-	stoppables := tr.Value.([]*Service)
-	AssertLen(t, stoppables, 1)
-	stoppables[0].OnStop()
-	AssertTrue(t, stopped)
-}
-
 type autoLifecycleService struct {
 	started  bool
 	stopped  bool
@@ -226,9 +155,16 @@ func TestService_Core_Service_Good(t *T) {
 }
 
 func TestService_Core_Service_Bad(t *T) {
-	r := New().Service("missing")
+	c := New()
+	// Retrieving a missing service misses.
+	r := c.Service("missing")
 	AssertFalse(t, r.OK)
 	AssertNil(t, r.Value)
+	// An empty service name is rejected.
+	AssertFalse(t, c.Service("", Service{}).OK)
+	// Duplicate registration of the same name is rejected.
+	AssertTrue(t, c.Service("auth", Service{}).OK)
+	AssertFalse(t, c.Service("auth", Service{}).OK)
 }
 
 func TestService_Core_Service_Ugly(t *T) {
@@ -258,7 +194,7 @@ func TestService_Core_Services_Bad(t *T) {
 }
 
 func TestService_Core_Services_Ugly(t *T) {
-	names := New().Services()
+	names := New(WithCli()).Services()
 	AssertContains(t, names, "cli")
 }
 
