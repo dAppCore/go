@@ -1070,6 +1070,123 @@ func TestOs_ErrNotExist_Bad(t *T) {
 	AssertFalse(t, Is(AnError, ErrNotExist))
 }
 
+func TestOs_Open_Good(t *T) {
+	path := Path(t.TempDir(), "f.txt")
+	RequireTrue(t, WriteFile(path, []byte("data"), 0o644).OK)
+	r := Open(path)
+	RequireTrue(t, r.OK)
+	CloseStream(r.Value)
+}
+
+func TestOs_Open_Bad(t *T) {
+	// Opening a non-existent path fails.
+	AssertFalse(t, Open(Path(t.TempDir(), "missing")).OK)
+}
+
+func TestOs_ReadFile_Good(t *T) {
+	path := Path(t.TempDir(), "f.txt")
+	RequireTrue(t, WriteFile(path, []byte("payload"), 0o644).OK)
+	r := ReadFile(path)
+	RequireTrue(t, r.OK)
+	AssertEqual(t, []byte("payload"), r.Value.([]byte))
+}
+
+func TestOs_Create_Good(t *T) {
+	path := Path(t.TempDir(), "new.txt")
+	r := Create(path)
+	RequireTrue(t, r.OK)
+	CloseStream(r.Value)
+	AssertTrue(t, Stat(path).OK) // the file now exists
+}
+
+func TestOs_Stat_Good(t *T) {
+	path := Path(t.TempDir(), "f.txt")
+	RequireTrue(t, WriteFile(path, []byte("xy"), 0o644).OK)
+	r := Stat(path)
+	RequireTrue(t, r.OK)
+	info := r.Value.(interface{ Size() int64 })
+	AssertEqual(t, int64(2), info.Size())
+}
+
+func TestOs_Remove_Good(t *T) {
+	path := Path(t.TempDir(), "f.txt")
+	RequireTrue(t, WriteFile(path, []byte("x"), 0o644).OK)
+	RequireTrue(t, Remove(path).OK)
+	AssertFalse(t, Stat(path).OK) // gone
+}
+
+func TestOs_Remove_Bad(t *T) {
+	// Removing a non-existent path fails.
+	AssertFalse(t, Remove(Path(t.TempDir(), "missing")).OK)
+}
+
+func TestOs_Rename_Good(t *T) {
+	dir := t.TempDir()
+	src := Path(dir, "old.txt")
+	dst := Path(dir, "new.txt")
+	RequireTrue(t, WriteFile(src, []byte("data"), 0o644).OK)
+	RequireTrue(t, Rename(src, dst).OK)
+	AssertFalse(t, Stat(src).OK) // moved away
+	AssertTrue(t, Stat(dst).OK)  // arrived
+}
+
+func TestOs_Setenv_Good(t *T) {
+	RequireTrue(t, Setenv("CORE_TEST_SETENV", "value").OK)
+	AssertEqual(t, "value", Getenv("CORE_TEST_SETENV"))
+	Unsetenv("CORE_TEST_SETENV")
+}
+
+func TestOs_Setenv_Bad(t *T) {
+	// A key containing '=' is rejected by the OS.
+	AssertFalse(t, Setenv("bad=key", "value").OK)
+}
+
+func TestOs_Setenv_Ugly(t *T) {
+	// Overwrite replaces the value; an empty value is permitted.
+	RequireTrue(t, Setenv("CORE_TEST_SETENV2", "first").OK)
+	RequireTrue(t, Setenv("CORE_TEST_SETENV2", "second").OK)
+	AssertEqual(t, "second", Getenv("CORE_TEST_SETENV2"))
+	RequireTrue(t, Setenv("CORE_TEST_SETENV2", "").OK)
+	AssertEqual(t, "", Getenv("CORE_TEST_SETENV2"))
+	Unsetenv("CORE_TEST_SETENV2")
+}
+
+func TestOs_Exit_Good(t *T) {
+	if Getenv("CORE_OS_EXIT_CODE") == "0" {
+		Exit(0)
+		return
+	}
+	cmd := ExecCmdForTest(Args()[0], "-test.run=^TestOs_Exit_Good$")
+	cmd.Env = append(Environ(), "CORE_OS_EXIT_CODE=0")
+	_, err := cmd.CombinedOutput()
+	AssertNil(t, err) // Exit(0) is a clean exit
+}
+
+func TestOs_Exit_Bad(t *T) {
+	if Getenv("CORE_OS_EXIT_CODE") == "1" {
+		Exit(1)
+		return
+	}
+	cmd := ExecCmdForTest(Args()[0], "-test.run=^TestOs_Exit_Bad$")
+	cmd.Env = append(Environ(), "CORE_OS_EXIT_CODE=1")
+	_, err := cmd.CombinedOutput()
+	AssertError(t, err)
+	AssertContains(t, err.Error(), "exit status 1")
+}
+
+func TestOs_Exit_Ugly(t *T) {
+	// An arbitrary non-zero code passes through verbatim.
+	if Getenv("CORE_OS_EXIT_CODE") == "42" {
+		Exit(42)
+		return
+	}
+	cmd := ExecCmdForTest(Args()[0], "-test.run=^TestOs_Exit_Ugly$")
+	cmd.Env = append(Environ(), "CORE_OS_EXIT_CODE=42")
+	_, err := cmd.CombinedOutput()
+	AssertError(t, err)
+	AssertContains(t, err.Error(), "exit status 42")
+}
+
 func TestOs_ErrNotExist_Ugly(t *T) {
 	// The other sentinels are distinct from ErrNotExist.
 	AssertFalse(t, Is(ErrExist, ErrNotExist))
