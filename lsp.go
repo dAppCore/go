@@ -209,25 +209,25 @@ func (s *lspServer) run(ctx Context) Result {
 		default:
 		}
 
-		body, err := s.readMessage()
-		if err != nil {
-			if err == EOF {
+		r := s.readMessage()
+		if !r.OK {
+			if Is(r.Value.(error), EOF) {
 				return Result{OK: true}
 			}
-			return Result{Value: err, OK: false}
+			return r
 		}
 
-		s.dispatch(body)
+		s.dispatch(r.Value.([]byte))
 	}
 }
 
 // readMessage reads one LSP frame: Content-Length header + blank line + JSON body.
-func (s *lspServer) readMessage() ([]byte, error) {
+func (s *lspServer) readMessage() Result {
 	var contentLength int
 	for {
 		line, err := s.in.ReadString('\n')
 		if err != nil {
-			return nil, err
+			return Result{Value: WrapCode(err, "lsp.read.failed", "readMessage", "read header failed"), OK: false}
 		}
 		line = Trim(line)
 		if line == "" {
@@ -242,13 +242,13 @@ func (s *lspServer) readMessage() ([]byte, error) {
 		}
 	}
 	if contentLength <= 0 {
-		return nil, E("lsp.read", "missing Content-Length header", nil)
+		return Result{Value: NewCode("lsp.read.no_length", "missing Content-Length header"), OK: false}
 	}
 	buf := make([]byte, contentLength)
 	if _, err := s.in.Read(buf); err != nil {
-		return nil, err
+		return Result{Value: WrapCode(err, "lsp.read.failed", "readMessage", "read body failed"), OK: false}
 	}
-	return buf, nil
+	return Result{Value: buf, OK: true}
 }
 
 // writeMessage sends one LSP frame. Marshals payload to JSON, prepends

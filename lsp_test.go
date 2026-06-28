@@ -603,15 +603,14 @@ func TestLsp_lspServer_readMessage_Good(t *T) {
 	in.WriteString(body)
 	srv.in = NewBufReader(in)
 
-	got, err := srv.readMessage()
-	AssertNoError(t, err)
-	AssertEqual(t, body, string(got))
+	r := srv.readMessage()
+	AssertTrue(t, r.OK)
+	AssertEqual(t, body, string(r.Value.([]byte)))
 }
 
 func TestLsp_lspServer_readMessage_Bad(t *T) {
 	srv, _, _ := newTestLSPServer()
-	_, err := srv.readMessage()
-	AssertError(t, err)
+	AssertFalse(t, srv.readMessage().OK)
 }
 
 func TestLsp_lspServer_readMessage_Ugly(t *T) {
@@ -619,8 +618,7 @@ func TestLsp_lspServer_readMessage_Ugly(t *T) {
 	srv, in, _ := newTestLSPServer()
 	in.WriteString("X-Header: noise\r\n\r\n")
 	srv.in = NewBufReader(in)
-	_, err := srv.readMessage()
-	AssertError(t, err)
+	AssertFalse(t, srv.readMessage().OK)
 }
 
 func TestLsp_lspServer_writeMessage_Good(t *T) {
