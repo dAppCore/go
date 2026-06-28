@@ -69,3 +69,62 @@ func BenchmarkNet_NetPipe(b *B) {
 		c.Close()
 	}
 }
+
+func BenchmarkNetListen(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		r := NetListen("tcp", "127.0.0.1:0")
+		if r.OK {
+			r.Value.(Listener).Close()
+		}
+	}
+}
+
+func BenchmarkNetListenPacket(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		r := NetListenPacket("udp", "127.0.0.1:0")
+		if r.OK {
+			r.Value.(PacketConn).Close()
+		}
+	}
+}
+
+// netDialFixture starts a loopback listener with an accept-and-close loop
+// so the Dial benches have a server that drains the backlog on full runs.
+func netDialFixture(b *B) string {
+	ln := NetListen("tcp", "127.0.0.1:0").Value.(Listener)
+	b.Cleanup(func() { ln.Close() })
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			conn.Close()
+		}
+	}()
+	return ln.Addr().String()
+}
+
+func BenchmarkNetDial(b *B) {
+	addr := netDialFixture(b)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		r := NetDial("tcp", addr)
+		if r.OK {
+			r.Value.(Conn).Close()
+		}
+	}
+}
+
+func BenchmarkNetDialTimeout(b *B) {
+	addr := netDialFixture(b)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		r := NetDialTimeout("tcp", addr, Second)
+		if r.OK {
+			r.Value.(Conn).Close()
+		}
+	}
+}
