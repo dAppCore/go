@@ -625,8 +625,8 @@ func TestLsp_lspServer_readMessage_Ugly(t *T) {
 
 func TestLsp_lspServer_writeMessage_Good(t *T) {
 	srv, _, out := newTestLSPServer()
-	err := srv.writeMessage(map[string]any{"jsonrpc": "2.0", "id": 1, "result": "ok"})
-	AssertNoError(t, err)
+	r := srv.writeMessage(map[string]any{"jsonrpc": "2.0", "id": 1, "result": "ok"})
+	AssertTrue(t, r.OK)
 	AssertContains(t, out.String(), "Content-Length:")
 	AssertContains(t, out.String(), `"result":"ok"`)
 }
@@ -635,16 +635,16 @@ func TestLsp_lspServer_writeMessage_Bad(t *T) {
 	srv, _, out := newTestLSPServer()
 	// Channel can't be JSON-marshalled — JSONMarshal returns OK=false.
 	ch := make(chan int)
-	err := srv.writeMessage(ch)
-	AssertError(t, err)
+	r := srv.writeMessage(ch)
+	AssertFalse(t, r.OK)
 	AssertEqual(t, 0, out.Len())
 }
 
 func TestLsp_lspServer_writeMessage_Ugly(t *T) {
 	// Nil payload still serialises (as "null").
 	srv, _, out := newTestLSPServer()
-	err := srv.writeMessage(nil)
-	AssertNoError(t, err)
+	r := srv.writeMessage(nil)
+	AssertTrue(t, r.OK)
 	AssertContains(t, out.String(), "Content-Length:")
 }
 
@@ -652,10 +652,10 @@ func TestLsp_lspServer_writeMessage_Writer_Bad(t *T) {
 	srv, _, _ := newTestLSPServer()
 	srv.out = failingLSPWriter{}
 
-	err := srv.writeMessage(map[string]any{"jsonrpc": "2.0"})
+	r := srv.writeMessage(map[string]any{"jsonrpc": "2.0"})
 
-	AssertError(t, err)
-	AssertErrorIs(t, err, AnError)
+	AssertFalse(t, r.OK)
+	AssertErrorIs(t, r.Value.(error), AnError)
 }
 
 func TestLsp_lspServer_writeMessage_BodyWriter_Ugly(t *T) {
@@ -663,10 +663,10 @@ func TestLsp_lspServer_writeMessage_BodyWriter_Ugly(t *T) {
 	writer := &bodyFailingLSPWriter{}
 	srv.out = writer
 
-	err := srv.writeMessage(map[string]any{"jsonrpc": "2.0"})
+	r := srv.writeMessage(map[string]any{"jsonrpc": "2.0"})
 
-	AssertError(t, err)
-	AssertErrorIs(t, err, AnError)
+	AssertFalse(t, r.OK)
+	AssertErrorIs(t, r.Value.(error), AnError)
 	AssertEqual(t, 2, writer.writes)
 }
 

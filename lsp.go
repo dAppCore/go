@@ -174,7 +174,7 @@ func LSPServe(ctx Context) Result {
 	srv := &lspServer{
 		in:        NewBufReader(Stdin()),
 		out:       Stdout(),
-		documents: map[string][]byte{},
+		documents: NewRegistry[[]byte](),
 	}
 	return srv.run(ctx)
 }
@@ -184,8 +184,7 @@ func LSPServe(ctx Context) Result {
 type lspServer struct {
 	in        *BufReader
 	out       Writer
-	documents map[string][]byte
-	docsMu    Mutex
+	documents *Registry[[]byte]
 }
 
 type lspMessage struct {
@@ -254,20 +253,20 @@ func (s *lspServer) readMessage() ([]byte, error) {
 
 // writeMessage sends one LSP frame. Marshals payload to JSON, prepends
 // the Content-Length header, writes to stdout.
-func (s *lspServer) writeMessage(payload any) error {
+func (s *lspServer) writeMessage(payload any) Result {
 	r := JSONMarshal(payload)
 	if !r.OK {
-		return r.Value.(error)
+		return r
 	}
 	body := r.Value.([]byte)
 	header := Sprintf("Content-Length: %d\r\n\r\n", len(body))
 	if rh := WriteString(s.out, header); !rh.OK {
-		return rh.Value.(error)
+		return rh
 	}
 	if _, err := s.out.Write(body); err != nil {
-		return err
+		return Result{Value: err, OK: false}
 	}
-	return nil
+	return Result{OK: true}
 }
 
 func (s *lspServer) dispatch(raw []byte) {
@@ -326,9 +325,7 @@ func (s *lspServer) handleDocumentSync(msg lspMessage) {
 	if uri == "" {
 		return
 	}
-	s.docsMu.Lock()
-	s.documents[uri] = content
-	s.docsMu.Unlock()
+	s.documents.Set(uri, content)
 	s.publishDiagnostics(uri, content)
 }
 
@@ -337,9 +334,7 @@ func (s *lspServer) handleDocumentChange(msg lspMessage) {
 	if uri == "" {
 		return
 	}
-	s.docsMu.Lock()
-	s.documents[uri] = content
-	s.docsMu.Unlock()
+	s.documents.Set(uri, content)
 	s.publishDiagnostics(uri, content)
 }
 
@@ -348,9 +343,7 @@ func (s *lspServer) handleDocumentClose(msg lspMessage) {
 	if uri == "" {
 		return
 	}
-	s.docsMu.Lock()
-	delete(s.documents, uri)
-	s.docsMu.Unlock()
+	s.documents.Delete(uri)
 }
 
 func (s *lspServer) publishDiagnostics(uri string, content []byte) {
