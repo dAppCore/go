@@ -31,11 +31,15 @@ var (
 	gateStr    string
 	gateBytes  []byte
 	gateResult Result
+	gateAny    any
 )
 
 func TestAllocs_HotPrimitives(t *T) {
 	ptr := &struct{ n int }{}
 	bs := []byte("homelab")
+	var ai32 AtomicInt32
+	var ab AtomicBool
+	var au64 AtomicUint64
 	cases := []struct {
 		name    string
 		ceiling int
@@ -72,6 +76,26 @@ func TestAllocs_HotPrimitives(t *T) {
 		{"Fail", 0, func() { gateResult = Fail(AnError) }},
 		{"Ok_String", 1, func() { gateResult = Ok("ready") }},
 		{"ResultOf_String", 1, func() { gateResult = ResultOf("ready", nil) }},
+
+		// Result accessors — pure reads, must stay 0
+		{"Result_Or", 0, func() { gateAny = (Result{OK: false}).Or("fallback") }},
+
+		// atomics — lock-free, must stay 0
+		{"AtomicInt32_Load", 0, func() { gateInt = int(ai32.Load()) }},
+		{"AtomicInt32_Store", 0, func() { ai32.Store(7) }},
+		{"AtomicInt32_Add", 0, func() { gateInt = int(ai32.Add(1)) }},
+		{"AtomicBool_Load", 0, func() { gateBool = ab.Load() }},
+		{"AtomicBool_Store", 0, func() { ab.Store(true) }},
+		{"AtomicUint64_Add", 0, func() { gateInt = int(au64.Add(1)) }},
+
+		// more math — pure, must stay 0
+		{"Pow", 0, func() { gateInt = int(Pow(2, 8)) }},
+		{"Floor", 0, func() { gateInt = int(Floor(3.7)) }},
+		{"Ceil", 0, func() { gateInt = int(Ceil(3.1)) }},
+		{"Round", 0, func() { gateInt = int(Round(3.5)) }},
+
+		// slice — Clone copies (1 alloc for the backing array); Reverse is in-place (0)
+		{"SliceClone", 1, func() { gateBytes = SliceClone(bs) }},
 	}
 	for _, c := range cases {
 		avg := int(testing.AllocsPerRun(1000, c.fn))
