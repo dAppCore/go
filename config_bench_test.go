@@ -198,3 +198,45 @@ func BenchmarkConfig_ConfigVar_Unset(b *B) {
 		v.Unset()
 	}
 }
+
+var configSinkStr string
+
+func BenchmarkConfig_Group(b *B) {
+	cfg := New().Config()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		configSinkConfig = cfg.Group("sub")
+	}
+}
+
+func BenchmarkFeature_Name(b *B) {
+	f := New().Feature("dark")
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		configSinkStr = f.Name()
+	}
+}
+
+func BenchmarkFeature_Enable(b *B) {
+	f := New().Feature("dark")
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		f.Enable()
+	}
+}
+
+func BenchmarkFeature_Disable(b *B) {
+	f := New().Feature("dark")
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		f.Disable()
+	}
+}
+
+func BenchmarkFeature_Enabled(b *B) {
+	f := New().Feature("dark")
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		configSinkBool = f.Enabled()
+	}
+}
