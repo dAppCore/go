@@ -43,27 +43,19 @@ type EmbedFS = embed.FS
 //	r := core.GetAsset("agent", "persona/developer.md")
 //	_ = r
 type AssetGroup struct {
-	assets map[string]string // name → compressed data
+	assets *Registry[string] // name → compressed data
 }
 
-var (
-	assetGroups   = make(map[string]*AssetGroup)
-	assetGroupsMu RWMutex
-)
+var assetGroups = NewRegistry[*AssetGroup]()
 
 // AddAsset registers a packed asset at runtime (called from generated init()).
 //
 //	core.AddAsset("agent", "persona/developer.md", "H4sIAAAAAAAA/8pIzcnJBwCGphA2BQAAAA==")
 func AddAsset(group, name, data string) {
-	assetGroupsMu.Lock()
-	defer assetGroupsMu.Unlock()
-
-	g, ok := assetGroups[group]
-	if !ok {
-		g = &AssetGroup{assets: make(map[string]string)}
-		assetGroups[group] = g
-	}
-	g.assets[name] = data
+	g := assetGroups.GetOrSet(group, func() *AssetGroup {
+		return &AssetGroup{assets: NewRegistry[string]()}
+	}).Value.(*AssetGroup)
+	g.assets.Set(name, data)
 }
 
 // GetAsset retrieves and decompresses a packed asset.
@@ -71,22 +63,15 @@ func AddAsset(group, name, data string) {
 //	r := core.GetAsset("mygroup", "greeting")
 //	if r.OK { content := r.Value.(string) }
 func GetAsset(group, name string) Result {
-	assetGroupsMu.RLock()
-	g, ok := assetGroups[group]
-	if !ok {
-		assetGroupsMu.RUnlock()
+	gr := assetGroups.Get(group)
+	if !gr.OK {
 		return Result{}
 	}
-	data, ok := g.assets[name]
-	assetGroupsMu.RUnlock()
-	if !ok {
+	dr := gr.Value.(*AssetGroup).assets.Get(name)
+	if !dr.OK {
 		return Result{}
 	}
-	s, err := decompress(data)
-	if err != nil {
-		return Result{err, false}
-	}
-	return Result{s, true}
+	return decompress(dr.Value.(string))
 }
 
 // GetAssetBytes retrieves a packed asset as bytes.
@@ -254,18 +239,19 @@ func GeneratePack(pkg ScannedPackage) Result {
 	// Pack groups (entire directories)
 	packed := make(map[string]bool)
 	for _, groupPath := range pkg.Groups {
-		files, err := getAllFiles(groupPath)
-		if err != nil {
-			return Result{err, false}
+		fr := getAllFiles(groupPath)
+		if !fr.OK {
+			return fr
 		}
-		for _, file := range files {
+		for _, file := range fr.Value.([]string) {
 			if packed[file] {
 				continue
 			}
-			data, err := compressFile(file)
-			if err != nil {
-				return Result{err, false}
+			cr := compressFile(file)
+			if !cr.OK {
+				return cr
 			}
+			data := cr.Value.(string)
 			localPath := TrimPrefix(file, groupPath+"/")
 			relGroup := PathRel(pkg.BaseDirectory, groupPath)
 			if !relGroup.OK {
@@ -281,10 +267,11 @@ func GeneratePack(pkg ScannedPackage) Result {
 		if packed[asset.FullPath] {
 			continue
 		}
-		data, err := compressFile(asset.FullPath)
-		if err != nil {
-			return Result{err, false}
+		cr := compressFile(asset.FullPath)
+		if !cr.OK {
+			return cr
 		}
+		data := cr.Value.(string)
 		b.WriteString(Sprintf("\tcore.AddAsset(%q, %q, %q)\n", asset.Group, asset.Name, data))
 		packed[asset.FullPath] = true
 	}
@@ -295,48 +282,44 @@ func GeneratePack(pkg ScannedPackage) Result {
 
 // --- Compression ---
 
-func compressFile(path string) (string, error) {
+func compressFile(path string) Result {
 	r := ReadFile(path)
 	if !r.OK {
-		return "", r.Value.(error)
+		return r
 	}
 	return compress(string(r.Value.([]byte)))
 }
 
-func compress(input string) (string, error) {
+func compress(input string) Result {
 	buf := NewBuffer()
 	gz, err := gzip.NewWriterLevel(buf, gzip.BestCompression)
 	if err != nil {
-		return "", err
+		return Result{Value: err, OK: false}
 	}
 	if _, err := gz.Write(AsBytes(input)); err != nil {
 		_ = gz.Close()
-		return "", err
+		return Result{Value: err, OK: false}
 	}
 	if err := gz.Close(); err != nil {
-		return "", err
+		return Result{Value: err, OK: false}
 	}
-	return Base64Encode(buf.Bytes()), nil
+	return Result{Value: Base64Encode(buf.Bytes()), OK: true}
 }
 
-func decompress(input string) (string, error) {
+func decompress(input string) Result {
 	data := Base64Decode(input)
 	if !data.OK {
-		return "", data.Value.(error)
+		return data
 	}
 	gz, err := gzip.NewReader(NewBuffer(data.Value.([]byte)))
 	if err != nil {
-		return "", err
+		return Result{Value: err, OK: false}
 	}
 
-	r := ReadAll(gz)
-	if !r.OK {
-		return "", r.Value.(error)
-	}
-	return r.Value.(string), nil
+	return ReadAll(gz)
 }
 
-func getAllFiles(dir string) ([]string, error) {
+func getAllFiles(dir string) Result {
 	var result []string
 	err := PathWalkDir(dir, func(path string, d FsDirEntry, err error) error {
 		if err != nil {
@@ -347,7 +330,10 @@ func getAllFiles(dir string) ([]string, error) {
 		}
 		return nil
 	})
-	return result, err
+	if err != nil {
+		return Result{Value: err, OK: false}
+	}
+	return Result{Value: result, OK: true}
 }
 
 // --- Embed: Scoped Filesystem Mount ---
@@ -589,7 +575,7 @@ func Extract(fsys FS, targetDir string, data any, opts ...ExtractOptions) Result
 	var standardFiles []string
 	var err error
 
-	err = WalkDir(fsys, ".", func(path string, d FsDirEntry, err error) error {
+	walk := WalkDir(fsys, ".", func(path string, d FsDirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -611,8 +597,8 @@ func Extract(fsys FS, targetDir string, data any, opts ...ExtractOptions) Result
 		}
 		return nil
 	})
-	if err != nil {
-		return Result{err, false}
+	if !walk.OK {
+		return walk
 	}
 
 	// safePath ensures a rendered path stays under targetDir.
@@ -686,8 +672,8 @@ func Extract(fsys FS, targetDir string, data any, opts ...ExtractOptions) Result
 		if err != nil {
 			return Result{err, false}
 		}
-		if err := copyFile(fsys, path, target); err != nil {
-			return Result{err, false}
+		if r := copyFile(fsys, path, target); !r.OK {
+			return r
 		}
 	}
 
@@ -718,27 +704,23 @@ func renderPath(path string, data any) string {
 	return buf.String()
 }
 
-func copyFile(fsys FS, source, target string) error {
+func copyFile(fsys FS, source, target string) Result {
 	s, err := fsys.Open(source)
 	if err != nil {
-		return err
+		return Result{Value: err, OK: false}
 	}
 	defer s.Close()
 
 	if r := MkdirAll(PathDir(target), 0755); !r.OK {
-		return r.Value.(error)
+		return r
 	}
 
 	r := Create(target)
 	if !r.OK {
-		return r.Value.(error)
+		return r
 	}
 	d := r.Value.(*OSFile)
 	defer d.Close()
 
-	copied := Copy(d, s)
-	if !copied.OK {
-		return copied.Value.(error)
-	}
-	return nil
+	return Copy(d, s)
 }
