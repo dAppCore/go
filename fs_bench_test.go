@@ -99,7 +99,7 @@ func BenchmarkFs_Exists_Hit(b *B) {
 	fs := fsBenchFixture(b, map[string]int{"f.bin": 128})
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		fsSinkBool = fs.Exists("f.bin")
+		fsSinkResult = fs.Exists("f.bin")
 	}
 }
 
@@ -107,7 +107,7 @@ func BenchmarkFs_Exists_Miss(b *B) {
 	fs := fsBenchFixture(b, map[string]int{"f.bin": 128})
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		fsSinkBool = fs.Exists("missing.bin")
+		fsSinkResult = fs.Exists("missing.bin")
 	}
 }
 
@@ -115,7 +115,7 @@ func BenchmarkFs_IsFile(b *B) {
 	fs := fsBenchFixture(b, map[string]int{"f.bin": 128})
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		fsSinkBool = fs.IsFile("f.bin")
+		fsSinkResult = fs.IsFile("f.bin")
 	}
 }
 
@@ -123,7 +123,7 @@ func BenchmarkFs_IsDir(b *B) {
 	fs := fsBenchFixture(b, map[string]int{"f.bin": 128})
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		fsSinkBool = fs.IsDir("models")
+		fsSinkResult = fs.IsDir("models")
 	}
 }
 
@@ -149,7 +149,7 @@ func BenchmarkFs_TempDir(b *B) {
 	fs := fsBenchFixture(b, map[string]int{})
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		fsSinkString = fs.TempDir("agent-")
+		fsSinkResult = fs.TempDir("agent-")
 	}
 }
 
@@ -312,5 +312,56 @@ func BenchmarkFs_ReadFSFile(b *B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		fsSinkResult = ReadFSFile(fsys, "r.bin")
+	}
+}
+
+func BenchmarkFs_WriteStream(b *B) {
+	fs := fsBenchFixture(b, nil)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		r := fs.WriteStream("s" + Itoa(i))
+		if wc, ok := r.Value.(WriteCloser); ok {
+			wc.Close()
+		}
+	}
+}
+
+func BenchmarkWriteAll(b *B) {
+	fs := fsBenchFixture(b, nil)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = WriteAll(fs.WriteStream("w"+Itoa(i)).Value, "payload")
+	}
+}
+
+func BenchmarkFs_WalkSeq(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"a.txt": 64, "b.txt": 64})
+	root := fs.Root()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for entry, err := range fs.WalkSeq(root) {
+			_, _ = entry, err
+		}
+	}
+}
+
+func BenchmarkFs_WalkSeqSkip(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"a.txt": 64, "b.txt": 64})
+	root := fs.Root()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for entry, err := range fs.WalkSeqSkip(root, "vendor") {
+			_, _ = entry, err
+		}
+	}
+}
+
+func BenchmarkWalkDir(b *B) {
+	fs := fsBenchFixture(b, map[string]int{"a.txt": 64})
+	fsys := DirFS(fs.Root())
+	fn := func(path string, d FsDirEntry, err error) error { return nil }
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		fsSinkResult = WalkDir(fsys, ".", fn)
 	}
 }
