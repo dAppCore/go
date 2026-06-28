@@ -59,3 +59,38 @@ func ExampleTry() {
 	Println(r.OK, r.Value)
 	// Output: true 42
 }
+
+// ExampleOk wraps a value in a successful Result through `Ok` for Result-based control
+// flow. Success, fallback, casting, and error inspection all use the same Result shape.
+func ExampleOk() {
+	r := Ok(42)
+	Println(r.OK, r.Value)
+	// Output: true 42
+}
+
+// ExampleFail wraps an error in a failed Result through `Fail` for Result-based control
+// flow. Success, fallback, casting, and error inspection all use the same Result shape.
+func ExampleFail() {
+	r := Fail(NewError("boom"))
+	Println(r.OK)
+	Println(r.Error())
+	// Output:
+	// false
+	// boom
+}
+
+// ExampleResultOf adapts a (value, error) pair through `ResultOf` for Result-based control
+// flow. Success, fallback, casting, and error inspection all use the same Result shape.
+func ExampleResultOf() {
+	r := ResultOf("data", nil)
+	Println(r.OK, r.Value)
+	// Output: true data
+}
+
+// ExampleMustCast unwraps and type-asserts a Result through `MustCast` for Result-based
+// control flow. Success, fallback, casting, and error inspection all use the same Result shape.
+func ExampleMustCast() {
+	n := MustCast[int](Ok(42))
+	Println(n)
+	// Output: 42
+}
