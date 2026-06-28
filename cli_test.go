@@ -90,6 +90,13 @@ func TestCli_WithCli_Good(t *T) {
 	AssertNotNil(t, c.Cli())
 }
 
+func TestCli_CliRegister_Good(t *T) {
+	c := New()
+	r := CliRegister(c)
+	AssertTrue(t, r.OK)
+	AssertTrue(t, c.Service("cli").OK)
+}
+
 func TestCli_CliRegister_Bad(t *T) {
 	c := New(WithCli())
 	r := CliRegister(c)

@@ -4,6 +4,91 @@ import (
 	. "dappco.re/go"
 )
 
+func TestTime_Unix_Good(t *T) {
+	tm := Unix(1_700_000_000, 0)
+	AssertEqual(t, int64(1_700_000_000), tm.Unix())
+}
+
+func TestTime_Unix_Bad(t *T) {
+	// Pre-epoch (negative) seconds are valid and round-trip.
+	AssertEqual(t, int64(-1), Unix(-1, 0).Unix())
+}
+
+func TestTime_Unix_Ugly(t *T) {
+	// Nanoseconds outside [0,1e9) are normalised into the seconds field.
+	tm := Unix(10, 1_500_000_000) // 1.5s of nsec rolls +1s
+	AssertEqual(t, int64(11), tm.Unix())
+	AssertEqual(t, 500_000_000, tm.Nanosecond())
+}
+
+func TestTime_UnixMilli_Good(t *T) {
+	AssertEqual(t, int64(1_700_000_000_000), UnixMilli(1_700_000_000_000).UnixMilli())
+}
+
+func TestTime_UnixMilli_Bad(t *T) {
+	// Epoch zero round-trips.
+	AssertEqual(t, int64(0), UnixMilli(0).UnixMilli())
+}
+
+func TestTime_UnixMilli_Ugly(t *T) {
+	// Negative (pre-epoch) milliseconds round-trip.
+	AssertEqual(t, int64(-5), UnixMilli(-5).UnixMilli())
+}
+
+func TestTime_After_Good(t *T) {
+	// Fires once the (short) duration elapses.
+	select {
+	case <-After(10 * Millisecond):
+	case <-After(2 * Second):
+		t.Fatal("After did not fire within the timeout")
+	}
+}
+
+func TestTime_After_Bad(t *T) {
+	// A long delay has not fired — the channel is empty immediately.
+	ch := After(Hour)
+	select {
+	case <-ch:
+		t.Fatal("After fired immediately for a long delay")
+	default:
+	}
+}
+
+func TestTime_After_Ugly(t *T) {
+	// A zero duration fires effectively immediately.
+	select {
+	case <-After(0):
+	case <-After(2 * Second):
+		t.Fatal("After(0) did not fire promptly")
+	}
+}
+
+func TestTime_NewTicker_Good(t *T) {
+	tk := NewTicker(10 * Millisecond)
+	defer tk.Stop()
+	select {
+	case <-tk.C:
+	case <-After(2 * Second):
+		t.Fatal("ticker did not tick")
+	}
+}
+
+func TestTime_NewTicker_Bad(t *T) {
+	// A non-positive interval panics (time.NewTicker contract).
+	AssertPanics(t, func() { NewTicker(0) })
+}
+
+func TestTime_NewTicker_Ugly(t *T) {
+	// A long interval has not ticked yet — the channel is empty immediately.
+	tk := NewTicker(Hour)
+	defer tk.Stop()
+	select {
+	case <-tk.C:
+		t.Fatal("long-interval ticker ticked immediately")
+	default:
+	}
+}
+
 func TestTime_Now_Good(t *T) {
 	before := Now()
 	value := Now()
