@@ -412,6 +412,12 @@ func ExampleHTTPFS() {
 // ExampleHTTPError writes a plain-text error body with the given status
 // code. The handler exits after this call; the Recorder captures the
 // response for assertion in tests.
+// ExampleCore_API returns the HTTP API subsystem through `Core.API`.
+func ExampleCore_API() {
+	Println(New().API() != nil)
+	// Output: true
+}
+
 func ExampleHTTPError() {
 	rec := NewHTTPTestRecorder()
 	HTTPError(rec, "missing field", StatusBadRequest)

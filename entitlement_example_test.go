@@ -87,6 +87,12 @@ func ExampleCore_SetEntitlementChecker() {
 
 // ExampleCore_RecordUsage records metered usage through `Core.RecordUsage` for usage-gated
 // agent features. Usage checks separate policy decisions from the action body.
+// ExampleCore_SetUsageRecorder installs a usage recorder through `Core.SetUsageRecorder`.
+func ExampleCore_SetUsageRecorder() {
+	c := New()
+	c.SetUsageRecorder(nil) // nil clears the recorder; pass a UsageRecorder to capture usage
+}
+
 func ExampleCore_RecordUsage() {
 	c := New()
 	var recorded string
