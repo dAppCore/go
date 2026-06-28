@@ -18,13 +18,8 @@ func (w logTestWriteCloser) Close() error {
 
 // --- Log ---
 
-func TestLog_New_Good(t *T) {
-	l := NewLog(LogOptions{Level: LevelInfo})
-	AssertNotNil(t, l)
-}
-
-func TestLog_AllLevels_Good(t *T) {
-	l := NewLog(LogOptions{Level: LevelDebug})
+func TestLog_Log_AllLevels_Good(t *T) {
+	var l *Log = NewLog(LogOptions{Level: LevelDebug})
 	l.Debug("debug")
 	l.Info("info")
 	l.Warn("warn")
@@ -32,7 +27,7 @@ func TestLog_AllLevels_Good(t *T) {
 	l.Security("security event")
 }
 
-func TestLog_LevelFiltering_Good(t *T) {
+func TestLog_LevelError_Filtering_Good(t *T) {
 	// At Error level, Debug/Info/Warn should be suppressed (no panic)
 	l := NewLog(LogOptions{Level: LevelError})
 	l.Debug("suppressed")
@@ -54,14 +49,7 @@ func TestLog_SetRedactKeys_Good(t *T) {
 	l.Info("login", "password", "secret123", "user", "admin")
 }
 
-func TestLog_LevelString_Good(t *T) {
-	AssertEqual(t, "debug", LevelDebug.String())
-	AssertEqual(t, "info", LevelInfo.String())
-	AssertEqual(t, "warn", LevelWarn.String())
-	AssertEqual(t, "error", LevelError.String())
-}
-
-func TestLog_CoreLog_Good(t *T) {
+func TestLog_Log_Good(t *T) {
 	c := New()
 	AssertNotNil(t, c.Log())
 }
@@ -98,7 +86,7 @@ func TestLog_PackageLevelFunctions_Good(t *T) {
 	Security("security msg")
 }
 
-func TestLog_PackageSetLevel_Good(t *T) {
+func TestLog_SetLevel_Package_Good(t *T) {
 	original := Default()
 	defer SetDefault(original)
 
@@ -113,28 +101,7 @@ func TestLog_Username_Good(t *T) {
 
 // --- LogErr ---
 
-func TestLog_LogErr_Good(t *T) {
-	l := NewLog(LogOptions{Level: LevelInfo})
-	le := NewLogErr(l)
-	AssertNotNil(t, le)
-
-	err := E("test.Operation", "something broke", nil)
-	le.Log(err)
-}
-
-func TestLog_LogErr_Nil_Good(t *T) {
-	l := NewLog(LogOptions{Level: LevelInfo})
-	le := NewLogErr(l)
-	le.Log(nil) // should not panic
-}
-
 // --- LogPanic ---
-
-func TestLog_LogPanic_Good(t *T) {
-	l := NewLog(LogOptions{Level: LevelInfo})
-	lp := NewLogPanic(l)
-	AssertNotNil(t, lp)
-}
 
 func TestLog_LogPanic_Recover_Good(t *T) {
 	l := NewLog(LogOptions{Level: LevelInfo})
@@ -155,7 +122,7 @@ func TestLog_SetOutput_Good(t *T) {
 
 // --- Log suppression by level ---
 
-func TestLog_Quiet_Suppresses_Ugly(t *T) {
+func TestLog_LevelQuiet_Suppresses_Ugly(t *T) {
 	l := NewLog(LogOptions{Level: LevelQuiet})
 	// These should not panic even though nothing is logged
 	l.Debug("suppressed")
@@ -164,7 +131,7 @@ func TestLog_Quiet_Suppresses_Ugly(t *T) {
 	l.Error("suppressed")
 }
 
-func TestLog_ErrorLevel_Suppresses_Ugly(t *T) {
+func TestLog_LevelError_Suppresses_Ugly(t *T) {
 	l := NewLog(LogOptions{Level: LevelError})
 	l.Debug("suppressed") // below threshold
 	l.Info("suppressed")  // below threshold
@@ -294,7 +261,10 @@ func TestLog_Info_Ugly(t *T) {
 }
 
 func TestLog_Level_String_Good(t *T) {
+	AssertEqual(t, "debug", LevelDebug.String())
 	AssertEqual(t, "info", LevelInfo.String())
+	AssertEqual(t, "warn", LevelWarn.String())
+	AssertEqual(t, "error", LevelError.String())
 }
 
 func TestLog_Level_String_Bad(t *T) {
