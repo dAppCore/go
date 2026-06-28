@@ -202,9 +202,36 @@ func BenchmarkErr_FormatStackTrace_Deep(b *B) {
 
 // --- ErrorPanic surface ---
 //
-// Recover / SafeGo would require triggering a panic per iteration, which
-// is far too costly to bench meaningfully — and not the hot path.
-// Reports() is the inspection accessor — that is benchable.
+// Recover / SafeGo are not hot paths — their numbers are informational
+// (a panic + recover, or a goroutine spawn, per iteration), benched here
+// for coverage completeness. Reports() is the inspection accessor.
+
+func BenchmarkErrorLog_Must(b *B) {
+	el := New().Log()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		el.Must(nil, "Bench", "no error") // nil err = no panic
+	}
+}
+
+func BenchmarkErrorPanic_Recover(b *B) {
+	h := New().Error()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		func() {
+			defer h.Recover()
+			panic("bench")
+		}()
+	}
+}
+
+func BenchmarkErrorPanic_SafeGo(b *B) {
+	h := New().Error()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		h.SafeGo(func() {})
+	}
+}
 
 func BenchmarkErr_ErrorPanic_Reports(b *B) {
 	c := New()
