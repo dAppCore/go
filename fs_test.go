@@ -1223,6 +1223,23 @@ func TestFs_Fs_WalkSeqSkip_Ugly(t *T) {
 	AssertTrue(t, seen["skipme.txt"])
 }
 
+func TestFs_ReadDir_Good(t *T) {
+	dir := t.TempDir()
+	RequireTrue(t, WriteFile(Path(dir, "a.txt"), []byte("x"), 0o644).OK)
+	RequireTrue(t, WriteFile(Path(dir, "b.txt"), []byte("y"), 0o644).OK)
+
+	r := ReadDir(DirFS(dir), ".")
+
+	RequireTrue(t, r.OK)
+	AssertLen(t, r.Value.([]FsDirEntry), 2)
+}
+
+func TestFs_ReadDir_Bad(t *T) {
+	// Reading a path that doesn't exist fails.
+	r := ReadDir(DirFS(t.TempDir()), "does-not-exist")
+	AssertFalse(t, r.OK)
+}
+
 func TestFs_ReadDir_Ugly(t *T) {
 	r := ReadDir(DirFS(t.TempDir()), ".")
 
@@ -1254,6 +1271,20 @@ func TestFs_ReadFSFile_Ugly(t *T) {
 
 	AssertTrue(t, r.OK)
 	AssertEqual(t, []byte{}, r.Value.([]byte))
+}
+
+func TestFs_Sub_Good(t *T) {
+	dir := t.TempDir()
+	RequireTrue(t, MkdirAll(Path(dir, "sub"), 0o755).OK)
+	RequireTrue(t, WriteFile(Path(dir, "sub", "f.txt"), []byte("scoped"), 0o644).OK)
+
+	r := Sub(DirFS(dir), "sub")
+	RequireTrue(t, r.OK)
+
+	// The sub-FS is rooted at sub/: f.txt resolves at its top level.
+	read := ReadFSFile(r.Value.(FS), "f.txt")
+	AssertTrue(t, read.OK)
+	AssertEqual(t, []byte("scoped"), read.Value.([]byte))
 }
 
 func TestFs_Sub_Bad(t *T) {

@@ -159,6 +159,13 @@ func TestInfo_Arch_Ugly(t *T) {
 	AssertNotEmpty(t, arch)
 }
 
+func TestInfo_Env_Good(t *T) {
+	// Env resolves init-populated keys to their non-empty values.
+	AssertNotEmpty(t, Env("OS"))
+	AssertNotEmpty(t, Env("DIR_HOME"))
+	AssertEqual(t, OS(), Env("OS"))
+}
+
 func TestInfo_Env_Bad(t *T) {
 	AssertEqual(t, "", Env("CORE_TEST_MISSING"))
 	AssertNotContains(t, EnvKeys(), "CORE_TEST_MISSING")
@@ -226,6 +233,12 @@ func TestInfo_NumCPU_Ugly(t *T) {
 	AssertNotPanics(t, func() {
 		_ = NumCPU()
 	})
+}
+
+func TestInfo_OS_Good(t *T) {
+	os := OS()
+	AssertNotEmpty(t, os)
+	AssertContains(t, []string{"linux", "darwin", "windows", "freebsd", "openbsd", "netbsd"}, os)
 }
 
 func TestInfo_OS_Bad(t *T) {
