@@ -196,3 +196,14 @@ func BenchmarkGeneratePack(b *B) {
 		embedSinkResult = GeneratePack(pkg)
 	}
 }
+
+// Extract copies (and template-renders) an FS to disk — covers the
+// isTemplate / renderPath / copyFile extraction helpers.
+func BenchmarkExtract(b *B) {
+	fsys := embedFixture()
+	base := b.TempDir()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		embedSinkResult = Extract(fsys, PathJoin(base, Itoa(i)), nil)
+	}
+}
