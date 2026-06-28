@@ -173,3 +173,38 @@ func BenchmarkLog_LogErr_Log(b *B) {
 		logger.Log(err)
 	}
 }
+
+func BenchmarkLog_Debug(b *B) {
+	l := logBenchFixture(LevelDebug)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		l.Debug("processing", "agent", "codex")
+	}
+}
+
+func BenchmarkLog_Warn(b *B) {
+	l := logBenchFixture(LevelDebug)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		l.Warn("slow", "ms", 1200)
+	}
+}
+
+func BenchmarkLog_Error(b *B) {
+	l := logBenchFixture(LevelDebug)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		l.Error("failed", "code", "x")
+	}
+}
+
+func BenchmarkLogPanic_Recover(b *B) {
+	l := logBenchFixture(LevelError)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		func() {
+			defer NewLogPanic(l).Recover()
+			panic("bench")
+		}()
+	}
+}
