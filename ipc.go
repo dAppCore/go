@@ -74,12 +74,15 @@ func (c *Core) QueryAll(q Query) Result {
 	if handlers == nil {
 		return Result{[]any(nil), true}
 	}
-	var results []any
+	results := make([]any, 0, len(*handlers))
 	for _, h := range *handlers {
 		r := h(c, q)
 		if r.OK && r.Value != nil {
 			results = append(results, r.Value)
 		}
+	}
+	if len(results) == 0 {
+		return Result{[]any(nil), true} // byte-identical to the old var-nil
 	}
 	return Result{results, true}
 }

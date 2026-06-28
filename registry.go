@@ -79,11 +79,65 @@ func (r *Registry[T]) Set(name string, item T) Result {
 	return Result{OK: true}
 }
 
-// Get retrieves an item by name.
+// GetOrSet returns the existing item for name, or atomically stores and
+// returns make() when the name is absent. make() runs only on a miss, so
+// callers racing the first lookup converge on a single stored value (the
+// LoadOrStore idiom). The common hit path takes only a read lock. Returns
+// Result{OK: false} when the registry is sealed or locked and the key is new.
+//
+//	r := reg.GetOrSet("drain", func() *Lock { return &Lock{Name: "drain", Mutex: &RWMutex{}} })
+//	lock := r.Value.(*Lock)
+func (r *Registry[T]) GetOrSet(name string, make func() T) Result {
+	r.mu.RLock()
+	item, ok := r.items[name]
+	r.mu.RUnlock()
+	if ok {
+		return Result{item, true}
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	// Re-check under the write lock — another goroutine may have created it
+	// between the RUnlock above and acquiring the write lock.
+	if item, ok := r.items[name]; ok {
+		return Result{item, true}
+	}
+	switch r.mode {
+	case registryLocked:
+		return Result{E("registry.GetOrSet", Concat("registry is locked, cannot set: ", name), nil), false}
+	case registrySealed:
+		return Result{E("registry.GetOrSet", Concat("registry is sealed, cannot add new key: ", name), nil), false}
+	}
+	item = make()
+	r.order = append(r.order, name)
+	r.items[name] = item
+	return Result{item, true}
+}
+
+// Get retrieves an item by name. A soft-disabled item resolves as absent
+// (Result{OK:false}) so dispatch and resolution skip it — use
+// GetIncludingDisabled to inspect or re-enable a disabled entry.
 //
 //	res := r.Get("brain")
 //	if res.OK { svc := res.Value.(*Service) }
 func (r *Registry[T]) Get(name string) Result {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	item, ok := r.items[name]
+	if !ok || r.disabled[name] {
+		return Result{}
+	}
+	return Result{item, true}
+}
+
+// GetIncludingDisabled retrieves an item by name even when it is soft-disabled.
+// Get/Has treat a disabled entry as absent (so dispatch skips it); this variant
+// is for inspection, re-enable, and registration existence-checks that must see
+// every registered key.
+//
+//	res := r.GetIncludingDisabled("broken-handler")
+func (r *Registry[T]) GetIncludingDisabled(name string) Result {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -94,14 +148,16 @@ func (r *Registry[T]) Get(name string) Result {
 	return Result{item, true}
 }
 
-// Has returns true if the name exists in the registry.
+// Has returns true if the name exists and is enabled. A soft-disabled item
+// reports false (consistent with Get); use GetIncludingDisabled to check raw
+// existence regardless of disabled state.
 //
 //	if r.Has("brain") { ... }
 func (r *Registry[T]) Has(name string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	_, ok := r.items[name]
-	return ok
+	return ok && !r.disabled[name]
 }
 
 // Names returns all registered names in insertion order.
@@ -124,13 +180,16 @@ func (r *Registry[T]) List(pattern string) []T {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	var result []T
+	result := make([]T, 0, len(r.order))
 	for _, name := range r.order {
 		if matched := PathMatch(pattern, name); matched.OK && matched.Value.(bool) {
 			if !r.disabled[name] {
 				result = append(result, r.items[name])
 			}
 		}
+	}
+	if len(result) == 0 {
+		return nil // byte-identical to the old var-nil behaviour
 	}
 	return result
 }
@@ -187,8 +246,10 @@ func (r *Registry[T]) Delete(name string) Result {
 	return Result{OK: true}
 }
 
-// Disable soft-disables an item. It still exists but Each/List skip it.
-// Returns Result{OK: false} if not found.
+// Disable soft-disables an item. It still exists but Get/Has/List/Each skip it,
+// so it cannot be resolved or dispatched until Enable is called. Inspect or
+// re-enable it via GetIncludingDisabled / Disabled. Returns Result{OK: false}
+// if not found.
 //
 //	r.Disable("broken-handler")
 func (r *Registry[T]) Disable(name string) Result {

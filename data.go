@@ -135,7 +135,7 @@ func (d *Data) ListNames(path string) Result {
 		return r
 	}
 	entries := r.Value.([]FsDirEntry)
-	var names []string
+	names := make([]string, 0, len(entries))
 	for _, e := range entries {
 		name := e.Name()
 		if !e.IsDir() {
