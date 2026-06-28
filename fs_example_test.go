@@ -363,6 +363,31 @@ func ExampleFs_WalkSeq() {
 // ExampleFs_WalkSeqSkip walks a tree through `Fs.WalkSeqSkip` while skipping a branch for
 // sandboxed file operations. File reads, writes, walks, and cleanup stay sandbox-aware
 // through Fs.
+// ExampleReadDir lists a directory's entries through `ReadDir`.
+func ExampleReadDir() {
+	r := ReadDir(DirFS("."), ".")
+	_ = r // r.Value is []FsDirEntry on success
+}
+
+// ExampleReadFSFile reads a named file from a filesystem through `ReadFSFile`.
+func ExampleReadFSFile() {
+	r := ReadFSFile(DirFS("."), "go.mod")
+	_ = r // r.Value is []byte on success
+}
+
+// ExampleSub returns a filesystem rooted at a subdirectory through `Sub`.
+func ExampleSub() {
+	r := Sub(DirFS("."), "docs")
+	_ = r // r.Value is an FS scoped to docs/
+}
+
+// ExampleWalkDir walks a filesystem tree by directory entry through `WalkDir`.
+func ExampleWalkDir() {
+	WalkDir(DirFS("."), ".", func(path string, d FsDirEntry, err error) error {
+		return err
+	})
+}
+
 func ExampleFs_WalkSeqSkip() {
 	f := (&Fs{}).New("/")
 	dir := MustCast[string](f.TempDir("core-fs-example"))
