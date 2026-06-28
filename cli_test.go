@@ -9,7 +9,7 @@ import (
 // real process service. Returns the registered Core.
 func fakeProcess(t *T, response string, ok bool) *Core {
 	t.Helper()
-	c := New()
+	c := New(WithCli())
 	c.Action("process.run", func(ctx Context, opts Options) Result {
 		if !ok {
 			return Result{Value: NewCode("test.process.bad", response), OK: false}
@@ -83,15 +83,15 @@ func TestCLI_AssertCLIs_Good(t *T) {
 
 // --- AX-7 canonical triplets ---
 
-func TestCli_CliRegister_Good(t *T) {
-	c := New()
+func TestCli_WithCli_Good(t *T) {
+	c := New(WithCli())
 	r := c.Service("cli")
 	AssertTrue(t, r.OK)
 	AssertNotNil(t, c.Cli())
 }
 
 func TestCli_CliRegister_Bad(t *T) {
-	c := New()
+	c := New(WithCli())
 	r := CliRegister(c)
 	AssertFalse(t, r.OK)
 }
@@ -103,7 +103,7 @@ func TestCli_CliRegister_Ugly(t *T) {
 }
 
 func TestCli_Cli_Print_Good(t *T) {
-	c := New()
+	c := New(WithCli())
 	buf := NewBuffer()
 	c.Cli().SetOutput(buf)
 	c.Cli().Print("agent %s ready", "codex")
@@ -111,7 +111,7 @@ func TestCli_Cli_Print_Good(t *T) {
 }
 
 func TestCli_Cli_Print_Bad(t *T) {
-	c := New()
+	c := New(WithCli())
 	buf := NewBuffer()
 	c.Cli().SetOutput(buf)
 	c.Cli().Print("agent %s ready")
@@ -119,7 +119,7 @@ func TestCli_Cli_Print_Bad(t *T) {
 }
 
 func TestCli_Cli_Print_Ugly(t *T) {
-	c := New()
+	c := New(WithCli())
 	buf := NewBuffer()
 	c.Cli().SetOutput(buf)
 	c.Cli().Print("")
@@ -127,7 +127,7 @@ func TestCli_Cli_Print_Ugly(t *T) {
 }
 
 func TestCli_Cli_SetOutput_Good(t *T) {
-	c := New()
+	c := New(WithCli())
 	buf := NewBuffer()
 	c.Cli().SetOutput(buf)
 	c.Cli().Print("homelab")
@@ -135,7 +135,7 @@ func TestCli_Cli_SetOutput_Good(t *T) {
 }
 
 func TestCli_Cli_SetOutput_Bad(t *T) {
-	c := New()
+	c := New(WithCli())
 	buf := NewBuffer()
 	c.Cli().SetOutput(buf)
 	c.Cli().SetOutput(buf)
@@ -144,7 +144,7 @@ func TestCli_Cli_SetOutput_Bad(t *T) {
 }
 
 func TestCli_Cli_SetOutput_Ugly(t *T) {
-	c := New()
+	c := New(WithCli())
 	first := NewBuffer()
 	second := NewBuffer()
 	c.Cli().SetOutput(first)
@@ -156,7 +156,7 @@ func TestCli_Cli_SetOutput_Ugly(t *T) {
 }
 
 func TestCli_Cli_Run_Good(t *T) {
-	c := New()
+	c := New(WithCli())
 	var target string
 	c.Command("deploy/to/homelab", Command{Action: func(opts Options) Result {
 		target = opts.String("target")
@@ -168,14 +168,14 @@ func TestCli_Cli_Run_Good(t *T) {
 }
 
 func TestCli_Cli_Run_Bad(t *T) {
-	c := New()
+	c := New(WithCli())
 	c.Command("agent/status", Command{})
 	r := c.Cli().Run("agent", "status")
 	AssertFalse(t, r.OK)
 }
 
 func TestCli_Cli_Run_Ugly(t *T) {
-	c := New(WithOption("name", "homelab"))
+	c := New(WithCli(), WithOption("name", "homelab"))
 	buf := NewBuffer()
 	c.Cli().SetOutput(buf)
 	c.Cli().SetBanner(func(_ *Cli) string { return "homelab ops" })
@@ -185,7 +185,7 @@ func TestCli_Cli_Run_Ugly(t *T) {
 }
 
 func TestCli_Cli_RunMissingCommand_Bad(t *T) {
-	c := New(WithOption("name", "homelab"))
+	c := New(WithCli(), WithOption("name", "homelab"))
 	buf := NewBuffer()
 	c.Cli().SetOutput(buf)
 	c.Cli().SetBanner(func(_ *Cli) string { return "homelab ops" })
@@ -199,7 +199,7 @@ func TestCli_Cli_RunMissingCommand_Bad(t *T) {
 }
 
 func TestCli_Cli_RunFlagForms_Ugly(t *T) {
-	c := New()
+	c := New(WithCli())
 	var dryRun bool
 	var name string
 	c.Command("agent/run", Command{Action: func(opts Options) Result {
@@ -216,7 +216,7 @@ func TestCli_Cli_RunFlagForms_Ugly(t *T) {
 }
 
 func TestCli_Cli_PrintHelp_Good(t *T) {
-	c := New(WithOption("name", "homelab"))
+	c := New(WithCli(), WithOption("name", "homelab"))
 	buf := NewBuffer()
 	c.Cli().SetOutput(buf)
 	c.Command("agent/status", Command{Action: func(_ Options) Result { return Result{OK: true} }})
@@ -226,7 +226,7 @@ func TestCli_Cli_PrintHelp_Good(t *T) {
 }
 
 func TestCli_Cli_PrintHelp_Bad(t *T) {
-	c := New()
+	c := New(WithCli())
 	buf := NewBuffer()
 	c.Cli().SetOutput(buf)
 	c.Command("agent/hidden", Command{Hidden: true, Action: func(_ Options) Result { return Result{OK: true} }})
@@ -235,7 +235,7 @@ func TestCli_Cli_PrintHelp_Bad(t *T) {
 }
 
 func TestCli_Cli_PrintHelp_Ugly(t *T) {
-	c := New()
+	c := New(WithCli())
 	buf := NewBuffer()
 	c.Cli().SetOutput(buf)
 	c.Cli().PrintHelp()
@@ -243,7 +243,7 @@ func TestCli_Cli_PrintHelp_Ugly(t *T) {
 }
 
 func TestCli_Cli_PrintHelpTranslated_Good(t *T) {
-	c := New()
+	c := New(WithCli())
 	buf := NewBuffer()
 	c.Cli().SetOutput(buf)
 	c.I18n().SetTranslator(&mockTranslator{})
@@ -256,19 +256,19 @@ func TestCli_Cli_PrintHelpTranslated_Good(t *T) {
 }
 
 func TestCli_Cli_SetBanner_Good(t *T) {
-	c := New()
+	c := New(WithCli())
 	c.Cli().SetBanner(func(_ *Cli) string { return "dAppCore agent" })
 	AssertEqual(t, "dAppCore agent", c.Cli().Banner())
 }
 
 func TestCli_Cli_SetBanner_Bad(t *T) {
-	c := New(WithOption("name", "homelab"))
+	c := New(WithCli(), WithOption("name", "homelab"))
 	c.Cli().SetBanner(nil)
 	AssertEqual(t, "homelab", c.Cli().Banner())
 }
 
 func TestCli_Cli_SetBanner_Ugly(t *T) {
-	c := New(WithOption("name", "homelab"))
+	c := New(WithCli(), WithOption("name", "homelab"))
 	c.Cli().SetBanner(func(cl *Cli) string {
 		return Concat(cl.Core().App().Name, " banner")
 	})
@@ -276,17 +276,17 @@ func TestCli_Cli_SetBanner_Ugly(t *T) {
 }
 
 func TestCli_Cli_Banner_Good(t *T) {
-	c := New()
+	c := New(WithCli())
 	c.Cli().SetBanner(func(_ *Cli) string { return "agent dispatch" })
 	AssertEqual(t, "agent dispatch", c.Cli().Banner())
 }
 
 func TestCli_Cli_Banner_Bad(t *T) {
-	c := New(WithOption("name", "homelab"))
+	c := New(WithCli(), WithOption("name", "homelab"))
 	AssertEqual(t, "homelab", c.Cli().Banner())
 }
 
 func TestCli_Cli_Banner_Ugly(t *T) {
-	c := New()
+	c := New(WithCli())
 	AssertEqual(t, "", c.Cli().Banner())
 }

@@ -7,10 +7,18 @@ import . "dappco.re/go"
 func TestOS_FileMode_Good_Alias(t *T) {
 	var mode FileMode = 0o644
 	AssertEqual(t, FileMode(0o644), mode)
+	AssertEqual(t, FileMode(0o644), mode.Perm())
+	AssertFalse(t, mode.IsDir())
+	AssertTrue(t, mode.IsRegular())
+	AssertEqual(t, "-rw-r--r--", mode.String())
 }
 
 func TestOS_ModePerm_Good(t *T) {
 	AssertEqual(t, FileMode(0o777), ModePerm)
+	AssertEqual(t, FileMode(0), ModeDir&ModePerm)
+	AssertEqual(t, FileMode(0o644), (ModeDir|0o644).Perm())
+	AssertTrue(t, ModeType&ModeDir != 0)
+	AssertTrue(t, ModeType&ModeSymlink != 0)
 }
 
 func TestOS_ModeDir_Good(t *T) {
@@ -20,15 +28,27 @@ func TestOS_ModeDir_Good(t *T) {
 }
 
 func TestOS_Stdin_Good_NotNil(t *T) {
-	AssertNotNil(t, Stdin())
+	in := Stdin()
+	AssertNotNil(t, in)
+	f, ok := in.(*OSFile)
+	AssertTrue(t, ok)
+	AssertEqual(t, "/dev/stdin", f.Name())
 }
 
 func TestOS_Stdout_Good_NotNil(t *T) {
-	AssertNotNil(t, Stdout())
+	out := Stdout()
+	AssertNotNil(t, out)
+	f, ok := out.(*OSFile)
+	AssertTrue(t, ok)
+	AssertEqual(t, "/dev/stdout", f.Name())
 }
 
 func TestOS_Stderr_Good_NotNil(t *T) {
-	AssertNotNil(t, Stderr())
+	errStream := Stderr()
+	AssertNotNil(t, errStream)
+	f, ok := errStream.(*OSFile)
+	AssertTrue(t, ok)
+	AssertNotEmpty(t, f.Name())
 }
 
 func TestOS_Args_Good(t *T) {
@@ -42,6 +62,8 @@ func TestOS_Args_Bad(t *T) {
 	args := Args()
 
 	AssertNotNil(t, args)
+	AssertGreaterOrEqual(t, len(args), 1)
+	AssertNotEmpty(t, args[0])
 }
 
 func TestOS_Args_Ugly(t *T) {
@@ -68,9 +90,16 @@ func TestOS_Chdir_Good(t *T) {
 }
 
 func TestOS_Chdir_Bad(t *T) {
+	before := Getwd()
+	RequireTrue(t, before.OK)
+
 	r := Chdir(Path(t.TempDir(), "missing"))
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
+	after := Getwd()
+	AssertTrue(t, after.OK)
+	AssertEqual(t, before.Value.(string), after.Value.(string))
 }
 
 func TestOS_Chdir_Ugly(t *T) {
@@ -86,9 +115,13 @@ func TestOS_Chdir_Ugly(t *T) {
 }
 
 func TestOS_Create_Bad(t *T) {
-	r := Create(Path(t.TempDir(), "missing", "agent.log"))
+	path := Path(t.TempDir(), "missing", "agent.log")
+
+	r := Create(path)
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
+	AssertFalse(t, Stat(path).OK)
 }
 
 func TestOS_Create_Ugly(t *T) {
@@ -117,9 +150,14 @@ func TestOS_DirFS_Good(t *T) {
 }
 
 func TestOS_DirFS_Bad(t *T) {
-	r := ReadFSFile(DirFS(t.TempDir()), "missing.txt")
+	fsys := DirFS(t.TempDir())
+
+	r := ReadFSFile(fsys, "missing.txt")
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
+	escape := ReadFSFile(fsys, "../escape.txt")
+	AssertFalse(t, escape.OK)
 }
 
 func TestOS_DirFS_Ugly(t *T) {
@@ -147,6 +185,10 @@ func TestOS_Environ_Bad(t *T) {
 	env := Environ()
 
 	AssertNotNil(t, env)
+	AssertNotEmpty(t, env)
+	for _, entry := range env {
+		AssertContains(t, entry, "=")
+	}
 }
 
 func TestOS_Environ_Ugly(t *T) {
@@ -165,44 +207,76 @@ func TestOS_Environ_Ugly(t *T) {
 
 func TestOS_Getenv_Good(t *T) {
 	t.Setenv("CORE_AX7_TOKEN", "session-token")
-
 	AssertEqual(t, "session-token", Getenv("CORE_AX7_TOKEN"))
+
+	t.Setenv("CORE_AX7_TOKEN", "rotated")
+	AssertEqual(t, "rotated", Getenv("CORE_AX7_TOKEN"))
+	value, ok := LookupEnv("CORE_AX7_TOKEN")
+	AssertTrue(t, ok)
+	AssertEqual(t, "rotated", value)
 }
 
 func TestOS_Getenv_Bad(t *T) {
-	Unsetenv("CORE_AX7_MISSING")
+	RequireTrue(t, Unsetenv("CORE_AX7_MISSING").OK)
 
 	AssertEqual(t, "", Getenv("CORE_AX7_MISSING"))
+	_, ok := LookupEnv("CORE_AX7_MISSING")
+	AssertFalse(t, ok)
 }
 
 func TestOS_Getenv_Ugly(t *T) {
 	t.Setenv("CORE_AX7_EMPTY", "")
 
 	AssertEqual(t, "", Getenv("CORE_AX7_EMPTY"))
+	value, ok := LookupEnv("CORE_AX7_EMPTY")
+	AssertTrue(t, ok)
+	AssertEqual(t, "", value)
 }
 
 func TestOS_Getpid_Good(t *T) {
-	AssertGreater(t, Getpid(), 0)
+	pid := Getpid()
+
+	AssertGreater(t, pid, 0)
+	AssertEqual(t, pid, Getpid())
 }
 
 func TestOS_Getpid_Bad(t *T) {
-	AssertNotEqual(t, 0, Getpid())
+	pid := Getpid()
+
+	AssertNotEqual(t, 0, pid)
+	AssertGreater(t, pid, 0)
+	AssertNotEqual(t, Getppid(), pid)
 }
 
 func TestOS_Getpid_Ugly(t *T) {
-	AssertEqual(t, Getpid(), Getpid())
+	first := Getpid()
+	second := Getpid()
+
+	AssertEqual(t, first, second)
+	AssertGreater(t, first, 0)
 }
 
 func TestOS_Getppid_Good(t *T) {
-	AssertGreater(t, Getppid(), 0)
+	ppid := Getppid()
+
+	AssertGreater(t, ppid, 0)
+	AssertEqual(t, ppid, Getppid())
 }
 
 func TestOS_Getppid_Bad(t *T) {
-	AssertNotEqual(t, 0, Getppid())
+	ppid := Getppid()
+
+	AssertNotEqual(t, 0, ppid)
+	AssertGreater(t, ppid, 0)
+	AssertNotEqual(t, Getpid(), ppid)
 }
 
 func TestOS_Getppid_Ugly(t *T) {
-	AssertEqual(t, Getppid(), Getppid())
+	first := Getppid()
+	second := Getppid()
+
+	AssertEqual(t, first, second)
+	AssertGreater(t, first, 0)
 }
 
 func TestOS_Getwd_Good(t *T) {
@@ -216,6 +290,9 @@ func TestOS_Getwd_Bad(t *T) {
 	r := Getwd()
 
 	AssertTrue(t, r.OK)
+	wd := r.Value.(string)
+	AssertNotEmpty(t, wd)
+	AssertTrue(t, PathIsAbs(wd))
 }
 
 func TestOS_Getwd_Ugly(t *T) {
@@ -237,12 +314,18 @@ func TestOS_Hostname_Good(t *T) {
 	r := Hostname()
 
 	AssertTrue(t, r.OK)
+	name := r.Value.(string)
+	AssertNotEmpty(t, name)
+	AssertNotContains(t, name, " ")
 }
 
 func TestOS_Hostname_Bad(t *T) {
 	r := Hostname()
 
 	AssertTrue(t, r.OK)
+	name, ok := r.Value.(string)
+	AssertTrue(t, ok)
+	AssertNotEmpty(t, name)
 }
 
 func TestOS_Hostname_Ugly(t *T) {
@@ -263,10 +346,17 @@ func TestOS_IsExist_Good(t *T) {
 
 func TestOS_IsExist_Bad(t *T) {
 	AssertFalse(t, IsExist(AnError))
+	AssertFalse(t, IsExist(ErrNotExist))
+	AssertFalse(t, IsExist(ErrPermission))
 }
 
 func TestOS_IsExist_Ugly(t *T) {
 	AssertFalse(t, IsExist(nil))
+	AssertTrue(t, IsExist(ErrExist))
+	// The predicate only unwraps OS error types, not fmt %w wrapping —
+	// unlike core.Is, which walks the whole chain.
+	AssertFalse(t, IsExist(Errorf("create: %w", ErrExist)))
+	AssertTrue(t, Is(Errorf("create: %w", ErrExist), ErrExist))
 }
 
 func TestOS_IsNotExist_Good(t *T) {
@@ -278,22 +368,36 @@ func TestOS_IsNotExist_Good(t *T) {
 
 func TestOS_IsNotExist_Bad(t *T) {
 	AssertFalse(t, IsNotExist(AnError))
+	AssertFalse(t, IsNotExist(ErrExist))
+	AssertFalse(t, IsNotExist(ErrPermission))
 }
 
 func TestOS_IsNotExist_Ugly(t *T) {
 	AssertFalse(t, IsNotExist(nil))
+	AssertTrue(t, IsNotExist(ErrNotExist))
+	// fmt %w wrapping defeats the predicate but not core.Is.
+	AssertFalse(t, IsNotExist(Errorf("open: %w", ErrNotExist)))
+	AssertTrue(t, Is(Errorf("open: %w", ErrNotExist), ErrNotExist))
 }
 
 func TestOS_IsPermission_Good(t *T) {
 	AssertTrue(t, IsPermission(ErrPermissionForTest))
+	AssertTrue(t, IsPermission(ErrPermission))
+	AssertFalse(t, IsPermission(ErrNotExist))
 }
 
 func TestOS_IsPermission_Bad(t *T) {
 	AssertFalse(t, IsPermission(AnError))
+	AssertFalse(t, IsPermission(ErrExist))
+	AssertFalse(t, IsPermission(ErrNotExist))
 }
 
 func TestOS_IsPermission_Ugly(t *T) {
 	AssertFalse(t, IsPermission(nil))
+	AssertTrue(t, IsPermission(ErrPermission))
+	// fmt %w wrapping defeats the predicate but not core.Is.
+	AssertFalse(t, IsPermission(Errorf("chmod: %w", ErrPermission)))
+	AssertTrue(t, Is(Errorf("chmod: %w", ErrPermission), ErrPermission))
 }
 
 func TestOS_LookupEnv_Good(t *T) {
@@ -338,6 +442,9 @@ func TestOS_Lstat_Bad(t *T) {
 	r := Lstat(Path(t.TempDir(), "missing.txt"))
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
+	empty := Lstat("")
+	AssertFalse(t, empty.OK)
 }
 
 func TestOS_Lstat_Ugly(t *T) {
@@ -375,6 +482,8 @@ func TestOS_Mkdir_Ugly(t *T) {
 	r := Mkdir("", 0o755)
 
 	AssertFalse(t, r.OK)
+	AssertNotNil(t, r.Value)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
 }
 
 func TestOS_MkdirAll_Good(t *T) {
@@ -400,6 +509,7 @@ func TestOS_MkdirAll_Ugly(t *T) {
 	r := MkdirAll("", 0o755)
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
 }
 
 func TestOS_MkdirTemp_Good(t *T) {
@@ -414,6 +524,7 @@ func TestOS_MkdirTemp_Bad(t *T) {
 	r := MkdirTemp(Path(t.TempDir(), "missing"), "agent-*")
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
 }
 
 func TestOS_MkdirTemp_Ugly(t *T) {
@@ -448,6 +559,9 @@ func TestOS_OpenFile_Bad(t *T) {
 	r := OpenFile(Path(t.TempDir(), "missing.log"), O_RDONLY, 0o644)
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
+	wr := OpenFile(t.TempDir(), O_WRONLY, 0o644)
+	AssertFalse(t, wr.OK)
 }
 
 func TestOS_OpenFile_Ugly(t *T) {
@@ -463,6 +577,9 @@ func TestOS_ReadFile_Bad(t *T) {
 	r := ReadFile(Path(t.TempDir(), "missing.txt"))
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
+	dir := ReadFile(t.TempDir())
+	AssertFalse(t, dir.OK)
 }
 
 func TestOS_ReadFile_Ugly(t *T) {
@@ -479,6 +596,11 @@ func TestOS_Remove_Ugly(t *T) {
 	r := Remove(Path(t.TempDir(), "missing.txt"))
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
+	dir := t.TempDir()
+	RequireTrue(t, WriteFile(Path(dir, "child"), nil, 0o644).OK)
+	nonEmpty := Remove(dir)
+	AssertFalse(t, nonEmpty.OK)
 }
 
 func TestOS_RemoveAll_Good(t *T) {
@@ -494,15 +616,22 @@ func TestOS_RemoveAll_Good(t *T) {
 }
 
 func TestOS_RemoveAll_Bad(t *T) {
-	r := RemoveAll(Path(t.TempDir(), "missing"))
+	missing := Path(t.TempDir(), "missing")
+
+	r := RemoveAll(missing)
 
 	AssertTrue(t, r.OK)
+	AssertNil(t, r.Value)
+	AssertTrue(t, RemoveAll(missing).OK)
+	AssertFalse(t, Stat(missing).OK)
 }
 
 func TestOS_RemoveAll_Ugly(t *T) {
 	r := RemoveAll("")
 
 	AssertTrue(t, r.OK)
+	AssertNil(t, r.Value)
+	AssertTrue(t, RemoveAll(Path(t.TempDir(), "a", "b", "c")).OK)
 }
 
 func TestOS_Rename_Bad(t *T) {
@@ -532,6 +661,9 @@ func TestOS_Stat_Bad(t *T) {
 	r := Stat(Path(t.TempDir(), "missing.txt"))
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
+	empty := Stat("")
+	AssertFalse(t, empty.OK)
 }
 
 func TestOS_Stat_Ugly(t *T) {
@@ -545,13 +677,18 @@ func TestOS_Stat_Ugly(t *T) {
 }
 
 func TestOS_Stdin_Good(t *T) {
-	AssertNotNil(t, Stdin())
+	in := Stdin()
+
+	AssertNotNil(t, in)
+	AssertEqual(t, uintptr(0), in.(*OSFile).Fd())
 }
 
 func TestOS_Stdin_Bad(t *T) {
 	var reader Reader = Stdin()
 
 	AssertNotNil(t, reader)
+	_, isFile := reader.(*OSFile)
+	AssertTrue(t, isFile)
 }
 
 func TestOS_Stdin_Ugly(t *T) {
@@ -562,7 +699,10 @@ func TestOS_Stdin_Ugly(t *T) {
 }
 
 func TestOS_Stdout_Good(t *T) {
-	AssertNotNil(t, Stdout())
+	out := Stdout()
+
+	AssertNotNil(t, out)
+	AssertEqual(t, uintptr(1), out.(*OSFile).Fd())
 }
 
 func TestOS_Stdout_Bad(t *T) {
@@ -580,7 +720,11 @@ func TestOS_Stdout_Ugly(t *T) {
 }
 
 func TestOS_Stderr_Good(t *T) {
-	AssertNotNil(t, Stderr())
+	errStream := Stderr()
+
+	AssertNotNil(t, errStream)
+	AssertEqual(t, errStream, Stderr())
+	AssertTrue(t, WriteString(errStream, "").OK)
 }
 
 func TestOS_Stderr_Bad(t *T) {
@@ -605,13 +749,21 @@ func TestOS_TempDir_Good(t *T) {
 }
 
 func TestOS_TempDir_Bad(t *T) {
-	AssertNotEmpty(t, TempDir())
+	dir := TempDir()
+
+	AssertNotEmpty(t, dir)
+	AssertTrue(t, PathIsAbs(dir))
+	AssertEqual(t, dir, TempDir())
 }
 
 func TestOS_TempDir_Ugly(t *T) {
-	t.Setenv("TMPDIR", t.TempDir())
+	custom := t.TempDir()
+	t.Setenv("TMPDIR", custom)
 
-	AssertNotEmpty(t, TempDir())
+	got := TempDir()
+
+	AssertNotEmpty(t, got)
+	AssertEqual(t, custom, got)
 }
 
 func TestOS_Unsetenv_Good(t *T) {
@@ -626,12 +778,19 @@ func TestOS_Unsetenv_Good(t *T) {
 
 func TestOS_Unsetenv_Bad(t *T) {
 	r := Unsetenv("")
+
 	AssertTrue(t, r.OK)
+	AssertNil(t, r.Value)
+	AssertTrue(t, Unsetenv("").OK)
 }
 
 func TestOS_Unsetenv_Ugly(t *T) {
 	r := Unsetenv("CORE_AX7_ALREADY_MISSING")
+
 	AssertTrue(t, r.OK)
+	AssertNil(t, r.Value)
+	_, ok := LookupEnv("CORE_AX7_ALREADY_MISSING")
+	AssertFalse(t, ok)
 }
 
 func TestOS_UserCacheDir_Good(t *T) {
@@ -645,6 +804,9 @@ func TestOS_UserCacheDir_Bad(t *T) {
 	r := UserCacheDir()
 
 	AssertTrue(t, r.OK)
+	dir := r.Value.(string)
+	AssertNotEmpty(t, dir)
+	AssertTrue(t, PathIsAbs(dir))
 }
 
 func TestOS_UserCacheDir_Ugly(t *T) {
@@ -667,6 +829,9 @@ func TestOS_UserConfigDir_Bad(t *T) {
 	r := UserConfigDir()
 
 	AssertTrue(t, r.OK)
+	dir := r.Value.(string)
+	AssertNotEmpty(t, dir)
+	AssertTrue(t, PathIsAbs(dir))
 }
 
 func TestOS_UserConfigDir_Ugly(t *T) {
@@ -689,6 +854,9 @@ func TestOS_UserHomeDir_Bad(t *T) {
 	r := UserHomeDir()
 
 	AssertTrue(t, r.OK)
+	dir := r.Value.(string)
+	AssertNotEmpty(t, dir)
+	AssertTrue(t, PathIsAbs(dir))
 }
 
 func TestOS_UserHomeDir_Ugly(t *T) {
@@ -713,9 +881,15 @@ func TestOS_WriteFile_Good(t *T) {
 }
 
 func TestOS_WriteFile_Bad(t *T) {
-	r := WriteFile(t.TempDir(), []byte("not a file"), 0o644)
+	dir := t.TempDir()
+
+	r := WriteFile(dir, []byte("not a file"), 0o644)
 
 	AssertFalse(t, r.OK)
+	AssertNotNil(t, r.Value)
+	missing := WriteFile(Path(dir, "missing", "f.txt"), []byte("x"), 0o644)
+	AssertFalse(t, missing.OK)
+	AssertTrue(t, IsNotExist(missing.Value.(error)))
 }
 
 func TestOS_WriteFile_Ugly(t *T) {
@@ -745,6 +919,9 @@ func TestOS_Chmod_Bad(t *T) {
 	r := Chmod(Path(t.TempDir(), "missing"), 0o755)
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
+	empty := Chmod("", 0o755)
+	AssertFalse(t, empty.OK)
 }
 
 func TestOS_Chmod_Ugly(t *T) {
@@ -775,6 +952,7 @@ func TestOS_Symlink_Bad(t *T) {
 	r := Symlink("target", Path(t.TempDir(), "missing", "link"))
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
 }
 
 func TestOS_Symlink_Ugly(t *T) {
@@ -803,6 +981,7 @@ func TestOS_Readlink_Bad(t *T) {
 	r := Readlink(Path(t.TempDir(), "missing"))
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
 }
 
 func TestOS_Readlink_Ugly(t *T) {
@@ -826,6 +1005,9 @@ func TestOS_CreateTemp_Bad(t *T) {
 	r := CreateTemp(Path(t.TempDir(), "missing"), "agent-*")
 
 	AssertFalse(t, r.OK)
+	AssertTrue(t, IsNotExist(r.Value.(error)))
+	sep := CreateTemp(t.TempDir(), "bad/pattern-*")
+	AssertFalse(t, sep.OK)
 }
 
 func TestOS_CreateTemp_Ugly(t *T) {
@@ -850,10 +1032,13 @@ func TestOS_Executable_Good(t *T) {
 
 func TestOS_Executable_Bad(t *T) {
 	// Executable takes no input that could be made invalid; the contract
-	// is that it resolves on supported platforms. Assert the stable shape.
+	// is that it resolves to a real on-disk binary on supported platforms.
 	r := Executable()
 
-	AssertNotEmpty(t, r.Value.(string))
+	AssertTrue(t, r.OK)
+	path := r.Value.(string)
+	AssertNotEmpty(t, path)
+	AssertTrue(t, Stat(path).OK)
 }
 
 func TestOS_Executable_Ugly(t *T) {
@@ -874,13 +1059,15 @@ func TestOS_ErrNotExist_Good(t *T) {
 }
 
 func TestOS_ErrNotExist_Bad(t *T) {
-	// A successful open carries no error to match against the sentinel.
+	// A successful open carries no error to match against the sentinel, and an
+	// unrelated error does not match ErrNotExist either.
 	path := Path(t.TempDir(), "present")
 	RequireTrue(t, WriteFile(path, nil, 0o644).OK)
 	r := Open(path)
 
 	RequireTrue(t, r.OK)
 	CloseStream(r.Value)
+	AssertFalse(t, Is(AnError, ErrNotExist))
 }
 
 func TestOS_ErrNotExist_Ugly(t *T) {
