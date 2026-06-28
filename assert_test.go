@@ -285,153 +285,211 @@ func assertOneMessage(t *T, st *stubT, want string) {
 	AssertContains(t, st.msgs[0], want)
 }
 
-func TestAssert_AssertEqualityFailures_Good(t *T) {
+func TestAssert_AssertEqual_Bad(t *T) {
 	st := assertStub(t)
 	AssertEqual(st, "expected", "actual")
 	assertOneMessage(t, st, "AssertEqual")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertNotEqual_Bad(t *T) {
+	st := assertStub(t)
 	AssertNotEqual(st, "same", "same")
 	assertOneMessage(t, st, "AssertNotEqual")
 }
 
-func TestAssert_AssertBooleanNilFailures_Bad(t *T) {
+func TestAssert_AssertTrue_Bad(t *T) {
 	st := assertStub(t)
 	AssertTrue(st, false)
 	assertOneMessage(t, st, "AssertTrue")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertFalse_Bad(t *T) {
+	st := assertStub(t)
 	AssertFalse(st, true)
 	assertOneMessage(t, st, "AssertFalse")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertNil_Bad(t *T) {
+	st := assertStub(t)
 	AssertNil(st, 42)
 	assertOneMessage(t, st, "AssertNil")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertNotNil_Bad(t *T) {
+	st := assertStub(t)
 	AssertNotNil(st, nil)
 	assertOneMessage(t, st, "AssertNotNil")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertNoError_Bad(t *T) {
+	st := assertStub(t)
 	AssertNoError(st, AnError)
 	assertOneMessage(t, st, "AssertNoError")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertError_Bad(t *T) {
+	st := assertStub(t)
 	AssertError(st, nil)
 	assertOneMessage(t, st, "AssertError")
 }
 
-func TestAssert_AssertCollectionFailures_Ugly(t *T) {
+func TestAssert_AssertError_Ugly(t *T) {
+	// Error present, but the required substring is missing.
 	st := assertStub(t)
 	AssertError(st, AnError, "missing")
 	assertOneMessage(t, st, "want-substring")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertContains_Bad(t *T) {
+	st := assertStub(t)
 	AssertContains(st, "agent", "missing")
 	assertOneMessage(t, st, "AssertContains")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertNotContains_Bad(t *T) {
+	st := assertStub(t)
 	AssertNotContains(st, "agent", "gen")
 	assertOneMessage(t, st, "AssertNotContains")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertLen_Bad(t *T) {
+	st := assertStub(t)
 	AssertLen(st, []string{"agent"}, 2)
 	assertOneMessage(t, st, "AssertLen")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertLen_Ugly(t *T) {
+	// A kind that has no length.
+	st := assertStub(t)
 	AssertLen(st, 42, 1)
 	assertOneMessage(t, st, "unsupported kind")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertEmpty_Bad(t *T) {
+	st := assertStub(t)
 	AssertEmpty(st, "agent")
 	assertOneMessage(t, st, "AssertEmpty")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertNotEmpty_Bad(t *T) {
+	st := assertStub(t)
 	AssertNotEmpty(st, "")
 	assertOneMessage(t, st, "AssertNotEmpty")
 }
 
-func TestAssert_AssertOrderingFailures_Good(t *T) {
+func TestAssert_AssertGreater_Bad(t *T) {
+	st := assertStub(t)
+	AssertGreater(st, 1, 2)
+	assertOneMessage(t, st, "AssertGreater")
+}
+
+func TestAssert_AssertGreater_Ugly(t *T) {
+	// Incomparable operands.
 	st := assertStub(t)
 	AssertGreater(st, struct{}{}, struct{}{})
 	assertOneMessage(t, st, "incomparable got")
+}
 
-	st = assertStub(t)
-	AssertGreater(st, 1, 2)
-	assertOneMessage(t, st, "AssertGreater")
-
-	st = assertStub(t)
-	AssertGreaterOrEqual(st, struct{}{}, struct{}{})
-	assertOneMessage(t, st, "AssertGreaterOrEqual")
-
-	st = assertStub(t)
+func TestAssert_AssertGreaterOrEqual_Bad(t *T) {
+	st := assertStub(t)
 	AssertGreaterOrEqual(st, 1, 2)
 	assertOneMessage(t, st, "want>=")
+}
 
-	st = assertStub(t)
-	AssertLess(st, struct{}{}, struct{}{})
-	assertOneMessage(t, st, "AssertLess")
+func TestAssert_AssertGreaterOrEqual_Ugly(t *T) {
+	// Incomparable operands.
+	st := assertStub(t)
+	AssertGreaterOrEqual(st, struct{}{}, struct{}{})
+	assertOneMessage(t, st, "AssertGreaterOrEqual")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertLess_Bad(t *T) {
+	st := assertStub(t)
 	AssertLess(st, 2, 1)
 	assertOneMessage(t, st, "want<")
+}
 
-	st = assertStub(t)
-	AssertLessOrEqual(st, struct{}{}, struct{}{})
-	assertOneMessage(t, st, "AssertLessOrEqual")
+func TestAssert_AssertLess_Ugly(t *T) {
+	// Incomparable operands.
+	st := assertStub(t)
+	AssertLess(st, struct{}{}, struct{}{})
+	assertOneMessage(t, st, "AssertLess")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertLessOrEqual_Bad(t *T) {
+	st := assertStub(t)
 	AssertLessOrEqual(st, 2, 1)
 	assertOneMessage(t, st, "want<=")
 }
 
-func TestAssert_AssertPanicFailures_Bad(t *T) {
+func TestAssert_AssertLessOrEqual_Ugly(t *T) {
+	// Incomparable operands.
+	st := assertStub(t)
+	AssertLessOrEqual(st, struct{}{}, struct{}{})
+	assertOneMessage(t, st, "AssertLessOrEqual")
+}
+
+func TestAssert_AssertPanics_Bad(t *T) {
 	st := assertStub(t)
 	AssertPanics(st, func() {})
 	assertOneMessage(t, st, "normal-return")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertNotPanics_Bad(t *T) {
+	st := assertStub(t)
 	AssertNotPanics(st, func() { panic("agent failed") })
 	assertOneMessage(t, st, "got panic")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertPanicsWithError_Bad(t *T) {
+	st := assertStub(t)
 	AssertPanicsWithError(st, "agent failed", func() {})
 	assertOneMessage(t, st, "normal-return")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertPanicsWithError_Ugly(t *T) {
+	// Panics, but with the wrong error text.
+	st := assertStub(t)
 	AssertPanicsWithError(st, "agent failed", func() { panic("other failure") })
 	assertOneMessage(t, st, "want-substring")
 }
 
-func TestAssert_AssertPointerSliceFailures_Ugly(t *T) {
+func TestAssert_AssertErrorIs_Bad(t *T) {
 	st := assertStub(t)
 	AssertErrorIs(st, AnError, NewError("different"))
 	assertOneMessage(t, st, "AssertErrorIs")
+}
 
-	st = assertStub(t)
-	AssertInDelta(st, NaN(), 1, 0.1)
-	assertOneMessage(t, st, "NaN involved want")
-
-	st = assertStub(t)
+func TestAssert_AssertInDelta_Bad(t *T) {
+	st := assertStub(t)
 	AssertInDelta(st, 1, 2, 0.1)
 	assertOneMessage(t, st, "actual-diff")
+}
 
+func TestAssert_AssertInDelta_Ugly(t *T) {
+	// A NaN operand can't be compared against a delta.
+	st := assertStub(t)
+	AssertInDelta(st, NaN(), 1, 0.1)
+	assertOneMessage(t, st, "NaN involved want")
+}
+
+func TestAssert_AssertSame_Bad(t *T) {
 	left := 1
 	right := 1
-
-	st = assertStub(t)
-	AssertSame(st, 1, 1)
-	assertOneMessage(t, st, "both args must be pointers")
-
-	st = assertStub(t)
+	st := assertStub(t)
 	AssertSame(st, &left, &right)
 	assertOneMessage(t, st, "AssertSame")
+}
 
-	st = assertStub(t)
-	AssertElementsMatch(st, 1, []int{1})
-	assertOneMessage(t, st, "both args must be slices")
+func TestAssert_AssertSame_Ugly(t *T) {
+	// Non-pointer operands.
+	st := assertStub(t)
+	AssertSame(st, 1, 1)
+	assertOneMessage(t, st, "both args must be pointers")
+}
 
-	st = assertStub(t)
+func TestAssert_AssertElementsMatch_Bad(t *T) {
+	st := assertStub(t)
 	AssertElementsMatch(st, []int{1}, []int{1, 2})
 	assertOneMessage(t, st, "len-mismatch")
 
@@ -440,18 +498,29 @@ func TestAssert_AssertPointerSliceFailures_Ugly(t *T) {
 	assertOneMessage(t, st, "missing element")
 }
 
-func TestAssert_RequireFailures_Good(t *T) {
+func TestAssert_AssertElementsMatch_Ugly(t *T) {
+	// Non-slice operands.
+	st := assertStub(t)
+	AssertElementsMatch(st, 1, []int{1})
+	assertOneMessage(t, st, "both args must be slices")
+}
+
+func TestAssert_RequireNoError_Bad(t *T) {
 	st := assertStub(t)
 	RequireNoError(st, AnError)
 	assertOneMessage(t, st, "RequireNoError")
 	AssertTrue(t, st.fatal)
+}
 
-	st = assertStub(t)
+func TestAssert_RequireTrue_Bad(t *T) {
+	st := assertStub(t)
 	RequireTrue(st, false)
 	assertOneMessage(t, st, "RequireTrue")
 	AssertTrue(t, st.fatal)
+}
 
-	st = assertStub(t)
+func TestAssert_RequireNotEmpty_Bad(t *T) {
+	st := assertStub(t)
 	RequireNotEmpty(st, "")
 	assertOneMessage(t, st, "RequireNotEmpty")
 	AssertTrue(t, st.fatal)
