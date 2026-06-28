@@ -70,42 +70,6 @@ func TestCore_New_WithService_Bad_FailingOption(t *T) {
 	AssertFalse(t, secondCalled, "second option should not run after first fails")
 }
 
-// --- Accessors ---
-
-func TestCore_Accessors_Good(t *T) {
-	c := New()
-	AssertNotNil(t, c.App())
-	AssertNotNil(t, c.Data())
-	AssertNotNil(t, c.Drive())
-	AssertNotNil(t, c.Fs())
-	AssertNotNil(t, c.Config())
-	AssertNotNil(t, c.Error())
-	AssertNotNil(t, c.Log())
-	AssertNotNil(t, c.Cli())
-	AssertNotNil(t, c.IPC())
-	AssertNotNil(t, c.I18n())
-	AssertEqual(t, c, c.Core())
-}
-
-func TestOptions_Accessor_Good(t *T) {
-	c := New(WithOptions(NewOptions(
-		Option{Key: "name", Value: "testapp"},
-		Option{Key: "port", Value: 8080},
-		Option{Key: "debug", Value: true},
-	)))
-	opts := c.Options()
-	AssertNotNil(t, opts)
-	AssertEqual(t, "testapp", opts.String("name"))
-	AssertEqual(t, 8080, opts.Int("port"))
-	AssertTrue(t, opts.Bool("debug"))
-}
-
-func TestOptions_Accessor_Nil(t *T) {
-	c := New()
-	// No options passed — Options() returns nil
-	AssertNil(t, c.Options())
-}
-
 // --- Core Error/Log Helpers ---
 
 func TestCore_LogError_Good(t *T) {
@@ -144,6 +108,7 @@ func TestCore_Must_Nil_Good(t *T) {
 
 func TestCore_RegistryOf_Good_Services(t *T) {
 	c := New(
+		WithCli(),
 		WithService(func(c *Core) Result {
 			return c.Service("alpha", Service{})
 		}),
@@ -151,8 +116,8 @@ func TestCore_RegistryOf_Good_Services(t *T) {
 			return c.Service("bravo", Service{})
 		}),
 	)
-	reg := c.RegistryOf("services")
-	// cli is auto-registered + our 2
+	reg := c.RegistryOf("services").Value.(*Registry[any])
+	// cli (via WithCli) + our 2
 	AssertTrue(t, reg.Has("alpha"))
 	AssertTrue(t, reg.Has("bravo"))
 	AssertTrue(t, reg.Has("cli"))
@@ -163,7 +128,7 @@ func TestCore_RegistryOf_Good_Commands(t *T) {
 	c.Command("deploy", Command{Action: func(_ Options) Result { return Result{OK: true} }})
 	c.Command("test", Command{Action: func(_ Options) Result { return Result{OK: true} }})
 
-	reg := c.RegistryOf("commands")
+	reg := c.RegistryOf("commands").Value.(*Registry[any])
 	AssertTrue(t, reg.Has("deploy"))
 	AssertTrue(t, reg.Has("test"))
 }
@@ -173,7 +138,7 @@ func TestCore_RegistryOf_Good_Actions(t *T) {
 	c.Action("process.run", func(_ Context, _ Options) Result { return Result{OK: true} })
 	c.Action("brain.recall", func(_ Context, _ Options) Result { return Result{OK: true} })
 
-	reg := c.RegistryOf("actions")
+	reg := c.RegistryOf("actions").Value.(*Registry[any])
 	AssertTrue(t, reg.Has("process.run"))
 	AssertTrue(t, reg.Has("brain.recall"))
 	AssertEqual(t, 2, reg.Len())
@@ -181,8 +146,8 @@ func TestCore_RegistryOf_Good_Actions(t *T) {
 
 func TestCore_RegistryOf_Bad_Unknown(t *T) {
 	c := New()
-	reg := c.RegistryOf("nonexistent")
-	AssertEqual(t, 0, reg.Len(), "unknown registry returns empty")
+	r := c.RegistryOf("nonexistent")
+	AssertFalse(t, r.OK, "unknown registry returns OK=false")
 }
 
 // --- RunResult ---
@@ -292,17 +257,17 @@ func TestCore_Core_App_Ugly(t *T) {
 }
 
 func TestCore_Core_Cli_Good(t *T) {
-	c := New()
+	c := New(WithCli())
 	AssertNotNil(t, c.Cli())
 }
 
 func TestCore_Core_Cli_Bad(t *T) {
-	c := New(WithServiceLock())
+	c := New(WithCli(), WithServiceLock())
 	AssertNotNil(t, c.Cli())
 }
 
 func TestCore_Core_Cli_Ugly(t *T) {
-	c := New()
+	c := New(WithCli())
 	c.Cli().SetOutput(NewBuffer())
 	AssertNotPanics(t, func() {
 		_ = c.Cli().Run()
@@ -466,6 +431,8 @@ func TestCore_Core_IPC_Bad(t *T) {
 
 func TestCore_Core_IPC_Ugly(t *T) {
 	c := New()
+	// Broadcasting through the IPC handle with no handlers is a no-op success.
+	AssertNotNil(t, c.IPC())
 	AssertTrue(t, c.ACTION(nil).OK)
 }
 
@@ -537,8 +504,14 @@ func TestCore_Core_Must_Ugly(t *T) {
 }
 
 func TestCore_Core_Options_Good(t *T) {
-	c := New(WithOption("name", "agent"))
+	c := New(WithOptions(NewOptions(
+		Option{Key: "name", Value: "agent"},
+		Option{Key: "port", Value: 8080},
+		Option{Key: "debug", Value: true},
+	)))
 	AssertEqual(t, "agent", c.Options().String("name"))
+	AssertEqual(t, 8080, c.Options().Int("port"))
+	AssertTrue(t, c.Options().Bool("debug"))
 }
 
 func TestCore_Core_Options_Bad(t *T) {
@@ -615,26 +588,26 @@ func TestCore_Core_RegistryOf_Good(t *T) {
 	c := New()
 	c.Action("agent.dispatch", func(_ Context, _ Options) Result { return Result{OK: true} })
 
-	reg := c.RegistryOf("actions")
+	reg := c.RegistryOf("actions").Value.(*Registry[any])
 
 	AssertTrue(t, reg.Has("agent.dispatch"))
 }
 
 func TestCore_Core_RegistryOf_Bad(t *T) {
-	reg := New().RegistryOf("missing")
-	AssertEqual(t, 0, reg.Len())
+	AssertFalse(t, New().RegistryOf("missing").OK)
 }
 
 func TestCore_Core_RegistryOf_Ugly(t *T) {
 	c := New()
-	reg := c.RegistryOf("actions")
+	// Snapshot taken before the action is registered does not see it.
+	reg := c.RegistryOf("actions").Value.(*Registry[any])
 	c.Action("agent.dispatch", func(_ Context, _ Options) Result { return Result{OK: true} })
 
 	AssertFalse(t, reg.Has("agent.dispatch"))
 }
 
 func TestCore_Core_Run_Good(t *T) {
-	c := New()
+	c := New(WithCli())
 	c.Cli().SetOutput(NewBuffer())
 	AssertNotPanics(t, func() {
 		c.Run()
@@ -642,7 +615,7 @@ func TestCore_Core_Run_Good(t *T) {
 }
 
 func TestCore_Core_Run_Bad(t *T) {
-	c := New(WithService(func(c *Core) Result {
+	c := New(WithCli(), WithService(func(c *Core) Result {
 		return c.Service("agent", Service{OnStart: func() Result { return Result{OK: true} }})
 	}))
 	c.Cli().SetOutput(NewBuffer())
@@ -652,7 +625,7 @@ func TestCore_Core_Run_Bad(t *T) {
 }
 
 func TestCore_Core_Run_Ugly(t *T) {
-	c := New()
+	c := New(WithCli())
 	c.Cli().SetOutput(NewBuffer())
 	AssertNotPanics(t, func() {
 		c.Run()
@@ -660,7 +633,7 @@ func TestCore_Core_Run_Ugly(t *T) {
 }
 
 func TestCore_Core_RunResult_Good(t *T) {
-	c := New()
+	c := New(WithCli())
 	c.Cli().SetOutput(NewBuffer())
 	AssertTrue(t, c.RunResult().OK)
 }
