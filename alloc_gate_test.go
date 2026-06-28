@@ -32,6 +32,7 @@ var (
 	gateBytes  []byte
 	gateResult Result
 	gateAny    any
+	gateDiags  []LSPDiagnostic
 )
 
 func TestAllocs_HotPrimitives(t *T) {
@@ -101,4 +102,18 @@ func TestAllocs_HotPrimitives(t *T) {
 		avg := int(testing.AllocsPerRun(1000, c.fn))
 		AssertLessOrEqual(t, avg, c.ceiling, c.name)
 	}
+}
+
+// TestAllocs_LSPComputeDiagnostics locks the regex-hoist win (c1cf230):
+// with per-call regexp.Compile it allocated ~186/call; compiling the
+// naming-diagnostic patterns once dropped it to ~47. A regression to
+// per-call compilation jumps back over 100, so the ceiling catches it.
+func TestAllocs_LSPComputeDiagnostics(t *T) {
+	uri := "file:///agent/worker.go"
+	content := []byte("package worker\n\nfunc process(in string) (string, error) {\n\treturn in, nil\n}\n")
+	LSPComputeDiagnostics(uri, content) // warm the per-dir cache → measure steady state
+	avg := int(testing.AllocsPerRun(200, func() {
+		gateDiags = LSPComputeDiagnostics(uri, content)
+	}))
+	AssertLessOrEqual(t, avg, 70, "LSPComputeDiagnostics")
 }
