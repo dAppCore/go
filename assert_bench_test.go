@@ -210,3 +210,20 @@ func BenchmarkRequireNotEmpty(b *B) {
 		RequireNotEmpty(b, "x")
 	}
 }
+
+// Typed comparisons drive the uint64 / float64 branches of the ordering
+// helpers (assertCmpUint64 / assertCmpFloat64).
+
+func BenchmarkAssertGreater_Uint64(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		AssertGreater(b, uint64(5), uint64(3))
+	}
+}
+
+func BenchmarkAssertGreater_Float64(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		AssertGreater(b, 5.0, 3.0)
+	}
+}
