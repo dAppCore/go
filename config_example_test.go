@@ -206,15 +206,6 @@ func ExampleConfig_Group() {
 	// localhost
 }
 
-// ExampleCore_Feature toggles a feature flag through a keyed handle from
-// `Core.Feature`.
-func ExampleCore_Feature() {
-	c := New()
-	c.Feature("dark-mode").Enable()
-	Println(c.Feature("dark-mode").Enabled())
-	// Output: true
-}
-
 // ExampleConfigVar_Get reads a typed config var through `ConfigVar.Get`.
 func ExampleConfigVar_Get() {
 	v := NewConfigVar("https://api.lthn.ai")
