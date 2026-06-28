@@ -260,6 +260,54 @@ func BenchmarkNewHTTPTestTLSServer(b *B) {
 	}
 }
 
+// --- remote-endpoint surface (Drive + protocol resolution) ---
+//
+// A mock protocol factory stands in for a live transport so these bench
+// the resolve + scheme-extraction + call dispatch path, not the network.
+// HTTPListenAndServe is omitted — it blocks serving until shut down.
+
+var apiSinkResult Result
+
+func apiRemoteFixture() *Core {
+	c := New()
+	c.API().RegisterProtocol("http", mockFactory("pong"))
+	c.Drive().New(NewOptions(
+		Option{Key: "name", Value: "charon"},
+		Option{Key: "transport", Value: "http://127.0.0.1:9101/mcp"},
+	))
+	return c
+}
+
+func BenchmarkAPI_Stream(b *B) {
+	c := apiRemoteFixture()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		r := c.API().Stream("charon")
+		if r.OK {
+			r.Value.(Stream).Close()
+		}
+	}
+}
+
+func BenchmarkAPI_Call(b *B) {
+	c := apiRemoteFixture()
+	opts := NewOptions()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		apiSinkResult = c.API().Call("charon", "agentic.status", opts)
+	}
+}
+
+func BenchmarkCore_RemoteAction(b *B) {
+	c := apiRemoteFixture()
+	ctx := Background()
+	opts := NewOptions()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		apiSinkResult = c.RemoteAction("charon:agentic.status", ctx, opts)
+	}
+}
+
 // HTTPListenAndServe + RemoteAction are not benched — they bind a real
 // socket / make a real outbound HTTP call. A unit-bench cannot do that
 // deterministically. They are exercised end-to-end in api_test.go.
