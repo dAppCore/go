@@ -425,3 +425,13 @@ func BenchmarkCutSuffix_Miss(b *B) {
 		_, _ = CutSuffix(s, ".go")
 	}
 }
+
+var stringSinkClone string
+
+func BenchmarkClone(b *B) {
+	s := "agent-ready-payload"
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		stringSinkClone = Clone(s)
+	}
+}

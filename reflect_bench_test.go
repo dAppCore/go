@@ -165,3 +165,20 @@ func BenchmarkReflect_CopyValue_Int(b *B) {
 		reflectSinkInt = CopyValue(dst, src)
 	}
 }
+
+func BenchmarkReflect_MakeMapWithSize(b *B) {
+	t := TypeFor[map[string]int]()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		reflectSinkValue = MakeMapWithSize(t, 8)
+	}
+}
+
+func BenchmarkReflect_MakeFunc(b *B) {
+	t := TypeFor[func()]()
+	fn := func(args []Value) []Value { return nil }
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		reflectSinkValue = MakeFunc(t, fn)
+	}
+}

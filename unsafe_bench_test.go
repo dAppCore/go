@@ -212,3 +212,41 @@ func BenchmarkPinSlice_Empty(b *B) {
 		view.Release()
 	}
 }
+
+var (
+	pinSinkInt  int
+	pinSinkBool bool
+)
+
+func BenchmarkPinnedView_Len(b *B) {
+	slice := []int32{1, 2, 3, 4}
+	var view PinnedView
+	PinSlice(slice, &view)
+	defer view.Release()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		pinSinkInt = view.Len()
+	}
+}
+
+func BenchmarkPinnedView_Bytes(b *B) {
+	slice := []int32{1, 2, 3, 4}
+	var view PinnedView
+	PinSlice(slice, &view)
+	defer view.Release()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		pinSinkInt = view.Bytes()
+	}
+}
+
+func BenchmarkPinnedView_Active(b *B) {
+	slice := []int32{1, 2, 3, 4}
+	var view PinnedView
+	PinSlice(slice, &view)
+	defer view.Release()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		pinSinkBool = view.Active()
+	}
+}
