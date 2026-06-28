@@ -526,4 +526,307 @@ func TestAssert_RequireNotEmpty_Bad(t *T) {
 	AssertTrue(t, st.fatal)
 }
 
+// --- pass-path Good/Ugly: a valid (or edge-but-valid) call records no failure ---
+
+func TestAssert_AssertEqual_Good(t *T) {
+	st := assertStub(t)
+	AssertEqual(st, "agent", "agent")
+	AssertEqual(st, 42, 42)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertEqual_Ugly(t *T) {
+	// Deep equality of composite values passes.
+	st := assertStub(t)
+	AssertEqual(st, []int{1, 2}, []int{1, 2})
+	AssertEqual(st, map[string]int{"a": 1}, map[string]int{"a": 1})
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNotEqual_Good(t *T) {
+	st := assertStub(t)
+	AssertNotEqual(st, "a", "b")
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNotEqual_Ugly(t *T) {
+	// Composites that differ in one element are unequal.
+	st := assertStub(t)
+	AssertNotEqual(st, []int{1, 2}, []int{1, 3})
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertTrue_Good(t *T) {
+	st := assertStub(t)
+	AssertTrue(st, true)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertTrue_Ugly(t *T) {
+	// A computed condition that evaluates true passes.
+	st := assertStub(t)
+	AssertTrue(st, len("xy") == 2)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertFalse_Good(t *T) {
+	st := assertStub(t)
+	AssertFalse(st, false)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertFalse_Ugly(t *T) {
+	st := assertStub(t)
+	AssertFalse(st, len("") > 0)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNil_Good(t *T) {
+	st := assertStub(t)
+	AssertNil(st, nil)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNil_Ugly(t *T) {
+	// Typed nils of pointer, slice and map kinds all read as nil.
+	st := assertStub(t)
+	var p *int
+	var s []int
+	var m map[string]int
+	AssertNil(st, p)
+	AssertNil(st, s)
+	AssertNil(st, m)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNotNil_Good(t *T) {
+	st := assertStub(t)
+	AssertNotNil(st, "x")
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNotNil_Ugly(t *T) {
+	// A non-nil pointer is not nil.
+	st := assertStub(t)
+	x := 1
+	AssertNotNil(st, &x)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNoError_Good(t *T) {
+	st := assertStub(t)
+	AssertNoError(st, nil)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNoError_Ugly(t *T) {
+	// A nil error returned from a call is no error.
+	st := assertStub(t)
+	AssertNoError(st, func() error { return nil }())
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertError_Good(t *T) {
+	st := assertStub(t)
+	AssertError(st, AnError)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertContains_Good(t *T) {
+	st := assertStub(t)
+	AssertContains(st, "agent", "gen")
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertContains_Ugly(t *T) {
+	// The empty substring is contained in any string.
+	st := assertStub(t)
+	AssertContains(st, "agent", "")
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNotContains_Good(t *T) {
+	st := assertStub(t)
+	AssertNotContains(st, "agent", "xyz")
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNotContains_Ugly(t *T) {
+	// Containment is case-sensitive.
+	st := assertStub(t)
+	AssertNotContains(st, "Agent", "agent")
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertLen_Good(t *T) {
+	st := assertStub(t)
+	AssertLen(st, []int{1, 2, 3}, 3)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertEmpty_Good(t *T) {
+	st := assertStub(t)
+	AssertEmpty(st, "")
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertEmpty_Ugly(t *T) {
+	// Nil and zero-length containers are empty.
+	st := assertStub(t)
+	var s []int
+	AssertEmpty(st, s)
+	AssertEmpty(st, map[string]int{})
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNotEmpty_Good(t *T) {
+	st := assertStub(t)
+	AssertNotEmpty(st, "x")
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNotEmpty_Ugly(t *T) {
+	// A slice holding a zero value is still non-empty.
+	st := assertStub(t)
+	AssertNotEmpty(st, []int{0})
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertGreater_Good(t *T) {
+	st := assertStub(t)
+	AssertGreater(st, 2, 1)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertGreaterOrEqual_Good(t *T) {
+	st := assertStub(t)
+	AssertGreaterOrEqual(st, 2, 2)
+	AssertGreaterOrEqual(st, 3, 2)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertLess_Good(t *T) {
+	st := assertStub(t)
+	AssertLess(st, 1, 2)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertLessOrEqual_Good(t *T) {
+	st := assertStub(t)
+	AssertLessOrEqual(st, 2, 2)
+	AssertLessOrEqual(st, 1, 2)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertPanics_Good(t *T) {
+	st := assertStub(t)
+	AssertPanics(st, func() { panic("boom") })
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertPanics_Ugly(t *T) {
+	// A panic with a non-string value still counts as a panic.
+	st := assertStub(t)
+	AssertPanics(st, func() { panic(42) })
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNotPanics_Good(t *T) {
+	st := assertStub(t)
+	AssertNotPanics(st, func() {})
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertNotPanics_Ugly(t *T) {
+	// A function doing real work without panicking passes.
+	st := assertStub(t)
+	AssertNotPanics(st, func() { _ = make([]int, 16) })
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertPanicsWithError_Good(t *T) {
+	st := assertStub(t)
+	AssertPanicsWithError(st, "boom", func() { panic("boom") })
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertErrorIs_Good(t *T) {
+	st := assertStub(t)
+	AssertErrorIs(st, AnError, AnError)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertErrorIs_Ugly(t *T) {
+	// Is traverses a wrapped error chain to find the sentinel.
+	st := assertStub(t)
+	wrapped := E("op", "wrapped", AnError)
+	AssertErrorIs(st, wrapped, AnError)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertInDelta_Good(t *T) {
+	st := assertStub(t)
+	AssertInDelta(st, 1.0, 1.05, 0.1)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertSame_Good(t *T) {
+	st := assertStub(t)
+	x := 1
+	AssertSame(st, &x, &x)
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertElementsMatch_Good(t *T) {
+	// Same elements in a different order match.
+	st := assertStub(t)
+	AssertElementsMatch(st, []int{1, 2, 3}, []int{3, 1, 2})
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_RequireNoError_Good(t *T) {
+	st := assertStub(t)
+	RequireNoError(st, nil)
+	AssertEmpty(t, st.msgs)
+	AssertFalse(t, st.fatal)
+}
+
+func TestAssert_RequireNoError_Ugly(t *T) {
+	// A nil error interface value is no error.
+	st := assertStub(t)
+	var err error
+	RequireNoError(st, err)
+	AssertEmpty(t, st.msgs)
+	AssertFalse(t, st.fatal)
+}
+
+func TestAssert_RequireTrue_Good(t *T) {
+	st := assertStub(t)
+	RequireTrue(st, true)
+	AssertEmpty(t, st.msgs)
+	AssertFalse(t, st.fatal)
+}
+
+func TestAssert_RequireTrue_Ugly(t *T) {
+	st := assertStub(t)
+	RequireTrue(st, len([]int{1, 2}) == 2)
+	AssertEmpty(t, st.msgs)
+	AssertFalse(t, st.fatal)
+}
+
+func TestAssert_RequireNotEmpty_Good(t *T) {
+	st := assertStub(t)
+	RequireNotEmpty(st, "x")
+	AssertEmpty(t, st.msgs)
+	AssertFalse(t, st.fatal)
+}
+
+func TestAssert_RequireNotEmpty_Ugly(t *T) {
+	// A non-string container that is non-empty passes.
+	st := assertStub(t)
+	RequireNotEmpty(st, []string{"x"})
+	AssertEmpty(t, st.msgs)
+	AssertFalse(t, st.fatal)
+}
+
 // assertCompareMixedKinds cases folded into TestAssert_assertCompare_{Good,Ugly}.
