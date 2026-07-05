@@ -23,6 +23,23 @@ func Coalesce[T comparable](vals ...T) T {
 	return zero
 }
 
+// FirstNonBlank returns the first value whose trimmed form is non-empty — a
+// whitespace-only string ("   ") counts as blank and falls through — returning
+// the ORIGINAL untrimmed value, or "" when every value is blank. The
+// whitespace-aware sibling of Coalesce for the "first meaningful string" pattern,
+// where a blank field should defer to the next fallback.
+//
+//	title := core.FirstNonBlank(userTitle, cfg.Title, "untitled")
+func FirstNonBlank(vals ...string) string {
+	for _, v := range vals {
+		// The v != "" fast path skips the Trim call for the common empty arg.
+		if v != "" && Trim(v) != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 // FirstPositive returns the first value strictly greater than the zero value, or
 // the zero value when none is — the numeric fallback chain (a value of 0 means
 // "unset, try the next"). For numbers this reads as "first positive"; the

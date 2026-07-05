@@ -31,3 +31,16 @@ func TestCoalesce_FirstPositive_Ugly(t *T) {
 	// negatives are skipped (unlike Coalesce, which treats a negative as non-zero)
 	AssertEqual(t, 5, FirstPositive(-1, 0, 5))
 }
+
+func TestCoalesce_FirstNonBlank_Good(t *T) {
+	AssertEqual(t, "real", FirstNonBlank("", "  ", "real"))
+}
+
+func TestCoalesce_FirstNonBlank_Bad(t *T) {
+	AssertEqual(t, "", FirstNonBlank("", "   ", "\t\n"))
+}
+
+func TestCoalesce_FirstNonBlank_Ugly(t *T) {
+	// whitespace-only falls through; the ORIGINAL untrimmed value is returned
+	AssertEqual(t, "  padded  ", FirstNonBlank("   ", "  padded  "))
+}
