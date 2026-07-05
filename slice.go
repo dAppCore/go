@@ -8,6 +8,17 @@ import (
 	"slices"
 )
 
+// SliceEqual reports whether a and b have the same length and equal elements in
+// the same order — the core surface for the common "are these two slices the
+// same" check, replacing the hand-rolled sameIntSlice/bytesEqual/int32SlicesEqual
+// helpers across consumers.
+//
+//	core.SliceEqual([]int{1, 2}, []int{1, 2}) // true
+//	core.SliceEqual([]byte("ab"), []byte("ac")) // false
+func SliceEqual[T comparable](a, b []T) bool {
+	return slices.Equal(a, b)
+}
+
 // SliceContains reports whether s contains v.
 //
 //	ok := core.SliceContains([]string{"a", "b"}, "b")

@@ -16,6 +16,20 @@ func TestSlice_SliceContains_Ugly(t *T) {
 	AssertFalse(t, SliceContains([]int(nil), 0))
 }
 
+func TestSlice_SliceEqual_Good(t *T) {
+	AssertTrue(t, SliceEqual([]int{1, 2, 3}, []int{1, 2, 3}))
+}
+
+func TestSlice_SliceEqual_Bad(t *T) {
+	AssertFalse(t, SliceEqual([]int{1, 2, 3}, []int{1, 2, 4}))
+}
+
+func TestSlice_SliceEqual_Ugly(t *T) {
+	// different lengths are unequal; nil and empty are equal
+	AssertFalse(t, SliceEqual([]byte("ab"), []byte("abc")))
+	AssertTrue(t, SliceEqual([]int(nil), []int{}))
+}
+
 func TestSlice_SliceIndex_Good(t *T) {
 	AssertEqual(t, 1, SliceIndex([]string{"a", "b"}, "b"))
 }
