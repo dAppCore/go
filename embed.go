@@ -597,8 +597,8 @@ func Extract(fsys FS, targetDir string, data any, opts ...ExtractOptions) Result
 		}
 		return nil
 	})
-	if walk != nil {
-		return Result{Value: WrapCode(walk, "embed.walk.failed", "Extract", "directory walk failed"), OK: false}
+	if !walk.OK {
+		return walk
 	}
 
 	// safePath ensures a rendered path stays under targetDir.

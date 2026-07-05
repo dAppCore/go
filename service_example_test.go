@@ -80,7 +80,7 @@ func ExampleCore_Services() {
 	c.Service("cache", Service{})
 	c.Service("worker", Service{})
 	Println(c.Services())
-	// Output: [cli cache worker]
+	// Output: [cache worker]
 }
 
 // ExampleWithService injects a service through `WithService` for service registration.

@@ -278,7 +278,7 @@ func ExampleSanitisePath() {
 // --- Command ---
 
 func ExampleCore_Command() {
-	c := New()
+	c := New(WithCli())
 	c.Command("deploy/to/homelab", Command{
 		Action: func(opts Options) Result {
 			return Result{Value: Concat("deployed to ", opts.String("_arg")), OK: true}

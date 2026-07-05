@@ -74,7 +74,12 @@ func (c *Core) Fs() *Fs { return c.fs }
 //
 //	host := c.Config().String("database.host")
 //	c.Config().Enable("dark-mode")
-func (c *Core) Config() *Config { return c.config }
+func (c *Core) Config(group ...string) *Config {
+	if len(group) > 0 && group[0] != "" {
+		return c.config.Group(group[0])
+	}
+	return c.config
+}
 
 // Feature returns a handle to the named feature flag, backed by this Core's
 // Config — the convenience accessor behind the c.Feature("name").Enabled()
@@ -272,18 +277,18 @@ func (c *Core) Must(err error, op, msg string) {
 //	c.RegistryOf("services").Names()           // all service names
 //	c.RegistryOf("actions").List("process.*")  // process capabilities
 //	c.RegistryOf("commands").Len()             // command count
-func (c *Core) RegistryOf(name string) *Registry[any] {
+func (c *Core) RegistryOf(name string) Result {
 	// Bridge typed registries to untyped access for cross-cutting queries.
 	// Each registry is wrapped in a read-only proxy.
 	switch name {
 	case "services":
-		return registryProxy(c.services.Registry)
+		return Result{Value: registryProxy(c.services.Registry), OK: true}
 	case "commands":
-		return registryProxy(c.commands.Registry)
+		return Result{Value: registryProxy(c.commands.Registry), OK: true}
 	case "actions":
-		return registryProxy(c.ipc.actions)
+		return Result{Value: registryProxy(c.ipc.actions), OK: true}
 	default:
-		return NewRegistry[any]() // empty registry for unknown names
+		return Result{Value: NewRegistry[any](), OK: false} // unknown name
 	}
 }
 

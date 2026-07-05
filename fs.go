@@ -287,12 +287,12 @@ func (m *Fs) WriteMode(p, content string, mode FileMode) Result {
 //
 //	dir := fs.TempDir("agent-workspace")
 //	defer fs.DeleteAll(dir)
-func (m *Fs) TempDir(prefix string) string {
+func (m *Fs) TempDir(prefix string) Result {
 	r := MkdirTemp("", prefix)
 	if !r.OK {
-		return ""
+		return Result{Value: Wrap(r.Value.(error), "fs.TempDir", "temp dir creation failed"), OK: false}
 	}
-	return r.Value.(string)
+	return r
 }
 
 // ReadDir reads a directory from fsys.
@@ -327,8 +327,11 @@ func Sub(fsys FS, dir string) Result {
 // WalkDir walks fsys from root, calling fn for each file or directory.
 //
 //	err := core.WalkDir(core.DirFS("templates"), ".", fn)
-func WalkDir(fsys FS, root string, fn WalkDirFunc) error {
-	return fs.WalkDir(fsys, root, fn)
+func WalkDir(fsys FS, root string, fn WalkDirFunc) Result {
+	if err := fs.WalkDir(fsys, root, fn); err != nil {
+		return Result{Value: err, OK: false}
+	}
+	return Result{OK: true}
 }
 
 // WriteAtomic writes content by writing to a temp file then renaming.
@@ -377,52 +380,52 @@ func (m *Fs) EnsureDir(p string) Result {
 //
 //	fsys := (&core.Fs{}).New("/tmp/agent-workspace")
 //	if fsys.IsDir("logs") { core.Println("logs ready") }
-func (m *Fs) IsDir(p string) bool {
+func (m *Fs) IsDir(p string) Result {
 	if p == "" {
-		return false
+		return Result{OK: false}
 	}
 	vp := m.validatePath(p)
 	if !vp.OK {
-		return false
+		return Result{OK: false}
 	}
 	r := Stat(vp.Value.(string))
 	if !r.OK {
-		return false
+		return Result{OK: false}
 	}
 	info := r.Value.(interface{ IsDir() bool })
-	return info.IsDir()
+	return Result{OK: info.IsDir()}
 }
 
 // IsFile returns true if path is a regular file.
 //
 //	fsys := (&core.Fs{}).New("/tmp/agent-workspace")
 //	if fsys.IsFile("config/agent.json") { core.Println("config ready") }
-func (m *Fs) IsFile(p string) bool {
+func (m *Fs) IsFile(p string) Result {
 	if p == "" {
-		return false
+		return Result{OK: false}
 	}
 	vp := m.validatePath(p)
 	if !vp.OK {
-		return false
+		return Result{OK: false}
 	}
 	r := Stat(vp.Value.(string))
 	if !r.OK {
-		return false
+		return Result{OK: false}
 	}
 	info := r.Value.(interface{ Mode() FileMode })
-	return info.Mode().IsRegular()
+	return Result{OK: info.Mode().IsRegular()}
 }
 
 // Exists returns true if path exists.
 //
 //	fsys := (&core.Fs{}).New("/tmp/agent-workspace")
 //	if fsys.Exists("config/agent.json") { core.Println("config present") }
-func (m *Fs) Exists(p string) bool {
+func (m *Fs) Exists(p string) Result {
 	vp := m.validatePath(p)
 	if !vp.OK {
-		return false
+		return Result{OK: false}
 	}
-	return Stat(vp.Value.(string)).OK
+	return Result{OK: Stat(vp.Value.(string)).OK}
 }
 
 // List returns directory entries.

@@ -264,7 +264,7 @@ func TestData_Data_Extract_Ugly(t *T) {
 	target := Path(t.TempDir(), "nested", "workspace")
 	r := c.Data().Extract("agent/.", target, map[string]string{"Agent": "codex"})
 	AssertTrue(t, r.OK)
-	AssertTrue(t, (&Fs{}).New("/").Exists(Path(target, "test.txt")))
+	AssertTrue(t, (&Fs{}).New("/").Exists(Path(target, "test.txt")).OK)
 }
 
 func TestData_Data_Mounts_Good(t *T) {
