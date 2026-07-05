@@ -321,7 +321,7 @@ func decompress(input string) Result {
 
 func getAllFiles(dir string) Result {
 	var result []string
-	err := PathWalkDir(dir, func(path string, d FsDirEntry, err error) error {
+	walk := PathWalkDir(dir, func(path string, d FsDirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -330,8 +330,8 @@ func getAllFiles(dir string) Result {
 		}
 		return nil
 	})
-	if err != nil {
-		return Result{Value: WrapCode(err, "embed.walk.failed", "getAllFiles", "directory walk failed"), OK: false}
+	if !walk.OK {
+		return Result{Value: WrapCode(walk.Value.(error), "embed.walk.failed", "getAllFiles", "directory walk failed"), OK: false}
 	}
 	return Result{Value: result, OK: true}
 }
@@ -597,8 +597,8 @@ func Extract(fsys FS, targetDir string, data any, opts ...ExtractOptions) Result
 		}
 		return nil
 	})
-	if !walk.OK {
-		return walk
+	if walk != nil {
+		return Result{Value: WrapCode(walk, "embed.walk.failed", "Extract", "directory walk failed"), OK: false}
 	}
 
 	// safePath ensures a rendered path stays under targetDir.

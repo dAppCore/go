@@ -24,7 +24,7 @@ type Core struct {
 	// cli accessed via ServiceFor[*Cli](c, "cli")
 	commands *CommandRegistry // c.Command("path")  — Command tree
 	services *ServiceRegistry // c.Service("name")  — Service registry
-	lock     *Lock            // c.Lock("name")     — Named mutexes
+	locks    *Registry[*Lock] // c.Lock("name")     — Named mutexes
 	ipc      *Ipc             // c.IPC()            — Message bus for IPC
 	api      *API             // c.API()            — Remote streams
 	info     *SysInfo         // c.Env("key")        — Read-only system/environment information
@@ -75,6 +75,13 @@ func (c *Core) Fs() *Fs { return c.fs }
 //	host := c.Config().String("database.host")
 //	c.Config().Enable("dark-mode")
 func (c *Core) Config() *Config { return c.config }
+
+// Feature returns a handle to the named feature flag, backed by this Core's
+// Config — the convenience accessor behind the c.Feature("name").Enabled()
+// pattern (see the Feature type in config.go).
+//
+//	if c.Feature("dark-mode").Enabled() { core.Println("on") }
+func (c *Core) Feature(name string) Feature { return Feature{cfg: c.config, name: name} }
 
 // Error returns the panic recovery subsystem.
 //
@@ -144,7 +151,7 @@ func (c *Core) WithContext(ctx Context) *Core {
 		log:                c.log,
 		commands:           c.commands,
 		services:           c.services,
-		lock:               c.lock,
+		locks:              c.locks,
 		ipc:                c.ipc,
 		api:                c.api,
 		info:               c.info,

@@ -314,6 +314,6 @@ func BenchmarkCore_RemoteAction(b *B) {
 func BenchmarkHTTPListenAndServe(b *B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		apiSinkResult = HTTPListenAndServe("127.0.0.1:-1", nil)
+		apiSinkResult = Result{Value: HTTPListenAndServe("127.0.0.1:-1", nil)}
 	}
 }
