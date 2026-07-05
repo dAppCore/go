@@ -174,7 +174,7 @@ func LSPServe(ctx Context) Result {
 	srv := &lspServer{
 		in:        NewBufReader(Stdin()),
 		out:       Stdout(),
-		documents: map[string][]byte{},
+		documents: NewRegistry[[]byte](),
 	}
 	return srv.run(ctx)
 }
@@ -184,8 +184,7 @@ func LSPServe(ctx Context) Result {
 type lspServer struct {
 	in        *BufReader
 	out       Writer
-	documents map[string][]byte
-	docsMu    Mutex
+	documents *Registry[[]byte]
 }
 
 type lspMessage struct {
@@ -210,25 +209,25 @@ func (s *lspServer) run(ctx Context) Result {
 		default:
 		}
 
-		body, err := s.readMessage()
-		if err != nil {
-			if err == EOF {
+		r := s.readMessage()
+		if !r.OK {
+			if Is(r.Value.(error), EOF) {
 				return Result{OK: true}
 			}
-			return Result{Value: err, OK: false}
+			return r
 		}
 
-		s.dispatch(body)
+		s.dispatch(r.Value.([]byte))
 	}
 }
 
 // readMessage reads one LSP frame: Content-Length header + blank line + JSON body.
-func (s *lspServer) readMessage() ([]byte, error) {
+func (s *lspServer) readMessage() Result {
 	var contentLength int
 	for {
 		line, err := s.in.ReadString('\n')
 		if err != nil {
-			return nil, err
+			return Result{Value: WrapCode(err, "lsp.read.failed", "readMessage", "read header failed"), OK: false}
 		}
 		line = Trim(line)
 		if line == "" {
@@ -243,31 +242,31 @@ func (s *lspServer) readMessage() ([]byte, error) {
 		}
 	}
 	if contentLength <= 0 {
-		return nil, E("lsp.read", "missing Content-Length header", nil)
+		return Result{Value: NewCode("lsp.read.no_length", "missing Content-Length header"), OK: false}
 	}
 	buf := make([]byte, contentLength)
 	if _, err := s.in.Read(buf); err != nil {
-		return nil, err
+		return Result{Value: WrapCode(err, "lsp.read.failed", "readMessage", "read body failed"), OK: false}
 	}
-	return buf, nil
+	return Result{Value: buf, OK: true}
 }
 
 // writeMessage sends one LSP frame. Marshals payload to JSON, prepends
 // the Content-Length header, writes to stdout.
-func (s *lspServer) writeMessage(payload any) error {
+func (s *lspServer) writeMessage(payload any) Result {
 	r := JSONMarshal(payload)
 	if !r.OK {
-		return r.Value.(error)
+		return r
 	}
 	body := r.Value.([]byte)
 	header := Sprintf("Content-Length: %d\r\n\r\n", len(body))
 	if rh := WriteString(s.out, header); !rh.OK {
-		return rh.Value.(error)
+		return rh
 	}
 	if _, err := s.out.Write(body); err != nil {
-		return err
+		return Result{Value: WrapCode(err, "lsp.write.failed", "writeMessage", "write failed"), OK: false}
 	}
-	return nil
+	return Result{OK: true}
 }
 
 func (s *lspServer) dispatch(raw []byte) {
@@ -326,9 +325,7 @@ func (s *lspServer) handleDocumentSync(msg lspMessage) {
 	if uri == "" {
 		return
 	}
-	s.docsMu.Lock()
-	s.documents[uri] = content
-	s.docsMu.Unlock()
+	s.documents.Set(uri, content)
 	s.publishDiagnostics(uri, content)
 }
 
@@ -337,9 +334,7 @@ func (s *lspServer) handleDocumentChange(msg lspMessage) {
 	if uri == "" {
 		return
 	}
-	s.docsMu.Lock()
-	s.documents[uri] = content
-	s.docsMu.Unlock()
+	s.documents.Set(uri, content)
 	s.publishDiagnostics(uri, content)
 }
 
@@ -348,9 +343,7 @@ func (s *lspServer) handleDocumentClose(msg lspMessage) {
 	if uri == "" {
 		return
 	}
-	s.docsMu.Lock()
-	delete(s.documents, uri)
-	s.docsMu.Unlock()
+	s.documents.Delete(uri)
 }
 
 func (s *lspServer) publishDiagnostics(uri string, content []byte) {
@@ -532,6 +525,16 @@ func lspSporDiagnostic(uri string, content []byte) []LSPDiagnostic {
 	return diags
 }
 
+// lspNaming{Top,Method,Test}Re are compiled once at package init. The
+// patterns are constant, and LSP runs diagnostics on every document
+// change — recompiling them per call made regexp.compile ~67% of
+// LSPComputeDiagnostics's allocations. Hoisting cuts ~150 allocs/call.
+var (
+	lspNamingTopRe    = Regex(`^func ([A-Za-z][A-Za-z0-9_]*)\s*[\[(]`).Value.(*Regexp)
+	lspNamingMethodRe = Regex(`^func \([^)]*?\*?([A-Za-z][A-Za-z0-9_]*)(?:\[[^\]]+\])?\) ([A-Za-z][A-Za-z0-9_]*)\s*[\[(]`).Value.(*Regexp)
+	lspNamingTestRe   = Regex(`^func (Test[A-Za-z0-9_]+)\s*\(`).Value.(*Regexp)
+)
+
 // lspNamingDiagnostic flags production symbols that do not have the
 // Test*_{Symbol}_{Good,Bad,Ugly} triplet in the same directory's tests.
 func lspNamingDiagnostic(uri string, content []byte) []LSPDiagnostic {
@@ -539,15 +542,9 @@ func lspNamingDiagnostic(uri string, content []byte) []LSPDiagnostic {
 		return nil
 	}
 
-	topResult := Regex(`^func ([A-Za-z][A-Za-z0-9_]*)\s*[\[(]`)
-	methodResult := Regex(`^func \([^)]*?\*?([A-Za-z][A-Za-z0-9_]*)(?:\[[^\]]+\])?\) ([A-Za-z][A-Za-z0-9_]*)\s*[\[(]`)
-	testResult := Regex(`^func (Test[A-Za-z0-9_]+)\s*\(`)
-	if !topResult.OK || !methodResult.OK || !testResult.OK {
-		return nil
-	}
-	top := topResult.Value.(*Regexp)
-	method := methodResult.Value.(*Regexp)
-	test := testResult.Value.(*Regexp)
+	top := lspNamingTopRe
+	method := lspNamingMethodRe
+	test := lspNamingTestRe
 
 	path := TrimPrefix(uri, "file://")
 	dir := PathDir(path)

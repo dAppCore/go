@@ -173,3 +173,87 @@ func BenchmarkLog_LogErr_Log(b *B) {
 		logger.Log(err)
 	}
 }
+
+func BenchmarkLog_Debug(b *B) {
+	l := logBenchFixture(LevelDebug)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		l.Debug("processing", "agent", "codex")
+	}
+}
+
+func BenchmarkLog_Warn(b *B) {
+	l := logBenchFixture(LevelDebug)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		l.Warn("slow", "ms", 1200)
+	}
+}
+
+func BenchmarkLog_Error(b *B) {
+	l := logBenchFixture(LevelDebug)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		l.Error("failed", "code", "x")
+	}
+}
+
+func BenchmarkLogPanic_Recover(b *B) {
+	l := logBenchFixture(LevelError)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		func() {
+			defer NewLogPanic(l).Recover()
+			panic("bench")
+		}()
+	}
+}
+
+// quietPackageDefault swaps the package Default() logger for a Discard one
+// and returns a restore func — so the package-level log benches don't spam
+// stderr.
+func quietPackageDefault(b *B, level Level) func() {
+	prev := Default()
+	SetDefault(NewLog(LogOptions{Output: io.Discard, Level: level}))
+	return func() { SetDefault(prev) }
+}
+
+func BenchmarkSetLevel(b *B) {
+	defer quietPackageDefault(b, LevelInfo)()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		SetLevel(LevelInfo)
+	}
+}
+
+func BenchmarkSetRedactKeys(b *B) {
+	defer quietPackageDefault(b, LevelInfo)()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		SetRedactKeys("password", "token")
+	}
+}
+
+func BenchmarkDebug(b *B) {
+	defer quietPackageDefault(b, LevelDebug)()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		Debug("processing", "agent", "codex")
+	}
+}
+
+func BenchmarkWarn(b *B) {
+	defer quietPackageDefault(b, LevelDebug)()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		Warn("slow", "ms", 1200)
+	}
+}
+
+func BenchmarkError(b *B) {
+	defer quietPackageDefault(b, LevelDebug)()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		Error("failed", "code", "x")
+	}
+}

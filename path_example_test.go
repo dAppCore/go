@@ -68,7 +68,7 @@ func ExampleCleanPath() {
 // joins, cleanup, globbing, and extension changes use core wrappers.
 func ExamplePathGlob() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-path-example")
+	dir := MustCast[string](fs.TempDir("core-path-example"))
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "a.txt"), "a")
 	fs.Write(Path(dir, "b.txt"), "b")
@@ -109,4 +109,44 @@ func ExamplePathChangeExt() {
 	// Output:
 	// config.yaml
 	// README.md
+}
+
+// ExamplePathJoin joins elements with the OS separator through `PathJoin`.
+func ExamplePathJoin() {
+	Println(PathJoin("workspace", "agent", "readme.md"))
+	// Output: workspace/agent/readme.md
+}
+
+// ExamplePathMatch tests a name against a shell pattern through `PathMatch`.
+func ExamplePathMatch() {
+	Println(PathMatch("*.go", "agent.go").Value)
+	// Output: true
+}
+
+// ExamplePathToSlash converts OS separators to forward slashes through `PathToSlash`.
+func ExamplePathToSlash() {
+	Println(PathToSlash(PathJoin("a", "b")))
+	// Output: a/b
+}
+
+// ExamplePathEvalSymlinks resolves symlinks in a path through `PathEvalSymlinks`.
+func ExamplePathEvalSymlinks() {
+	r := PathEvalSymlinks(TempDir())
+	if r.OK {
+		_ = r.Value.(string)
+	}
+}
+
+// ExamplePathWalk walks a file tree through `PathWalk`.
+func ExamplePathWalk() {
+	PathWalk(TempDir(), func(path string, info FsFileInfo, err error) error {
+		return err
+	})
+}
+
+// ExamplePathWalkDir walks a file tree by directory entry through `PathWalkDir`.
+func ExamplePathWalkDir() {
+	PathWalkDir(TempDir(), func(path string, d FsDirEntry, err error) error {
+		return err
+	})
 }

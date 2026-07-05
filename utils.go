@@ -170,12 +170,21 @@ func ArgBool(index int, args ...any) bool {
 //
 //	clean := core.FilterArgs(os.Args[1:])
 func FilterArgs(args []string) []string {
-	var clean []string
+	if len(args) == 0 {
+		return nil
+	}
+	// Pre-size to len(args): almost every arg survives the filter, so the
+	// append never grows the backing array (was an unpresized geometric
+	// regrow on every CLI invocation via Cli.Run).
+	clean := make([]string, 0, len(args))
 	for _, a := range args {
 		if a == "" || HasPrefix(a, "-test.") {
 			continue
 		}
 		clean = append(clean, a)
+	}
+	if len(clean) == 0 {
+		return nil // byte-identical to the old var-nil behaviour
 	}
 	return clean
 }

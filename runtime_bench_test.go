@@ -142,3 +142,23 @@ func BenchmarkServiceShutdown_Empty(b *B) {
 		runtimeSinkRuntimeRes = c.ServiceShutdown(Background())
 	}
 }
+
+// The Runtime wrapper delegates to its embedded Core.
+
+func BenchmarkRuntime_ServiceStartup(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		r := Runtime{Core: New()}
+		runtimeSinkRuntimeRes = r.ServiceStartup(Background(), nil)
+		r.ServiceShutdown(Background())
+	}
+}
+
+func BenchmarkRuntime_ServiceShutdown(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		r := Runtime{Core: New()}
+		r.ServiceStartup(Background(), nil)
+		runtimeSinkRuntimeRes = r.ServiceShutdown(Background())
+	}
+}

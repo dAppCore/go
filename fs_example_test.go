@@ -16,7 +16,7 @@ func ExampleFs_New() {
 // reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_Read() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	f.Write(Path(dir, "hello.txt"), "hello")
 
@@ -28,7 +28,7 @@ func ExampleFs_Read() {
 // reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_Write() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 
 	r := f.Write(Path(dir, "hello.txt"), "hello")
@@ -44,7 +44,7 @@ func ExampleFs_Write() {
 // through Fs.
 func ExampleFs_WriteMode() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 
 	r := f.WriteMode(Path(dir, "secret.txt"), "secret", 0600)
@@ -56,7 +56,11 @@ func ExampleFs_WriteMode() {
 // operations. File reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_TempDir() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	r := f.TempDir("core-fs-example")
+	if !r.OK {
+		return
+	}
+	dir := r.Value.(string)
 	defer f.DeleteAll(dir)
 
 	Println(PathBase(dir) != "")
@@ -67,7 +71,7 @@ func ExampleFs_TempDir() {
 // operations. File reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleDirFS() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	f.Write(Path(dir, "hello.txt"), "hello")
 
@@ -80,7 +84,7 @@ func ExampleDirFS() {
 // file operations. File reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_WriteAtomic() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("example")
+	dir := MustCast[string](f.TempDir("example"))
 	defer f.DeleteAll(dir)
 
 	path := Path(dir, "status.json")
@@ -95,12 +99,12 @@ func ExampleFs_WriteAtomic() {
 // file operations. File reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_EnsureDir() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 
 	r := f.EnsureDir(Path(dir, "logs"))
 	Println(r.OK)
-	Println(f.IsDir(Path(dir, "logs")))
+	Println(f.IsDir(Path(dir, "logs")).OK)
 	// Output:
 	// true
 	// true
@@ -110,9 +114,9 @@ func ExampleFs_EnsureDir() {
 // File reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_IsDir() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
-	Println(f.IsDir(dir))
+	Println(f.IsDir(dir).OK)
 	// Output: true
 }
 
@@ -120,11 +124,11 @@ func ExampleFs_IsDir() {
 // File reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_IsFile() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	path := Path(dir, "hello.txt")
 	f.Write(path, "hello")
-	Println(f.IsFile(path))
+	Println(f.IsFile(path).OK)
 	// Output: true
 }
 
@@ -132,11 +136,11 @@ func ExampleFs_IsFile() {
 // reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_Exists() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	path := Path(dir, "hello.txt")
 	f.Write(path, "hello")
-	Println(f.Exists(path))
+	Println(f.Exists(path).OK)
 	// Output: true
 }
 
@@ -144,7 +148,7 @@ func ExampleFs_Exists() {
 // reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_List() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	f.Write(Path(dir, "hello.txt"), "hello")
 	Println(f.List(dir).OK)
@@ -155,7 +159,7 @@ func ExampleFs_List() {
 // reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_Stat() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	path := Path(dir, "hello.txt")
 	f.Write(path, "hello")
@@ -167,7 +171,7 @@ func ExampleFs_Stat() {
 // and cleanup stay sandbox-aware through Fs.
 func ExampleFs_Open() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	path := Path(dir, "hello.txt")
 	f.Write(path, "hello")
@@ -182,7 +186,7 @@ func ExampleFs_Open() {
 // File reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_Create() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	path := Path(dir, "hello.txt")
 
@@ -196,7 +200,7 @@ func ExampleFs_Create() {
 // reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_Append() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	path := Path(dir, "hello.txt")
 	f.Write(path, "hello")
@@ -211,7 +215,7 @@ func ExampleFs_Append() {
 // operations. File reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_ReadStream() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	path := Path(dir, "hello.txt")
 	f.Write(path, "hello")
@@ -225,21 +229,13 @@ func ExampleFs_ReadStream() {
 // operations. File reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_WriteStream() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	path := Path(dir, "hello.txt")
 
 	r := f.WriteStream(path)
 	WriteAll(r.Value, "hello")
 	Println(f.Read(path).Value)
-	// Output: hello
-}
-
-// ExampleReadAll reads an entire stream through `ReadAll` for sandboxed file operations.
-// File reads, writes, walks, and cleanup stay sandbox-aware through Fs.
-func ExampleReadAll() {
-	r := ReadAll(NewReader("hello"))
-	Println(r.Value)
 	// Output: hello
 }
 
@@ -267,12 +263,12 @@ func ExampleCloseStream() {
 // reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_Delete() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	path := Path(dir, "hello.txt")
 	f.Write(path, "hello")
 	Println(f.Delete(path).OK)
-	Println(f.Exists(path))
+	Println(f.Exists(path).OK)
 	// Output:
 	// true
 	// false
@@ -282,10 +278,10 @@ func ExampleFs_Delete() {
 // File reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_DeleteAll() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	f.Write(Path(dir, "nested", "hello.txt"), "hello")
 	Println(f.DeleteAll(dir).OK)
-	Println(f.Exists(dir))
+	Println(f.Exists(dir).OK)
 	// Output:
 	// true
 	// false
@@ -295,7 +291,7 @@ func ExampleFs_DeleteAll() {
 // reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_Rename() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	oldPath := Path(dir, "old.txt")
 	newPath := Path(dir, "new.txt")
@@ -312,7 +308,7 @@ func ExampleFs_Rename() {
 // cleanup stay sandbox-aware through Fs.
 func ExampleFs_NewUnrestricted() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("example")
+	dir := MustCast[string](f.TempDir("example"))
 	defer f.DeleteAll(dir)
 
 	// Write outside sandbox using Core's Fs
@@ -352,7 +348,7 @@ func ExampleFsEntry() {
 // reads, writes, walks, and cleanup stay sandbox-aware through Fs.
 func ExampleFs_WalkSeq() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	f.Write(Path(dir, "main.go"), "package main")
 
@@ -367,9 +363,34 @@ func ExampleFs_WalkSeq() {
 // ExampleFs_WalkSeqSkip walks a tree through `Fs.WalkSeqSkip` while skipping a branch for
 // sandboxed file operations. File reads, writes, walks, and cleanup stay sandbox-aware
 // through Fs.
+// ExampleReadDir lists a directory's entries through `ReadDir`.
+func ExampleReadDir() {
+	r := ReadDir(DirFS("."), ".")
+	_ = r // r.Value is []FsDirEntry on success
+}
+
+// ExampleReadFSFile reads a named file from a filesystem through `ReadFSFile`.
+func ExampleReadFSFile() {
+	r := ReadFSFile(DirFS("."), "go.mod")
+	_ = r // r.Value is []byte on success
+}
+
+// ExampleSub returns a filesystem rooted at a subdirectory through `Sub`.
+func ExampleSub() {
+	r := Sub(DirFS("."), "docs")
+	_ = r // r.Value is an FS scoped to docs/
+}
+
+// ExampleWalkDir walks a filesystem tree by directory entry through `WalkDir`.
+func ExampleWalkDir() {
+	WalkDir(DirFS("."), ".", func(path string, d FsDirEntry, err error) error {
+		return err
+	})
+}
+
 func ExampleFs_WalkSeqSkip() {
 	f := (&Fs{}).New("/")
-	dir := f.TempDir("core-fs-example")
+	dir := MustCast[string](f.TempDir("core-fs-example"))
 	defer f.DeleteAll(dir)
 	f.Write(Path(dir, "src", "main.go"), "package main")
 	f.Write(Path(dir, "vendor", "dep.go"), "package dep")

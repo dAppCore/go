@@ -12,6 +12,7 @@
 package core_test
 
 import (
+	"embed"
 	"testing/fstest"
 
 	. "dappco.re/go"
@@ -153,5 +154,56 @@ func BenchmarkEmbed_GetAssetBytes_Hit(b *B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		embedSinkResult = GetAssetBytes("bench-bytes", "key")
+	}
+}
+
+// --- MountEmbed / EmbedFS (need a real compile-time embed.FS) ---
+
+//go:embed embed.go
+var benchEmbedFS embed.FS
+
+func BenchmarkMountEmbed(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		embedSinkResult = MountEmbed(benchEmbedFS, ".")
+	}
+}
+
+func BenchmarkEmbed_EmbedFS(b *B) {
+	emb := MountEmbed(benchEmbedFS, ".").Value.(*Embed)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = emb.EmbedFS()
+	}
+}
+
+// --- asset codegen: scan + pack (covers getAllFiles / compress / compressFile) ---
+
+func BenchmarkScanAssets(b *B) {
+	files := []string{"embed_bench_test.go"}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		embedSinkResult = ScanAssets(files)
+	}
+}
+
+func BenchmarkGeneratePack(b *B) {
+	dir := b.TempDir()
+	WriteFile(PathJoin(dir, "asset.txt"), []byte("content"), 0o644)
+	pkg := ScannedPackage{PackageName: "generated", BaseDirectory: dir, Groups: []string{dir}}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		embedSinkResult = GeneratePack(pkg)
+	}
+}
+
+// Extract copies (and template-renders) an FS to disk — covers the
+// isTemplate / renderPath / copyFile extraction helpers.
+func BenchmarkExtract(b *B) {
+	fsys := embedFixture()
+	base := b.TempDir()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		embedSinkResult = Extract(fsys, PathJoin(base, Itoa(i)), nil)
 	}
 }

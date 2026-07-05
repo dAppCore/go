@@ -130,3 +130,11 @@ func BenchmarkContract_ActionTaskCompleted(b *B) {
 		}
 	}
 }
+
+func BenchmarkWithService(b *B) {
+	factory := func(c *Core) Result { return Result{OK: true} }
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		coreSinkCore = New(WithService(factory))
+	}
+}

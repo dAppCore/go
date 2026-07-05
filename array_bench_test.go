@@ -160,3 +160,11 @@ func BenchmarkArray_AsSlice(b *B) {
 		_ = a.AsSlice()
 	}
 }
+
+func BenchmarkArray_Clear(b *B) {
+	a := NewArray(benchArrayStrings...)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		a.Clear()
+	}
+}

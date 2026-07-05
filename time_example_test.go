@@ -107,3 +107,28 @@ func ExampleNewTicker() {
 	Println("tick")
 	// Output: tick
 }
+
+// ExampleDate constructs a Time from calendar fields through `Date`.
+func ExampleDate() {
+	t := Date(2024, January, 15, 10, 30, 0, 0, UTC)
+	Println(t.Year(), t.Month(), t.Day())
+	// Output: 2024 January 15
+}
+
+// ExampleTick delivers periodic ticks on a channel through `Tick`.
+func ExampleTick() {
+	ch := Tick(Hour)
+	_ = ch // a long interval; the channel fires once per period
+}
+
+// ExampleNewTimer fires once after a delay through `NewTimer`.
+func ExampleNewTimer() {
+	timer := NewTimer(Hour)
+	defer timer.Stop()
+}
+
+// ExampleAfterFunc runs a function after a delay through `AfterFunc`.
+func ExampleAfterFunc() {
+	timer := AfterFunc(Hour, func() {})
+	defer timer.Stop()
+}

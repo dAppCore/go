@@ -63,7 +63,7 @@ func TestDrive_Names_Good(t *T) {
 	AssertContains(t, names, "mcp")
 }
 
-func TestDrive_OptionsPreserved_Good(t *T) {
+func TestDrive_Drive_New_OptionsPreserved_Good(t *T) {
 	c := New()
 	c.Drive().New(NewOptions(
 		Option{Key: "name", Value: "api"},

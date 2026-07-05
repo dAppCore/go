@@ -272,16 +272,24 @@ func PathToSlash(p string) string {
 
 // PathWalk walks the file tree rooted at root.
 //
-//	err := core.PathWalk("/tmp/workspace", fn)
-func PathWalk(root string, fn PathWalkFunc) error {
-	return filepath.Walk(root, fn)
+//	r := core.PathWalk("/tmp/workspace", fn)
+//	if !r.OK { return r }
+func PathWalk(root string, fn PathWalkFunc) Result {
+	if err := filepath.Walk(root, fn); err != nil {
+		return Result{Value: WrapCode(err, "path.walk.failed", "PathWalk", "file tree walk failed"), OK: false}
+	}
+	return Result{OK: true}
 }
 
 // PathWalkDir walks the file tree rooted at root using directory entries.
 //
-//	err := core.PathWalkDir("/tmp/workspace", fn)
-func PathWalkDir(root string, fn PathWalkDirFunc) error {
-	return filepath.WalkDir(root, fn)
+//	r := core.PathWalkDir("/tmp/workspace", fn)
+//	if !r.OK { return r }
+func PathWalkDir(root string, fn PathWalkDirFunc) Result {
+	if err := filepath.WalkDir(root, fn); err != nil {
+		return Result{Value: WrapCode(err, "path.walk.failed", "PathWalkDir", "file tree walk failed"), OK: false}
+	}
+	return Result{OK: true}
 }
 
 // PathChangeExt returns p with its file extension replaced by newExt.

@@ -33,7 +33,7 @@ func ExampleGetAssetBytes() {
 // packaging. Asset packing, mounting, and extraction stay declarative for consumers.
 func ExampleScanAssets() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-scan-example")
+	dir := fs.TempDir("core-scan-example").Value.(string)
 	defer fs.DeleteAll(dir)
 
 	fs.Write(Path(dir, "main.go"), `package sample
@@ -62,7 +62,7 @@ func message() string {
 // packaging. Asset packing, mounting, and extraction stay declarative for consumers.
 func ExampleGeneratePack() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-pack-example")
+	dir := fs.TempDir("core-pack-example").Value.(string)
 	defer fs.DeleteAll(dir)
 
 	fs.Write(Path(dir, "assets", "message.txt"), "hello")
@@ -89,7 +89,7 @@ func message() string {
 // packing, mounting, and extraction stay declarative for consumers.
 func ExampleMount() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-mount-example")
+	dir := fs.TempDir("core-mount-example").Value.(string)
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "docs", "hello.txt"), "hello")
 
@@ -112,7 +112,7 @@ func ExampleMountEmbed() {
 // Asset packing, mounting, and extraction stay declarative for consumers.
 func ExampleEmbed_Open() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-embed-example")
+	dir := fs.TempDir("core-embed-example").Value.(string)
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "docs", "hello.txt"), "hello")
 
@@ -127,7 +127,7 @@ func ExampleEmbed_Open() {
 // packaging. Asset packing, mounting, and extraction stay declarative for consumers.
 func ExampleEmbed_ReadDir() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-embed-example")
+	dir := fs.TempDir("core-embed-example").Value.(string)
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "docs", "hello.txt"), "hello")
 
@@ -141,7 +141,7 @@ func ExampleEmbed_ReadDir() {
 // packaging. Asset packing, mounting, and extraction stay declarative for consumers.
 func ExampleEmbed_ReadFile() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-embed-example")
+	dir := fs.TempDir("core-embed-example").Value.(string)
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "docs", "hello.txt"), "hello")
 
@@ -155,7 +155,7 @@ func ExampleEmbed_ReadFile() {
 // packaging. Asset packing, mounting, and extraction stay declarative for consumers.
 func ExampleEmbed_ReadString() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-embed-example")
+	dir := fs.TempDir("core-embed-example").Value.(string)
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "docs", "hello.txt"), "hello")
 
@@ -168,7 +168,7 @@ func ExampleEmbed_ReadString() {
 // Asset packing, mounting, and extraction stay declarative for consumers.
 func ExampleEmbed_Sub() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-embed-example")
+	dir := fs.TempDir("core-embed-example").Value.(string)
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "docs", "nested", "hello.txt"), "hello")
 
@@ -182,7 +182,7 @@ func ExampleEmbed_Sub() {
 // Asset packing, mounting, and extraction stay declarative for consumers.
 func ExampleEmbed_FS() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-embed-example")
+	dir := fs.TempDir("core-embed-example").Value.(string)
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "docs", "hello.txt"), "hello")
 
@@ -204,7 +204,7 @@ func ExampleEmbed_EmbedFS() {
 // extraction stay declarative for consumers.
 func ExampleEmbed_BaseDirectory() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-embed-example")
+	dir := fs.TempDir("core-embed-example").Value.(string)
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "docs", "hello.txt"), "hello")
 
@@ -217,8 +217,8 @@ func ExampleEmbed_BaseDirectory() {
 // Asset packing, mounting, and extraction stay declarative for consumers.
 func ExampleExtract() {
 	fs := (&Fs{}).New("/")
-	source := fs.TempDir("core-extract-source")
-	target := fs.TempDir("core-extract-target")
+	source := fs.TempDir("core-extract-source").Value.(string)
+	target := fs.TempDir("core-extract-target").Value.(string)
 	defer fs.DeleteAll(source)
 	defer fs.DeleteAll(target)
 

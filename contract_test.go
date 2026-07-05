@@ -25,12 +25,14 @@ func stubFactory(c *Core) Result {
 // stubFactory lives in package "dappco.re/go_test", so the last path
 // segment is "core_test" — WithService strips the "_test" suffix and registers
 // the service under the name "core".
-func TestContract_WithService_NameDiscovery_Good(t *T) {
+func TestContract_WithService_Good(t *T) {
 	c := New(WithService(stubFactory))
 
 	names := c.Services()
-	// Service should be auto-registered under a discovered name (not just "cli" which is built-in)
-	AssertGreater(t, len(names), 1, "expected auto-discovered service to be registered alongside built-in 'cli'")
+	// WithService discovers a name from the factory's package path and registers
+	// the instance under it. cli is no longer auto-registered (opt-in via WithCli),
+	// so the discovered service is the only entry.
+	AssertGreater(t, len(names), 0, "expected auto-discovered service to be registered")
 }
 
 // TestWithService_FactorySelfRegisters_Good verifies that when a factory
@@ -129,7 +131,7 @@ func TestContract_WithService_FactoryError_Bad(t *T) {
 // --- AX-7 canonical backfill ---
 
 func TestContract_New_Ugly(t *T) {
-	c := New(WithServiceLock())
+	c := New(WithCli(), WithServiceLock())
 	r := c.Service("late-agent", Service{})
 	AssertFalse(t, r.OK)
 	AssertTrue(t, c.Service("cli").OK)
@@ -199,7 +201,76 @@ func TestContract_WithServiceLock_Bad(t *T) {
 }
 
 func TestContract_WithServiceLock_Ugly(t *T) {
-	c := New(WithServiceLock())
+	c := New(WithCli(), WithServiceLock())
+	AssertTrue(t, c.Service("cli").OK)
+	AssertContains(t, c.Services(), "cli")
+}
+
+func TestContract_New_Good(t *T) {
+	c := New(WithOption("env", "prod"))
+	AssertNotNil(t, c)
+	AssertEqual(t, "prod", c.Options().Get("env").Value)
+}
+
+func TestContract_New_Bad(t *T) {
+	// A failing option aborts the remaining chain but New still returns a usable Core.
+	c := New(WithService(func(c *Core) Result {
+		return Result{Value: NewError("boom"), OK: false}
+	}))
+	AssertNotNil(t, c)
+	AssertNotNil(t, c.Config())
+}
+
+func TestContract_WithOptions_Good(t *T) {
+	opts := NewOptions(Option{Key: "region", Value: "eu"})
+	c := New(WithOptions(opts))
+	AssertEqual(t, "eu", c.Options().Get("region").Value)
+}
+
+func TestContract_WithOptions_Bad(t *T) {
+	// A non-string "name" is stored but ignored for the app name.
+	opts := NewOptions(Option{Key: "name", Value: 42})
+	c := New(WithOptions(opts))
+	AssertEqual(t, "", c.App().Name)
+	AssertEqual(t, 42, c.Options().Get("name").Value)
+}
+
+func TestContract_WithOption_Good(t *T) {
+	c := New(WithOption("region", "eu-west"))
+	r := c.Options().Get("region")
+	AssertTrue(t, r.OK)
+	AssertEqual(t, "eu-west", r.Value)
+}
+
+func TestContract_WithServiceLock_Good(t *T) {
+	// A service registered during construction is admitted; the lock only
+	// seals registration afterwards.
+	c := New(
+		WithService(func(c *Core) Result {
+			c.Service("early", Service{})
+			return Result{OK: true}
+		}),
+		WithServiceLock(),
+	)
+	AssertTrue(t, c.Service("early").OK)            // admitted during construction
+	AssertFalse(t, c.Service("late", Service{}).OK) // sealed afterwards
+}
+
+func TestContract_WithCli_Good(t *T) {
+	c := New(WithCli())
+	AssertTrue(t, c.Service("cli").OK)
+	AssertNotNil(t, c.Cli())
+}
+
+func TestContract_WithCli_Bad(t *T) {
+	// Without WithCli, no cli service is registered.
+	c := New()
+	AssertFalse(t, c.Service("cli").OK)
+}
+
+func TestContract_WithCli_Ugly(t *T) {
+	// Re-applying WithCli keeps cli registered exactly once.
+	c := New(WithCli(), WithCli())
 	AssertTrue(t, c.Service("cli").OK)
 	AssertContains(t, c.Services(), "cli")
 }

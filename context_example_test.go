@@ -32,3 +32,23 @@ func ExampleWithCancel() {
 	Println(ctx.Err() != nil)
 	// Output: true
 }
+
+// ExampleTODO returns a non-nil placeholder context through `TODO`.
+func ExampleTODO() {
+	Println(TODO() != nil)
+	// Output: true
+}
+
+// ExampleWithValue carries a request-scoped value through `WithValue`.
+func ExampleWithValue() {
+	ctx := WithValue(Background(), "agent", "codex")
+	Println(ctx.Value("agent"))
+	// Output: codex
+}
+
+// ExampleWithDeadline derives a context that cancels at a deadline through `WithDeadline`.
+func ExampleWithDeadline() {
+	ctx, cancel := WithDeadline(Background(), Now().Add(Hour))
+	defer cancel()
+	_ = ctx // cancels automatically once the deadline passes
+}

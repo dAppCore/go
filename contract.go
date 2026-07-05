@@ -129,7 +129,7 @@ func New(opts ...CoreOption) *Core {
 		config:             (&Config{}).New(),
 		error:              &ErrorPanic{},
 		log:                &ErrorLog{},
-		lock:               &Lock{},
+		locks:              NewRegistry[*Lock](),
 		ipc:                &Ipc{actions: NewRegistry[*Action](), tasks: NewRegistry[*Task]()},
 		info:               systemInfo,
 		i18n:               &I18n{},
@@ -140,9 +140,6 @@ func New(opts ...CoreOption) *Core {
 	}
 	c.context, c.cancel = WithCancel(Background())
 	c.api.core = c
-
-	// Core services
-	CliRegister(c)
 
 	for _, opt := range opts {
 		if r := opt(c); !r.OK {
@@ -259,5 +256,16 @@ func WithServiceLock() CoreOption {
 	return func(c *Core) Result {
 		c.LockEnable()
 		return Result{OK: true}
+	}
+}
+
+// WithCli registers the built-in CLI command framework as service "cli".
+// core.New no longer auto-registers it — opt in here for a package's basic
+// compile-and-run binary, or bring an intentional CLI (dappco.re/go/cli).
+//
+//	core.New(core.WithCli())
+func WithCli() CoreOption {
+	return func(c *Core) Result {
+		return CliRegister(c)
 	}
 }

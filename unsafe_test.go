@@ -1,137 +1,205 @@
 // SPDX-License-Identifier: EUPL-1.2
 
-// Correctness tests for the unsafe.go primitives, focused on
-// PinnedView semantics — the contract is more subtle than the
-// zero-copy view conversions, so the Good/Bad/Ugly triple is
-// worth its weight.
+// Correctness tests for the unsafe.go primitives. PinnedView's contract
+// (pin / inspect / release, plus nil-receiver and zero-view safety) is
+// the subtle part, so each accessor carries its own Good/Bad/Ugly.
 
 package core_test
 
 import (
-	"testing"
 	"unsafe"
 
 	. "dappco.re/go"
 )
 
-// --- Good ---
+// --- AsBytes ---
 
-// PinSlice gives a stable pointer to slice[0] that the caller can hand
-// to C; Release unpins so the GC can reclaim the slice.
-func TestPinSlice_Int32_PinsAddress(t *testing.T) {
+func TestUnsafe_AsBytes_Good(t *T) {
+	AssertEqual(t, []byte("payload"), AsBytes("payload"))
+}
+
+func TestUnsafe_AsBytes_Bad(t *T) {
+	// An empty string yields a nil slice, not an empty non-nil one.
+	AssertNil(t, AsBytes(""))
+}
+
+func TestUnsafe_AsBytes_Ugly(t *T) {
+	// Multi-byte UTF-8 is viewed byte-for-byte, no decoding.
+	AssertEqual(t, []byte("café"), AsBytes("café"))
+}
+
+// --- AsString ---
+
+func TestUnsafe_AsString_Good(t *T) {
+	AssertEqual(t, "payload", AsString([]byte("payload")))
+}
+
+func TestUnsafe_AsString_Bad(t *T) {
+	// Empty and nil byte slices both yield the empty string.
+	AssertEqual(t, "", AsString(nil))
+	AssertEqual(t, "", AsString([]byte{}))
+}
+
+func TestUnsafe_AsString_Ugly(t *T) {
+	// Round-trips through AsBytes byte-for-byte, including multi-byte runes.
+	AssertEqual(t, "café", AsString(AsBytes("café")))
+}
+
+// --- PinSlice ---
+
+func TestUnsafe_PinSlice_Good(t *T) {
 	slice := []int32{1, 2, 3, 4}
 	var view PinnedView
 	PinSlice(slice, &view)
 	defer view.Release()
 
-	if !view.Active() {
-		t.Fatal("Active() returned false on a freshly pinned view")
-	}
-	if view.Len() != 4 {
-		t.Fatalf("Len() = %d, want 4", view.Len())
-	}
-	if view.Bytes() != 16 {
-		t.Fatalf("Bytes() = %d, want 16 (4 * sizeof(int32))", view.Bytes())
-	}
-	if view.Ptr() != unsafe.Pointer(&slice[0]) {
-		t.Fatal("Ptr() does not match &slice[0] — pin failed")
-	}
+	AssertTrue(t, view.Active())
+	AssertTrue(t, view.Ptr() == unsafe.Pointer(&slice[0]))
+	AssertEqual(t, 4, view.Len())
+	AssertEqual(t, 16, view.Bytes())
 }
 
-// PinSlice on []float32 reports the correct byte width (4) per element.
-func TestPinSlice_Float32_Bytes(t *testing.T) {
-	slice := make([]float32, 16)
-	var view PinnedView
-	PinSlice(slice, &view)
-	defer view.Release()
-
-	if view.Bytes() != 64 {
-		t.Fatalf("Bytes() = %d, want 64 (16 * sizeof(float32))", view.Bytes())
-	}
-}
-
-// PinSlice on []byte reports the correct byte width (1) per element.
-func TestPinSlice_Byte_Bytes(t *testing.T) {
-	slice := []byte("payload")
-	var view PinnedView
-	PinSlice(slice, &view)
-	defer view.Release()
-
-	if view.Bytes() != len(slice) {
-		t.Fatalf("Bytes() = %d, want %d", view.Bytes(), len(slice))
-	}
-}
-
-// --- Bad ---
-
-// PinSlice on an empty slice leaves the view zero-valued — Active is
-// false, Ptr is nil, Release is a no-op.
-func TestPinSlice_EmptySlice_ZeroView(t *testing.T) {
+func TestUnsafe_PinSlice_Bad(t *T) {
+	// An empty slice leaves the view zero-valued; Release is a no-op.
 	var slice []int32
 	var view PinnedView
 	PinSlice(slice, &view)
 	defer view.Release()
 
-	if view.Active() {
-		t.Fatal("Active() returned true for empty input")
-	}
-	if view.Ptr() != nil {
-		t.Fatal("Ptr() not nil for empty input")
-	}
-	if view.Len() != 0 || view.Bytes() != 0 {
-		t.Fatalf("Len/Bytes non-zero: Len=%d Bytes=%d", view.Len(), view.Bytes())
-	}
+	AssertFalse(t, view.Active())
+	AssertTrue(t, view.Ptr() == nil)
+	AssertEqual(t, 0, view.Len())
+	AssertEqual(t, 0, view.Bytes())
 }
 
-// PinSlice with a nil view pointer must not panic — defensive contract
-// for callers that pass through a forgotten initialiser.
-func TestPinSlice_NilOutPointer_NoPanic(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("PinSlice panicked on nil out pointer: %v", r)
-		}
-	}()
+func TestUnsafe_PinSlice_Ugly(t *T) {
+	// A nil out-pointer is a defensive no-op, not a panic.
+	AssertNotPanics(t, func() {
+		PinSlice[int32]([]int32{1, 2, 3}, nil)
+	})
+}
+
+// --- PinnedView.Ptr ---
+
+func TestUnsafe_PinnedView_Ptr_Good(t *T) {
 	slice := []int32{1, 2, 3}
-	PinSlice[int32](slice, nil)
+	var view PinnedView
+	PinSlice(slice, &view)
+	defer view.Release()
+
+	AssertTrue(t, view.Ptr() == unsafe.Pointer(&slice[0]))
 }
 
-// --- Ugly ---
+func TestUnsafe_PinnedView_Ptr_Bad(t *T) {
+	// A zero view has no pinned address.
+	var view PinnedView
+	AssertTrue(t, view.Ptr() == nil)
+}
 
-// Release on a zero view is safe. Release on a released view is also
-// safe — the second call is a no-op, leaving the GC free to reclaim
-// the slice exactly once.
-func TestPinSlice_DoubleRelease_NoPanic(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("Release double-call panicked: %v", r)
-		}
-	}()
+func TestUnsafe_PinnedView_Ptr_Ugly(t *T) {
+	// A nil receiver returns nil rather than panicking.
+	var view *PinnedView
+	AssertTrue(t, view.Ptr() == nil)
+}
+
+// --- PinnedView.Len ---
+
+func TestUnsafe_PinnedView_Len_Good(t *T) {
+	slice := []int32{1, 2, 3, 4, 5}
+	var view PinnedView
+	PinSlice(slice, &view)
+	defer view.Release()
+
+	AssertEqual(t, 5, view.Len())
+}
+
+func TestUnsafe_PinnedView_Len_Bad(t *T) {
+	var view PinnedView
+	AssertEqual(t, 0, view.Len())
+}
+
+func TestUnsafe_PinnedView_Len_Ugly(t *T) {
+	var view *PinnedView
+	AssertEqual(t, 0, view.Len())
+}
+
+// --- PinnedView.Bytes ---
+
+func TestUnsafe_PinnedView_Bytes_Good(t *T) {
+	// Byte width scales with element type.
+	var i32 PinnedView
+	PinSlice([]int32{1, 2, 3, 4}, &i32)
+	defer i32.Release()
+	AssertEqual(t, 16, i32.Bytes()) // 4 * sizeof(int32)
+
+	var f32 PinnedView
+	PinSlice(make([]float32, 16), &f32)
+	defer f32.Release()
+	AssertEqual(t, 64, f32.Bytes()) // 16 * sizeof(float32)
+
+	var b PinnedView
+	PinSlice([]byte("payload"), &b)
+	defer b.Release()
+	AssertEqual(t, 7, b.Bytes()) // 1 byte per element
+}
+
+func TestUnsafe_PinnedView_Bytes_Bad(t *T) {
+	var view PinnedView
+	AssertEqual(t, 0, view.Bytes())
+}
+
+func TestUnsafe_PinnedView_Bytes_Ugly(t *T) {
+	var view *PinnedView
+	AssertEqual(t, 0, view.Bytes())
+}
+
+// --- PinnedView.Active ---
+
+func TestUnsafe_PinnedView_Active_Good(t *T) {
+	var view PinnedView
+	PinSlice([]int32{1, 2, 3}, &view)
+	defer view.Release()
+
+	AssertTrue(t, view.Active())
+}
+
+func TestUnsafe_PinnedView_Active_Bad(t *T) {
+	var view PinnedView
+	AssertFalse(t, view.Active())
+}
+
+func TestUnsafe_PinnedView_Active_Ugly(t *T) {
+	var view *PinnedView
+	AssertFalse(t, view.Active())
+}
+
+// --- PinnedView.Release ---
+
+func TestUnsafe_PinnedView_Release_Good(t *T) {
 	slice := []int32{1, 2, 3, 4}
 	var view PinnedView
 	PinSlice(slice, &view)
+
 	view.Release()
-	view.Release()
-	if view.Active() {
-		t.Fatal("Active() true after Release")
-	}
+
+	AssertFalse(t, view.Active())
+	AssertTrue(t, view.Ptr() == nil)
 }
 
-// Nil receiver methods must report safe zero values rather than
-// panicking — lets callers route through helpers that may return a
-// nil PinnedView for failure paths without crashing.
-func TestPinSlice_NilReceiver_SafeZero(t *testing.T) {
-	var view *PinnedView
-	if view.Active() {
-		t.Fatal("Active() true on nil receiver")
-	}
-	if view.Ptr() != nil {
-		t.Fatal("Ptr() not nil on nil receiver")
-	}
-	if view.Len() != 0 {
-		t.Fatal("Len() not 0 on nil receiver")
-	}
-	if view.Bytes() != 0 {
-		t.Fatal("Bytes() not 0 on nil receiver")
-	}
-	view.Release()
+func TestUnsafe_PinnedView_Release_Bad(t *T) {
+	// Releasing a zero view is a safe no-op.
+	var view PinnedView
+	AssertNotPanics(t, func() { view.Release() })
+}
+
+func TestUnsafe_PinnedView_Release_Ugly(t *T) {
+	// Double release is a no-op, not a double-unpin panic.
+	slice := []int32{1, 2, 3, 4}
+	var view PinnedView
+	PinSlice(slice, &view)
+	AssertNotPanics(t, func() {
+		view.Release()
+		view.Release()
+	})
+	AssertFalse(t, view.Active())
 }

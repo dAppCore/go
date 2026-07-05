@@ -156,8 +156,11 @@ func ReadAll(reader any) Result {
 	if !ok {
 		return Result{E("core.ReadAll", "not a reader", nil), false}
 	}
-	var data []byte
-	var err error
+	defer func() {
+		if closer, ok := reader.(Closer); ok {
+			closer.Close()
+		}
+	}()
 	// Fast path: if the reader knows its remaining size, allocate the
 	// destination once at the exact size instead of paying io.ReadAll's
 	// 5-10 buffer doublings (which cost ~3x the final byte count in
@@ -168,8 +171,9 @@ func ReadAll(reader any) Result {
 	//   * *io.LimitedReader        — exposes max-remaining via .N; if the
 	//                                wrapped reader also exposes Len(), use
 	//                                min(N, Len()), otherwise just N
+	var r Result
 	if sizer, hasLen := reader.(interface{ Len() int }); hasLen {
-		data, err = readAllSized(rc, sizer.Len())
+		r = readAllSized(rc, sizer.Len())
 	} else if lr, ok := reader.(*io.LimitedReader); ok {
 		n := int(lr.N)
 		if inner, hasLen := lr.R.(interface{ Len() int }); hasLen {
@@ -177,24 +181,27 @@ func ReadAll(reader any) Result {
 				n = il
 			}
 		}
-		data, err = readAllSized(rc, n)
+		r = readAllSized(rc, n)
 	} else {
-		data, err = io.ReadAll(rc)
+		data, err := io.ReadAll(rc)
+		if err != nil {
+			return Result{Value: WrapCode(err, "io.read.failed", "ReadAll", "read failed"), OK: false}
+		}
+		r = Result{Value: data, OK: true}
 	}
-	if closer, ok := reader.(Closer); ok {
-		closer.Close()
+	if !r.OK {
+		return r
 	}
-	if err != nil {
-		return Result{err, false}
-	}
-	return Result{AsString(data), true}
+	return Result{AsString(r.Value.([]byte)), true}
 }
 
 // readAllSized reads exactly n bytes (or until EOF) into a pre-allocated
 // buffer. Used by ReadAll when the source's remaining length is known.
-func readAllSized(r Reader, n int) ([]byte, error) {
+// Returns Result{Value: []byte} on success, Result{Value: error} on a
+// non-EOF read failure.
+func readAllSized(r Reader, n int) Result {
 	if n <= 0 {
-		return nil, nil
+		return Result{Value: []byte(nil), OK: true}
 	}
 	buf := make([]byte, n)
 	read := 0
@@ -203,12 +210,12 @@ func readAllSized(r Reader, n int) ([]byte, error) {
 		read += m
 		if err != nil {
 			if err == io.EOF {
-				return buf[:read], nil
+				return Result{Value: buf[:read], OK: true}
 			}
-			return buf[:read], err
+			return Result{Value: WrapCode(err, "io.read.failed", "readAllSized", "read failed"), OK: false}
 		}
 	}
-	return buf, nil
+	return Result{Value: buf, OK: true}
 }
 
 // Buffer is an alias for bytes.Buffer — an in-memory byte sequence with

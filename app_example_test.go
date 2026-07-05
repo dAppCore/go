@@ -27,7 +27,7 @@ func ExampleApp_New() {
 // Application metadata is registered once and found later by stable names.
 func ExampleApp_Find() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-app-example")
+	dir := fs.TempDir("core-app-example").Value.(string)
 	defer fs.DeleteAll(dir)
 
 	bin := Path(dir, "forge")

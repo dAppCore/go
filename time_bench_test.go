@@ -144,3 +144,51 @@ func BenchmarkTime_Date(b *B) {
 		timeSinkTime = Date(2026, April, 28, 7, 0, 0, 0, UTC)
 	}
 }
+
+var timeSinkChan <-chan Time
+
+func BenchmarkSleep(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		Sleep(0)
+	}
+}
+
+func BenchmarkAfter(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		timeSinkChan = After(Hour)
+	}
+}
+
+func BenchmarkTick(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		timeSinkChan = Tick(Hour)
+	}
+}
+
+func BenchmarkNewTicker(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		t := NewTicker(Hour)
+		t.Stop()
+	}
+}
+
+func BenchmarkNewTimer(b *B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		t := NewTimer(Hour)
+		t.Stop()
+	}
+}
+
+func BenchmarkAfterFunc(b *B) {
+	fn := func() {}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		t := AfterFunc(Hour, fn)
+		t.Stop()
+	}
+}

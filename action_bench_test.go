@@ -207,3 +207,21 @@ func BenchmarkAction_Tasks(b *B) {
 		actionSinkStrings = c.Tasks()
 	}
 }
+
+func BenchmarkCore_PerformAsync(b *B) {
+	c := New()
+	c.Action("bench.async", noopActionHandler())
+	opts := NewOptions()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		actionSinkResult = c.PerformAsync("bench.async", opts)
+	}
+}
+
+func BenchmarkCore_Progress(b *B) {
+	c := New()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		c.Progress("bench.task", 0.5, "halfway", "bench.async")
+	}
+}

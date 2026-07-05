@@ -31,3 +31,9 @@ func ExampleParseInt() {
 	Println(r.Value)
 	// Output: 255
 }
+
+// ExampleFormatUint formats an unsigned integer in a given base through `FormatUint`.
+func ExampleFormatUint() {
+	Println(FormatUint(255, 16))
+	// Output: ff
+}

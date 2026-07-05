@@ -244,6 +244,27 @@ func TestIo_NewBufferReader_Bad(t *T) {
 	AssertNotNil(t, err)
 }
 
+func TestIo_LimitReader_Good(t *T) {
+	// Reads at most n bytes from the underlying reader.
+	out := ReadAll(LimitReader(NewReader("payload"), 3))
+	RequireTrue(t, out.OK)
+	AssertEqual(t, "pay", out.Value)
+}
+
+func TestIo_LimitReader_Bad(t *T) {
+	// A zero limit yields no bytes (but still a valid read).
+	out := ReadAll(LimitReader(NewReader("payload"), 0))
+	RequireTrue(t, out.OK)
+	AssertEqual(t, "", out.Value)
+}
+
+func TestIo_LimitReader_Ugly(t *T) {
+	// A limit beyond the source returns the whole source, no error.
+	out := ReadAll(LimitReader(NewReader("hi"), 100))
+	RequireTrue(t, out.OK)
+	AssertEqual(t, "hi", out.Value)
+}
+
 func TestIo_NewBufferReader_Ugly(t *T) {
 	rd := NewBufferReader([]byte{0, 0xff, 0x7f})
 

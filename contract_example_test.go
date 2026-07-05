@@ -169,6 +169,13 @@ func ExampleWithOption() {
 // ExampleWithServiceLock_contract documents the locking contract through `WithServiceLock`
 // for service contract wiring. Service lifecycle contracts remain small interfaces and
 // option hooks.
+// ExampleWithCli enables the CLI subsystem at construction through `WithCli`.
+func ExampleWithCli() {
+	c := New(WithCli())
+	Println(c.Cli() != nil)
+	// Output: true
+}
+
 func ExampleWithServiceLock_contract() {
 	c := New(WithServiceLock())
 	r := c.Service("late", Service{})

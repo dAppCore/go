@@ -157,9 +157,14 @@ func SliceFlatMap[T any, U any](s []T, fn func(T) []U) []U {
 	if len(s) == 0 {
 		return nil
 	}
-	var out []U
+	// Heuristic pre-size: ~1 output per input avoids the early geometric
+	// regrows when fn is near-1:1 (the common map-shaped case).
+	out := make([]U, 0, len(s))
 	for _, v := range s {
 		out = append(out, fn(v)...)
+	}
+	if len(out) == 0 {
+		return nil
 	}
 	return out
 }

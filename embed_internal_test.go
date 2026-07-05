@@ -10,9 +10,9 @@ var EmbeddedTestFS embed.FS
 func MustCompressTestAsset(t *T, input string) string {
 	t.Helper()
 
-	packed, err := compress(input)
-	RequireNoError(t, err)
-	return packed
+	r := compress(input)
+	RequireTrue(t, r.OK)
+	return r.Value.(string)
 }
 
 func TestEmbed_Embed_path_Good(t *T) {
@@ -40,78 +40,72 @@ func TestEmbed_Embed_path_Ugly(t *T) {
 	AssertEqual(t, "assets", r.Value)
 }
 func TestEmbed_compress_Good(t *T) {
-	packed, err := compress("agent dispatch ready")
-	RequireNoError(t, err)
+	packed := compress("agent dispatch ready")
+	RequireTrue(t, packed.OK)
 
-	plain, err := decompress(packed)
+	plain := decompress(packed.Value.(string))
 
-	RequireNoError(t, err)
-	AssertEqual(t, "agent dispatch ready", plain)
+	RequireTrue(t, plain.OK)
+	AssertEqual(t, "agent dispatch ready", plain.Value)
 }
 func TestEmbed_compress_Bad(t *T) {
-	packed, err := compress("")
-	RequireNoError(t, err)
+	packed := compress("")
+	RequireTrue(t, packed.OK)
 
-	plain, err := decompress(packed)
+	plain := decompress(packed.Value.(string))
 
-	RequireNoError(t, err)
-	AssertEqual(t, "", plain)
+	RequireTrue(t, plain.OK)
+	AssertEqual(t, "", plain.Value)
 }
 func TestEmbed_compress_Ugly(t *T) {
 	input := Join("\n", "agent", "dispatch", "retry")
-	packed, err := compress(input)
-	RequireNoError(t, err)
+	packed := compress(input)
+	RequireTrue(t, packed.OK)
 
-	plain, err := decompress(packed)
+	plain := decompress(packed.Value.(string))
 
-	RequireNoError(t, err)
-	AssertEqual(t, input, plain)
+	RequireTrue(t, plain.OK)
+	AssertEqual(t, input, plain.Value)
 }
 func TestEmbed_compressFile_Good(t *T) {
 	path := Path(t.TempDir(), "agent.txt")
 	RequireTrue(t, WriteFile(path, []byte("ready"), 0o644).OK)
 
-	packed, err := compressFile(path)
-	RequireNoError(t, err)
-	plain, err := decompress(packed)
+	packed := compressFile(path)
+	RequireTrue(t, packed.OK)
+	plain := decompress(packed.Value.(string))
 
-	RequireNoError(t, err)
-	AssertEqual(t, "ready", plain)
+	RequireTrue(t, plain.OK)
+	AssertEqual(t, "ready", plain.Value)
 }
 func TestEmbed_compressFile_Bad(t *T) {
-	_, err := compressFile(Path(t.TempDir(), "missing.txt"))
-
-	AssertError(t, err)
+	AssertFalse(t, compressFile(Path(t.TempDir(), "missing.txt")).OK)
 }
 func TestEmbed_compressFile_Ugly(t *T) {
 	path := Path(t.TempDir(), "empty.txt")
 	RequireTrue(t, WriteFile(path, nil, 0o644).OK)
 
-	packed, err := compressFile(path)
-	RequireNoError(t, err)
-	plain, err := decompress(packed)
+	packed := compressFile(path)
+	RequireTrue(t, packed.OK)
+	plain := decompress(packed.Value.(string))
 
-	RequireNoError(t, err)
-	AssertEqual(t, "", plain)
+	RequireTrue(t, plain.OK)
+	AssertEqual(t, "", plain.Value)
 }
 func TestEmbed_decompress_Good(t *T) {
-	packed, err := compress("homelab")
-	RequireNoError(t, err)
+	packed := compress("homelab")
+	RequireTrue(t, packed.OK)
 
-	plain, err := decompress(packed)
+	plain := decompress(packed.Value.(string))
 
-	RequireNoError(t, err)
-	AssertEqual(t, "homelab", plain)
+	RequireTrue(t, plain.OK)
+	AssertEqual(t, "homelab", plain.Value)
 }
 func TestEmbed_decompress_Bad(t *T) {
-	_, err := decompress("not base64")
-
-	AssertError(t, err)
+	AssertFalse(t, decompress("not base64").OK)
 }
 func TestEmbed_decompress_Ugly(t *T) {
-	_, err := decompress(Base64Encode([]byte("plain text")))
-
-	AssertError(t, err)
+	AssertFalse(t, decompress(Base64Encode([]byte("plain text"))).OK)
 }
 func TestEmbed_getAllFiles_Good(t *T) {
 	dir := t.TempDir()
@@ -121,22 +115,21 @@ func TestEmbed_getAllFiles_Good(t *T) {
 	RequireTrue(t, MkdirAll(Path(dir, "nested"), 0o755).OK)
 	RequireTrue(t, WriteFile(task, []byte("task"), 0o644).OK)
 
-	files, err := getAllFiles(dir)
+	r := getAllFiles(dir)
 
-	RequireNoError(t, err)
+	RequireTrue(t, r.OK)
+	files := r.Value.([]string)
 	AssertContains(t, files, agent)
 	AssertContains(t, files, task)
 }
 func TestEmbed_getAllFiles_Bad(t *T) {
-	_, err := getAllFiles(Path(t.TempDir(), "missing"))
-
-	AssertError(t, err)
+	AssertFalse(t, getAllFiles(Path(t.TempDir(), "missing")).OK)
 }
 func TestEmbed_getAllFiles_Ugly(t *T) {
-	files, err := getAllFiles(t.TempDir())
+	r := getAllFiles(t.TempDir())
 
-	RequireNoError(t, err)
-	AssertEmpty(t, files)
+	RequireTrue(t, r.OK)
+	AssertEmpty(t, r.Value)
 }
 func TestEmbed_isTemplate_Good(t *T) {
 	AssertTrue(t, isTemplate("README.md.tmpl", []string{".tmpl"}))
@@ -167,23 +160,21 @@ func TestEmbed_copyFile_Good(t *T) {
 	target := Path(t.TempDir(), "agent.txt")
 	RequireTrue(t, WriteFile(Path(src, "agent.txt"), []byte("ready"), 0o644).OK)
 
-	err := copyFile(DirFS(src), "agent.txt", target)
+	r := copyFile(DirFS(src), "agent.txt", target)
 
-	RequireNoError(t, err)
+	RequireTrue(t, r.OK)
 	AssertEqual(t, "ready", string(ReadFile(target).Value.([]byte)))
 }
 func TestEmbed_copyFile_Bad(t *T) {
-	err := copyFile(DirFS(t.TempDir()), "missing.txt", Path(t.TempDir(), "out.txt"))
-
-	AssertError(t, err)
+	AssertFalse(t, copyFile(DirFS(t.TempDir()), "missing.txt", Path(t.TempDir(), "out.txt")).OK)
 }
 func TestEmbed_copyFile_Ugly(t *T) {
 	src := t.TempDir()
 	target := Path(t.TempDir(), "nested", "agent.txt")
 	RequireTrue(t, WriteFile(Path(src, "agent.txt"), []byte("nested"), 0o644).OK)
 
-	err := copyFile(DirFS(src), "agent.txt", target)
+	r := copyFile(DirFS(src), "agent.txt", target)
 
-	RequireNoError(t, err)
+	RequireTrue(t, r.OK)
 	AssertEqual(t, "nested", string(ReadFile(target).Value.([]byte)))
 }

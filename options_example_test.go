@@ -102,6 +102,20 @@ func ExampleOptions_Len() {
 
 // ExampleOptions_Items returns all entries through `Options.Items` for agent options.
 // Options carry loosely typed inputs while typed accessors keep call sites small.
+// ExampleOptions_Float64 reads a float option through `Options.Float64`.
+func ExampleOptions_Float64() {
+	opts := NewOptions(Option{Key: "ratio", Value: 0.5})
+	Println(opts.Float64("ratio"))
+	// Output: 0.5
+}
+
+// ExampleOptions_Duration reads a duration option through `Options.Duration`.
+func ExampleOptions_Duration() {
+	opts := NewOptions(Option{Key: "timeout", Value: Second})
+	Println(opts.Duration("timeout"))
+	// Output: 1s
+}
+
 func ExampleOptions_Items() {
 	opts := NewOptions(Option{Key: "name", Value: "api"})
 	items := opts.Items()

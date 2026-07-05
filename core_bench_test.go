@@ -41,7 +41,6 @@ var (
 	coreSinkI18n     *I18n
 	coreSinkEnv      string
 	coreSinkCtx      Context
-	coreSinkRegistry *Registry[any]
 	coreSinkResult   Result
 )
 
@@ -199,7 +198,7 @@ func BenchmarkCore_RegistryOf_Services(b *B) {
 	c := New()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		coreSinkRegistry = c.RegistryOf("services")
+		coreSinkResult = c.RegistryOf("services")
 	}
 }
 
@@ -207,7 +206,7 @@ func BenchmarkCore_RegistryOf_Actions(b *B) {
 	c := New()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		coreSinkRegistry = c.RegistryOf("actions")
+		coreSinkResult = c.RegistryOf("actions")
 	}
 }
 
@@ -215,6 +214,52 @@ func BenchmarkCore_RegistryOf_Unknown(b *B) {
 	c := New()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		coreSinkRegistry = c.RegistryOf("noexist")
+		coreSinkResult = c.RegistryOf("noexist")
+	}
+}
+
+var coreSinkFeature Feature
+
+func BenchmarkCore_Feature(b *B) {
+	c := New()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		coreSinkFeature = c.Feature("dark-mode")
+	}
+}
+
+func BenchmarkCore_WithContext(b *B) {
+	c := New()
+	ctx := Background()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		coreSinkCore = c.WithContext(ctx)
+	}
+}
+
+func BenchmarkCore_Must(b *B) {
+	c := New()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		c.Must(nil, "Bench", "no error") // nil err = no panic
+	}
+}
+
+// BenchmarkCore_RunResult and _Run start + shut down a bare Core (no
+// services, no commands → CLI returns the empty-success case); they also
+// exercise ServiceStartup/ServiceShutdown.
+func BenchmarkCore_RunResult(b *B) {
+	quietDefault(b)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		coreSinkResult = New().RunResult()
+	}
+}
+
+func BenchmarkCore_Run(b *B) {
+	quietDefault(b)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		New().Run()
 	}
 }

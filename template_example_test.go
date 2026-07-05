@@ -27,7 +27,7 @@ func ExampleParseTemplate() {
 // operator-facing text.
 func ExampleParseTemplateFiles() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-template-example")
+	dir := MustCast[string](fs.TempDir("core-template-example"))
 	defer fs.DeleteAll(dir)
 
 	path := Path(dir, "greeting.tmpl")
@@ -42,6 +42,12 @@ func ExampleParseTemplateFiles() {
 
 // ExampleExecuteTemplate executes a template through `ExecuteTemplate` for operator-facing
 // templates. Parsing and execution use core template wrappers for operator-facing text.
+// ExampleParseTemplateFS parses templates from a filesystem through `ParseTemplateFS`.
+func ExampleParseTemplateFS() {
+	r := ParseTemplateFS(DirFS("."), "*.tmpl")
+	_ = r // r.Value is the parsed *Template set on success
+}
+
 func ExampleExecuteTemplate() {
 	tmpl := ParseTemplate("greeting", "hello {{.Name}}").Value.(*Template)
 	buf := NewBuffer()

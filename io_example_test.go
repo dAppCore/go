@@ -122,3 +122,10 @@ func ExampleLimitReader() {
 	Println(r.Value)
 	// Output: hello
 }
+
+// ExampleReadAll reads a reader to completion through `ReadAll`.
+func ExampleReadAll() {
+	r := ReadAll(NewReader("agent ready"))
+	Println(r.Value)
+	// Output: agent ready
+}

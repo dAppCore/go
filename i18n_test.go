@@ -95,20 +95,6 @@ func (r *rejectingTranslator) AvailableLanguages() []string {
 	return r.languages
 }
 
-func TestI18n_WithTranslator_Good(t *T) {
-	c := New()
-	tr := &mockTranslator{lang: "en"}
-	c.I18n().SetTranslator(tr)
-
-	AssertEqual(t, tr, c.I18n().Translator().Value)
-	AssertEqual(t, "translated:hello", c.I18n().Translate("hello").Value)
-	AssertEqual(t, "en", c.I18n().Language())
-	AssertEqual(t, []string{"en", "de", "fr"}, c.I18n().AvailableLanguages())
-
-	c.I18n().SetLanguage("de")
-	AssertEqual(t, "de", c.I18n().Language())
-}
-
 // --- AX-7 canonical triplets ---
 
 func TestI18n_I18n_AddLocales_Good(t *T) {

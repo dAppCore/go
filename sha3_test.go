@@ -57,40 +57,79 @@ func TestSha3_Keccak256Hex_Ugly(t *T) {
 }
 
 func TestSha3_SHA3_256_Good(t *T) {
-	sum := SHA3_256([]byte("hello"))
-
-	AssertEqual(t, sha3_256HelloHex, HexEncode(sum[:]))
+	hello := SHA3_256([]byte("hello"))
+	quick := SHA3_256([]byte("The quick brown fox jumps over the lazy dog"))
+	// Known FIPS-202 SHA3-256 vectors pin the algorithm and its 0x06 padding.
+	AssertEqual(t, sha3_256HelloHex, HexEncode(hello[:]))
+	AssertEqual(t, sha3_256QuickHex, HexEncode(quick[:]))
+	// Deterministic: the same message always produces the same digest.
+	AssertEqual(t, hello, SHA3_256([]byte("hello")))
+	// Distinct messages produce distinct digests.
+	AssertNotEqual(t, hello, SHA3_256([]byte("world")))
 }
 
 func TestSha3_SHA3_256_Bad(t *T) {
-	sum := SHA3_256(nil)
-
-	AssertEqual(t, sha3_256EmptyHex, HexEncode(sum[:]))
+	// SHA3_256 is FIPS-202, NOT legacy Keccak-256: the same message must hash
+	// differently under each (0x06 vs 0x01 domain separator).
+	AssertNotEqual(t, SHA3_256([]byte("hello")), Keccak256([]byte("hello")))
+	AssertNotEqual(t, sha3_256HelloHex, keccak256HelloHex)
+	// Avalanche: a single-bit input difference changes the digest.
+	AssertNotEqual(t, SHA3_256([]byte{0x00}), SHA3_256([]byte{0x01}))
 }
 
 func TestSha3_SHA3_256_Ugly(t *T) {
-	data := []byte("The quick brown fox jumps over the lazy dog")
+	empty := SHA3_256(nil)
+	// Empty message has a defined digest; nil and empty slice are equivalent.
+	AssertEqual(t, sha3_256EmptyHex, HexEncode(empty[:]))
+	AssertEqual(t, empty, SHA3_256([]byte{}))
+	// Binary-safe: the full 0x00..0xFF byte range is absorbed (not text-only)
+	// and differs from the empty digest.
+	full := make([]byte, 256)
+	for i := range full {
+		full[i] = byte(i)
+	}
+	AssertNotEqual(t, SHA3_256(nil), SHA3_256(full))
+	// Multi-block: input past the 136-byte sponge rate drives the absorb loop;
+	// dropping one byte changes the digest.
+	long := make([]byte, 400)
+	AssertNotEqual(t, SHA3_256(long), SHA3_256(long[:399]))
+	// The caller may mutate the input slice afterwards without altering a
+	// digest already taken.
+	data := []byte("snapshot")
 	sum := SHA3_256(data)
-	data[0] = 't'
-
-	AssertEqual(t, sha3_256QuickHex, HexEncode(sum[:]))
+	data[0] = 'X'
 	AssertNotEqual(t, sum, SHA3_256(data))
 }
 
 func TestSha3_SHA3_256Hex_Good(t *T) {
+	hello := SHA3_256([]byte("hello"))
+	// Known vectors as lowercase hex.
 	AssertEqual(t, sha3_256HelloHex, SHA3_256Hex([]byte("hello")))
+	AssertEqual(t, sha3_256QuickHex, SHA3_256Hex([]byte("The quick brown fox jumps over the lazy dog")))
+	// The hex form is exactly the byte digest, hex-encoded: 64 lowercase chars.
+	AssertEqual(t, HexEncode(hello[:]), SHA3_256Hex([]byte("hello")))
+	AssertLen(t, SHA3_256Hex([]byte("hello")), 64)
 }
 
 func TestSha3_SHA3_256Hex_Bad(t *T) {
-	AssertEqual(t, sha3_256EmptyHex, SHA3_256Hex(nil))
+	// Not Keccak-256: the hex digests differ for the same message.
+	AssertNotEqual(t, SHA3_256Hex([]byte("hello")), Keccak256Hex([]byte("hello")))
+	// Distinct messages produce distinct hex digests.
+	AssertNotEqual(t, SHA3_256Hex([]byte("hello")), SHA3_256Hex([]byte("world")))
 }
 
 func TestSha3_SHA3_256Hex_Ugly(t *T) {
-	data := []byte("The quick brown fox jumps over the lazy dog")
+	// Empty message: defined hex digest; nil and empty slice are equivalent.
+	AssertEqual(t, sha3_256EmptyHex, SHA3_256Hex(nil))
+	AssertEqual(t, SHA3_256Hex(nil), SHA3_256Hex([]byte{}))
+	// Output width is a constant 64 hex chars regardless of input size.
+	AssertLen(t, SHA3_256Hex(nil), 64)
+	long := make([]byte, 400)
+	AssertLen(t, SHA3_256Hex(long), 64)
+	// Caller mutation after hashing doesn't affect the taken digest.
+	data := []byte("snapshot")
 	sum := SHA3_256Hex(data)
-	data[0] = 't'
-
-	AssertEqual(t, sha3_256QuickHex, sum)
+	data[0] = 'X'
 	AssertNotEqual(t, sum, SHA3_256Hex(data))
 }
 

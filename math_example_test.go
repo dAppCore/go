@@ -62,3 +62,34 @@ func ExampleCompare() {
 	// 0
 	// 1
 }
+
+// ExampleClamp constrains a value to a range through `Clamp` for health-check thresholds.
+// Numeric helpers keep thresholds readable without importing math directly.
+func ExampleClamp() {
+	Println(Clamp(15, 0, 10))
+	// Output: 10
+}
+
+// ExampleSign reports the sign of a value through `Sign` for health-check thresholds.
+// Numeric helpers keep thresholds readable without importing math directly.
+func ExampleSign() {
+	Println(Sign(-3))
+	// Output: -1
+}
+
+// ExampleNaN produces an IEEE-754 not-a-number through `NaN` for float sentinels.
+// Numeric helpers keep thresholds readable without importing math directly.
+func ExampleNaN() {
+	Println(IsNaN(NaN()))
+	// Output: true
+}
+
+// ExampleIsNaN tests for not-a-number through `IsNaN` for float validation.
+// Numeric helpers keep thresholds readable without importing math directly.
+func ExampleIsNaN() {
+	Println(IsNaN(NaN()))
+	Println(IsNaN(1.0))
+	// Output:
+	// true
+	// false
+}

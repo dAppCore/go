@@ -205,6 +205,33 @@ func ExampleCore_PerformAsync() {
 
 // ExampleCore_Progress reports task progress through `Core.Progress` for background task
 // progress. Asynchronous work reports progress through Core task helpers.
+// ExampleAction_Enable re-enables a disabled action through `Action.Enable`.
+func ExampleAction_Enable() {
+	c := New()
+	a := c.Action("deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
+	a.Disable()
+	a.Enable()
+	Println(a.Enabled())
+	// Output: true
+}
+
+// ExampleAction_Disable soft-disables an action through `Action.Disable`.
+func ExampleAction_Disable() {
+	c := New()
+	a := c.Action("deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
+	a.Disable()
+	Println(a.Enabled())
+	// Output: false
+}
+
+// ExampleAction_Enabled reports whether an action is active through `Action.Enabled`.
+func ExampleAction_Enabled() {
+	c := New()
+	a := c.Action("deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
+	Println(a.Enabled())
+	// Output: true
+}
+
 func ExampleCore_Progress() {
 	c := New()
 	var progress float64

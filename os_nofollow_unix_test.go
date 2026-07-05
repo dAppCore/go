@@ -12,7 +12,7 @@ import . "dappco.re/go"
 
 // Good — opening a regular (non-symlink) final component with O_NOFOLLOW
 // succeeds exactly as a normal create-or-write would.
-func TestOS_OpenFile_NOFOLLOW_Good(t *T) {
+func TestOs_OpenFile_NOFOLLOW_Good(t *T) {
 	path := Path(t.TempDir(), "agent.log")
 
 	r := OpenFile(path, O_CREATE|O_EXCL|O_NOFOLLOW|O_WRONLY, 0o600)
@@ -24,7 +24,7 @@ func TestOS_OpenFile_NOFOLLOW_Good(t *T) {
 
 // Bad — the final component is a symlink, so O_NOFOLLOW refuses the open
 // and the Result reports the failure.
-func TestOS_OpenFile_NOFOLLOW_Bad(t *T) {
+func TestOs_OpenFile_NOFOLLOW_Bad(t *T) {
 	dir := t.TempDir()
 	target := Path(dir, "real.log")
 	link := Path(dir, "current.log")
@@ -39,7 +39,7 @@ func TestOS_OpenFile_NOFOLLOW_Bad(t *T) {
 // Ugly — a dangling symlink (target does not exist) opened for read with
 // O_NOFOLLOW still fails: the refusal fires on the link itself, not the
 // resolved destination.
-func TestOS_OpenFile_NOFOLLOW_Ugly(t *T) {
+func TestOs_OpenFile_NOFOLLOW_Ugly(t *T) {
 	dir := t.TempDir()
 	link := Path(dir, "dangling.log")
 	RequireNoError(t, SymlinkForTest(Path(dir, "nowhere.log"), link))
