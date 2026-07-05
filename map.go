@@ -45,6 +45,21 @@ func MapClone[K comparable, V any](m map[K]V) map[K]V {
 	return maps.Clone(m)
 }
 
+// MapString returns the string at key, or "" when the key is absent or its value
+// is not a string — the safe typed accessor for a decoded map[K]any (a JSON
+// object, a metadata blob), replacing the hand-rolled strVal helpers across
+// consumers.
+//
+//	name := core.MapString(row, "name")
+func MapString[K comparable](m map[K]any, key K) string {
+	if v, ok := m[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
 // MapFilter returns a new map containing only entries for which pred
 // returns true. A nil result is returned for an empty input.
 //
