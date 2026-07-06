@@ -20,7 +20,7 @@ type Translator interface {
 	// Translate translates a message by its ID with optional arguments.
 	Translate(messageID string, args ...any) Result
 	// SetLanguage sets the active language (BCP47 tag, e.g., "en-GB", "de").
-	SetLanguage(lang string) error
+	SetLanguage(lang string) Result
 	// Language returns the current language code.
 	Language() string
 	// AvailableLanguages returns all loaded language codes.
@@ -139,8 +139,8 @@ func (i *I18n) SetLanguage(lang string) Result {
 	t := i.translator
 	i.mu.Unlock()
 	if t != nil {
-		if err := t.SetLanguage(lang); err != nil {
-			return Result{err, false}
+		if r := t.SetLanguage(lang); !r.OK {
+			return r
 		}
 	}
 	return Result{OK: true}

@@ -47,13 +47,25 @@ var (
 //	core.Path("/tmp", "workspace")  // "/tmp/workspace"
 //	core.Path()                     // "/Users/snider"
 func Path(segments ...string) string {
+	if len(segments) == 0 {
+		home := Env("DIR_HOME")
+		if home == "" {
+			return "."
+		}
+		return home
+	}
+	// Absolute-first-segment fast path. The Env("DS") + Env("DIR_HOME")
+	// + CleanPath pipeline below only matters when we have to prefix
+	// the home directory; if the first segment is already absolute
+	// there is nothing to prefix and stdlib's filepath.Join cleans
+	// while joining.
+	if PathIsAbs(segments[0]) {
+		return PathJoin(segments...)
+	}
 	ds := Env("DS")
 	home := Env("DIR_HOME")
 	if home == "" {
 		home = "."
-	}
-	if len(segments) == 0 {
-		return home
 	}
 	p := Join(ds, segments...)
 	if PathIsAbs(p) {
@@ -83,8 +95,13 @@ func PathBase(p string) string {
 	if p == "" {
 		return ds
 	}
-	parts := Split(p, ds)
-	return parts[len(parts)-1]
+	// LastIndex + string-slice instead of Split — zero alloc instead
+	// of an N-element []string just to read the last entry.
+	i := lastIndex(p, ds)
+	if i < 0 {
+		return p
+	}
+	return p[i+len(ds):]
 }
 
 // PathDir returns all but the last element of a path.
@@ -143,9 +160,16 @@ func PathIsAbs(p string) bool {
 //
 //	core.CleanPath("/tmp//file", "/")     // "/tmp/file"
 //	core.CleanPath("a/b/../c", "/")       // "a/c"
+//
+// Fast path: when ds is the OS-native separator (the >99% case),
+// delegate to stdlib filepath.Clean — byte-level scan, 2 allocs vs
+// the Split/Join pipeline's 6.
 func CleanPath(p, ds string) string {
 	if p == "" {
 		return "."
+	}
+	if ds == string(PathSeparator) {
+		return filepath.Clean(p)
 	}
 
 	rooted := HasPrefix(p, ds)
@@ -248,16 +272,24 @@ func PathToSlash(p string) string {
 
 // PathWalk walks the file tree rooted at root.
 //
-//	err := core.PathWalk("/tmp/workspace", fn)
-func PathWalk(root string, fn PathWalkFunc) error {
-	return filepath.Walk(root, fn)
+//	r := core.PathWalk("/tmp/workspace", fn)
+//	if !r.OK { return r }
+func PathWalk(root string, fn PathWalkFunc) Result {
+	if err := filepath.Walk(root, fn); err != nil {
+		return Result{Value: WrapCode(err, "path.walk.failed", "PathWalk", "file tree walk failed"), OK: false}
+	}
+	return Result{OK: true}
 }
 
 // PathWalkDir walks the file tree rooted at root using directory entries.
 //
-//	err := core.PathWalkDir("/tmp/workspace", fn)
-func PathWalkDir(root string, fn PathWalkDirFunc) error {
-	return filepath.WalkDir(root, fn)
+//	r := core.PathWalkDir("/tmp/workspace", fn)
+//	if !r.OK { return r }
+func PathWalkDir(root string, fn PathWalkDirFunc) Result {
+	if err := filepath.WalkDir(root, fn); err != nil {
+		return Result{Value: WrapCode(err, "path.walk.failed", "PathWalkDir", "file tree walk failed"), OK: false}
+	}
+	return Result{OK: true}
 }
 
 // PathChangeExt returns p with its file extension replaced by newExt.

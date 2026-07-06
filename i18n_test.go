@@ -74,9 +74,9 @@ type mockTranslator struct {
 func (m *mockTranslator) Translate(id string, args ...any) Result {
 	return Result{Concat("translated:", id), true}
 }
-func (m *mockTranslator) SetLanguage(lang string) error { m.lang = lang; return nil }
-func (m *mockTranslator) Language() string              { return m.lang }
-func (m *mockTranslator) AvailableLanguages() []string  { return []string{"en", "de", "fr"} }
+func (m *mockTranslator) SetLanguage(lang string) Result { m.lang = lang; return Ok(nil) }
+func (m *mockTranslator) Language() string               { return m.lang }
+func (m *mockTranslator) AvailableLanguages() []string   { return []string{"en", "de", "fr"} }
 
 type rejectingTranslator struct {
 	lang      string
@@ -86,27 +86,13 @@ type rejectingTranslator struct {
 func (r *rejectingTranslator) Translate(id string, args ...any) Result {
 	return Result{Value: NewError(Concat("missing translation: ", id)), OK: false}
 }
-func (r *rejectingTranslator) SetLanguage(lang string) error {
+func (r *rejectingTranslator) SetLanguage(lang string) Result {
 	r.lang = lang
-	return NewError(Concat("unsupported language: ", lang))
+	return Fail(NewError(Concat("unsupported language: ", lang)))
 }
 func (r *rejectingTranslator) Language() string { return r.lang }
 func (r *rejectingTranslator) AvailableLanguages() []string {
 	return r.languages
-}
-
-func TestI18n_WithTranslator_Good(t *T) {
-	c := New()
-	tr := &mockTranslator{lang: "en"}
-	c.I18n().SetTranslator(tr)
-
-	AssertEqual(t, tr, c.I18n().Translator().Value)
-	AssertEqual(t, "translated:hello", c.I18n().Translate("hello").Value)
-	AssertEqual(t, "en", c.I18n().Language())
-	AssertEqual(t, []string{"en", "de", "fr"}, c.I18n().AvailableLanguages())
-
-	c.I18n().SetLanguage("de")
-	AssertEqual(t, "de", c.I18n().Language())
 }
 
 // --- AX-7 canonical triplets ---

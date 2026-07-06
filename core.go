@@ -24,7 +24,7 @@ type Core struct {
 	// cli accessed via ServiceFor[*Cli](c, "cli")
 	commands *CommandRegistry // c.Command("path")  — Command tree
 	services *ServiceRegistry // c.Service("name")  — Service registry
-	lock     *Lock            // c.Lock("name")     — Named mutexes
+	locks    *Registry[*Lock] // c.Lock("name")     — Named mutexes
 	ipc      *Ipc             // c.IPC()            — Message bus for IPC
 	api      *API             // c.API()            — Remote streams
 	info     *SysInfo         // c.Env("key")        — Read-only system/environment information
@@ -74,7 +74,19 @@ func (c *Core) Fs() *Fs { return c.fs }
 //
 //	host := c.Config().String("database.host")
 //	c.Config().Enable("dark-mode")
-func (c *Core) Config() *Config { return c.config }
+func (c *Core) Config(group ...string) *Config {
+	if len(group) > 0 && group[0] != "" {
+		return c.config.Group(group[0])
+	}
+	return c.config
+}
+
+// Feature returns a handle to the named feature flag, backed by this Core's
+// Config — the convenience accessor behind the c.Feature("name").Enabled()
+// pattern (see the Feature type in config.go).
+//
+//	if c.Feature("dark-mode").Enabled() { core.Println("on") }
+func (c *Core) Feature(name string) Feature { return Feature{cfg: c.config, name: name} }
 
 // Error returns the panic recovery subsystem.
 //
@@ -114,6 +126,49 @@ func (c *Core) Env(key string) string { return Env(key) }
 //
 //	ctx := c.Context()
 func (c *Core) Context() Context { return c.context }
+
+// WithContext returns a shallow clone of c whose lifecycle context is
+// derived from ctx — for request-scoped context derivation (auth
+// substrate etc.). The derived Core shares services/data/config (every
+// heavy subsystem) with the parent by pointer; only the context, its
+// cancel, and the per-Core lifecycle bookkeeping (waitGroup / shutdown
+// flag / task counter) are fresh.
+//
+// Cancellation is one-directional: the derived Core's cancel does NOT
+// cancel the parent, but a parent shutdown propagates DOWN to the
+// derived context when ctx chains from the parent (the usual case —
+// pass core.WithValue(c.Context(), …)). The clone re-wraps ctx in a
+// fresh WithCancel so callers that retain the parent stay unaffected.
+//
+//	type userKey struct{}
+//	rc := c.WithContext(core.WithValue(c.Context(), userKey{}, user))
+//	id := rc.Context().Value(userKey{})  // round-trips on the clone
+func (c *Core) WithContext(ctx Context) *Core {
+	derivedCtx, derivedCancel := WithCancel(ctx)
+	return &Core{
+		options:            c.options,
+		app:                c.app,
+		data:               c.data,
+		drive:              c.drive,
+		fs:                 c.fs,
+		config:             c.config,
+		error:              c.error,
+		log:                c.log,
+		commands:           c.commands,
+		services:           c.services,
+		locks:              c.locks,
+		ipc:                c.ipc,
+		api:                c.api,
+		info:               c.info,
+		i18n:               c.i18n,
+		entitlementChecker: c.entitlementChecker,
+		usageRecorder:      c.usageRecorder,
+		context:            derivedCtx,
+		cancel:             derivedCancel,
+		// taskIDCounter / waitGroup / shutdown intentionally start fresh —
+		// the derived Core owns its own request-scoped lifecycle.
+	}
+}
 
 // Core returns self — satisfies the ServiceRuntime interface.
 //
@@ -222,18 +277,18 @@ func (c *Core) Must(err error, op, msg string) {
 //	c.RegistryOf("services").Names()           // all service names
 //	c.RegistryOf("actions").List("process.*")  // process capabilities
 //	c.RegistryOf("commands").Len()             // command count
-func (c *Core) RegistryOf(name string) *Registry[any] {
+func (c *Core) RegistryOf(name string) Result {
 	// Bridge typed registries to untyped access for cross-cutting queries.
 	// Each registry is wrapped in a read-only proxy.
 	switch name {
 	case "services":
-		return registryProxy(c.services.Registry)
+		return Result{Value: registryProxy(c.services.Registry), OK: true}
 	case "commands":
-		return registryProxy(c.commands.Registry)
+		return Result{Value: registryProxy(c.commands.Registry), OK: true}
 	case "actions":
-		return registryProxy(c.ipc.actions)
+		return Result{Value: registryProxy(c.ipc.actions), OK: true}
 	default:
-		return NewRegistry[any]() // empty registry for unknown names
+		return Result{Value: NewRegistry[any](), OK: false} // unknown name
 	}
 }
 

@@ -118,7 +118,7 @@ func ExampleNewWithFactories() {
 	// Output:
 	// true
 	// gui
-	// [cli alpha beta]
+	// [alpha beta]
 }
 
 // ExampleNewRuntime constructs a runtime through `NewRuntime` for service runtime
@@ -160,4 +160,33 @@ func ExampleRuntime_ServiceShutdown() {
 	rt := NewRuntime("gui").Value.(*Runtime)
 	Println(rt.ServiceShutdown(Background()).OK)
 	// Output: true
+}
+
+// ExampleCore_Go spawns a tracked goroutine through `Core.Go` so
+// ServiceShutdown waits for it to exit before stopping services.
+// Long-running workers and watchers spawn this way to avoid being
+// orphaned across a clean shutdown.
+func ExampleCore_Go() {
+	c := New()
+	done := make(chan struct{})
+	c.Go(func() {
+		Println("worker ran")
+		close(done)
+	})
+	<-done
+	c.ServiceShutdown(Background())
+	// Output: worker ran
+}
+
+// ExampleCore_IsShutdown reports whether ServiceShutdown has been
+// initiated. Long-running goroutines poll this between work units to
+// exit cooperatively before the waitGroup drain blocks.
+func ExampleCore_IsShutdown() {
+	c := New()
+	Println(c.IsShutdown())
+	c.ServiceShutdown(Background())
+	Println(c.IsShutdown())
+	// Output:
+	// false
+	// true
 }

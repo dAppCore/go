@@ -6,8 +6,18 @@ package core
 
 import (
 	"slices"
-	"sort"
 )
+
+// SliceEqual reports whether a and b have the same length and equal elements in
+// the same order — the core surface for the common "are these two slices the
+// same" check, replacing the hand-rolled sameIntSlice/bytesEqual/int32SlicesEqual
+// helpers across consumers.
+//
+//	core.SliceEqual([]int{1, 2}, []int{1, 2}) // true
+//	core.SliceEqual([]byte("ab"), []byte("ac")) // false
+func SliceEqual[T comparable](a, b []T) bool {
+	return slices.Equal(a, b)
+}
 
 // SliceContains reports whether s contains v.
 //
@@ -34,9 +44,9 @@ func SliceClone[T any](s []T) []T {
 //
 //	core.SliceSort(scores)
 func SliceSort[T Ordered](s []T) {
-	sort.Slice(s, func(i, j int) bool {
-		return Compare(s[i], s[j]) < 0
-	})
+	// slices.Sort uses generic dispatch and avoids the interface-based
+	// reflection that sort.Slice incurred under Go 1.20-style closures.
+	slices.Sort(s)
 }
 
 // SliceUniq returns a new slice with duplicate values removed, preserving order.
@@ -45,6 +55,23 @@ func SliceSort[T Ordered](s []T) {
 func SliceUniq[T comparable](s []T) []T {
 	if len(s) == 0 {
 		return nil
+	}
+	// Small-N linear path. For up to 16 elements, a linear scan on the
+	// output (O(N²) compares) beats the map allocation + hashing cost
+	// of the general path. Tokeniser / vocab / config-key dedupe hot
+	// loops sit in this size band.
+	if len(s) <= 16 {
+		out := make([]T, 0, len(s))
+	outer:
+		for _, value := range s {
+			for _, o := range out {
+				if o == value {
+					continue outer
+				}
+			}
+			out = append(out, value)
+		}
+		return out
 	}
 	seen := make(map[T]struct{}, len(s))
 	out := make([]T, 0, len(s))
@@ -130,9 +157,14 @@ func SliceFlatMap[T any, U any](s []T, fn func(T) []U) []U {
 	if len(s) == 0 {
 		return nil
 	}
-	var out []U
+	// Heuristic pre-size: ~1 output per input avoids the early geometric
+	// regrows when fn is near-1:1 (the common map-shaped case).
+	out := make([]U, 0, len(s))
 	for _, v := range s {
 		out = append(out, fn(v)...)
+	}
+	if len(out) == 0 {
+		return nil
 	}
 	return out
 }
@@ -192,4 +224,26 @@ func SliceAll[T any](s []T, pred func(T) bool) bool {
 		}
 	}
 	return true
+}
+
+// SliceSortFunc sorts s in place using less to compare elements. The
+// sort is not guaranteed to be stable. Use SliceSort when natural
+// ordering applies; SliceSortFunc covers the comparator-required cases
+// (sorting structs by a field, mixed-criteria order, etc.).
+//
+//	core.SliceSortFunc(items, func(a, b Item) bool { return a.Path < b.Path })
+func SliceSortFunc[T any](s []T, less func(a, b T) bool) {
+	// slices.SortFunc is generic and avoids the interface-based reflect
+	// dispatch that sort.Slice used. The bool-less API is preserved by
+	// wrapping into the int comparator that slices.SortFunc expects.
+	slices.SortFunc(s, func(a, b T) int {
+		switch {
+		case less(a, b):
+			return -1
+		case less(b, a):
+			return 1
+		default:
+			return 0
+		}
+	})
 }

@@ -33,14 +33,15 @@ func SHA256Hex(data []byte) string {
 //
 //	sum := core.SHA256String("hello")
 func SHA256String(s string) [32]byte {
-	return SHA256([]byte(s))
+	return sha256.Sum256(AsBytes(s))
 }
 
 // SHA256HexString returns the SHA-256 digest of s as lowercase hexadecimal.
 //
 //	sum := core.SHA256HexString("hello")
 func SHA256HexString(s string) string {
-	return SHA256Hex([]byte(s))
+	sum := sha256.Sum256(AsBytes(s))
+	return HexEncode(sum[:])
 }
 
 // HMAC returns the HMAC digest for data using key and algo wrapped in a

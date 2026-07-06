@@ -268,6 +268,139 @@ type Header = http.Header
 //	_ = cookie.String()
 type Cookie = http.Cookie
 
+// HTTP method constants. Re-exported from net/http so consumers reach
+// methods through core without importing net/http.
+//
+//	r := core.NewHTTPRequest(core.MethodPost, target, body)
+const (
+	MethodGet     = http.MethodGet
+	MethodHead    = http.MethodHead
+	MethodPost    = http.MethodPost
+	MethodPut     = http.MethodPut
+	MethodPatch   = http.MethodPatch
+	MethodDelete  = http.MethodDelete
+	MethodConnect = http.MethodConnect
+	MethodOptions = http.MethodOptions
+	MethodTrace   = http.MethodTrace
+)
+
+// HTTP status code constants. Re-exported from net/http for consumers that
+// build Lethean HTTP handlers without importing the stdlib package.
+//
+//	if r.StatusCode == core.StatusOK { return r }
+//	core.HTTPError(w, "missing field", core.StatusBadRequest)
+const (
+	StatusOK                  = http.StatusOK
+	StatusCreated             = http.StatusCreated
+	StatusAccepted            = http.StatusAccepted
+	StatusNoContent           = http.StatusNoContent
+	StatusBadRequest          = http.StatusBadRequest
+	StatusUnauthorized        = http.StatusUnauthorized
+	StatusForbidden           = http.StatusForbidden
+	StatusNotFound            = http.StatusNotFound
+	StatusMethodNotAllowed    = http.StatusMethodNotAllowed
+	StatusConflict            = http.StatusConflict
+	StatusGone                = http.StatusGone
+	StatusUnprocessableEntity = http.StatusUnprocessableEntity
+	StatusTooManyRequests     = http.StatusTooManyRequests
+	StatusInternalServerError = http.StatusInternalServerError
+	StatusNotImplemented      = http.StatusNotImplemented
+	StatusBadGateway          = http.StatusBadGateway
+	StatusServiceUnavailable  = http.StatusServiceUnavailable
+	StatusGatewayTimeout      = http.StatusGatewayTimeout
+)
+
+// Flusher is the canonical HTTP flusher interface — used by handlers that
+// stream responses (Server-Sent Events, chunked transfer) to push bytes
+// to the client without buffering.
+//
+//	if f, ok := w.(core.Flusher); ok { f.Flush() }
+type Flusher = http.Flusher
+
+// HTTPFileSystem is the interface served by HTTPFileServer. Construct via
+// HTTPFS to wrap a Lethean FS, or pass a stdlib http.Dir directly.
+//
+//	mux.Handle("/static/", core.HTTPFileServer(core.HTTPFS(embedded)))
+type HTTPFileSystem = http.FileSystem
+
+// DefaultHTTPClient is the package-level default *HTTPClient. Use it for
+// one-off requests that don't justify a dedicated client.
+//
+//	resp, err := core.DefaultHTTPClient.Do(req)
+var DefaultHTTPClient = http.DefaultClient
+
+// ErrHTTPServerClosed is the sentinel returned by HTTPServer.ListenAndServe
+// (and friends) after Shutdown is called. Use core.Is to detect graceful
+// shutdown vs unexpected termination.
+//
+//	if err := srv.ListenAndServe(); !core.Is(err, core.ErrHTTPServerClosed) {
+//	    core.Error("server died", "err", err)
+//	}
+var ErrHTTPServerClosed = http.ErrServerClosed
+
+// NewServeMux returns a new *ServeMux. Compose handler maps without
+// importing net/http directly.
+//
+//	mux := core.NewServeMux()
+//	mux.HandleFunc("/health", healthHandler)
+func NewServeMux() *ServeMux {
+	return http.NewServeMux()
+}
+
+// HTTPStripPrefix returns a Handler that serves requests by removing the
+// given prefix from the URL path before delegating to h. Useful for
+// mounting a sub-application under a path.
+//
+//	api := core.HTTPStripPrefix("/api/v1", apiHandler)
+func HTTPStripPrefix(prefix string, h Handler) Handler {
+	return http.StripPrefix(prefix, h)
+}
+
+// HTTPListenAndServe runs an HTTPServer on the given address with the given
+// handler, returning a Result. ListenAndServe only returns on error, so a
+// non-OK Result is the normal outcome — Value carries ErrHTTPServerClosed after
+// a graceful shutdown, other errors otherwise.
+//
+//	if r := core.HTTPListenAndServe(":8080", mux); !r.OK {
+//	    if err, _ := r.Value.(error); !core.Is(err, core.ErrHTTPServerClosed) {
+//	        core.Error("listen", "err", err)
+//	    }
+//	}
+func HTTPListenAndServe(addr string, handler Handler) Result {
+	if err := http.ListenAndServe(addr, handler); err != nil {
+		return Result{Value: err, OK: false}
+	}
+	return Result{OK: true}
+}
+
+// HTTPFileServer returns a Handler that serves HTTP requests with the
+// contents of the file system rooted at root. Pair with HTTPFS to serve
+// a Lethean FS or embed.FS without importing net/http.
+//
+//	mux.Handle("/static/", core.HTTPFileServer(core.HTTPFS(embedded)))
+func HTTPFileServer(root HTTPFileSystem) Handler {
+	return http.FileServer(root)
+}
+
+// HTTPFS converts a Lethean FS to an HTTPFileSystem suitable for
+// HTTPFileServer. Useful for serving an embed.FS through net/http.
+//
+//	mux.Handle("/static/", core.HTTPFileServer(core.HTTPFS(embedded)))
+func HTTPFS(fsys FS) HTTPFileSystem {
+	return http.FS(fsys)
+}
+
+// HTTPError replies to the request with the given status code and a
+// plain-text error message body.
+//
+//	if !valid {
+//	    core.HTTPError(w, "missing field", core.StatusBadRequest)
+//	    return
+//	}
+func HTTPError(w ResponseWriter, error string, code int) {
+	http.Error(w, error, code)
+}
+
 // HTTPGet performs an HTTP GET. Returns Result wrapping *Response on
 // success or the error.
 //

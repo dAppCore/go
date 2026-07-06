@@ -25,11 +25,13 @@ func TestUser_UserCurrent_Bad(t *T) {
 }
 
 func TestUser_UserCurrent_Ugly(t *T) {
-	u := currentUserForUserTest(t)
-	r := UserLookupID(u.Uid)
+	// UserCurrent is idempotent: repeated calls return the same identity.
+	first := currentUserForUserTest(t)
+	second := UserCurrent()
 
-	AssertTrue(t, r.OK)
-	AssertEqual(t, u.Uid, r.Value.(*User).Uid)
+	AssertTrue(t, second.OK)
+	AssertEqual(t, first.Uid, second.Value.(*User).Uid)
+	AssertEqual(t, first.Username, second.Value.(*User).Username)
 }
 
 func TestUser_UserGroupLookup_Good(t *T) {

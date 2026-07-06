@@ -48,6 +48,8 @@ The full contract is `docs/RFC.md` (21 sections, 1476 lines). An agent should be
 
 | Path | Covers |
 |------|--------|
+| [architecture.md](architecture.md) | Core container, universal primitives, AX rules, module layering |
+| [development.md](development.md) | Build/test/QA, the test standard, the CoreGoAudit |
 | [RFC.md](RFC.md) | Authoritative API contract (21 sections) |
 | [primitives.md](primitives.md) | Option, Result, Action, Task, Registry, Entitlement |
 | [services.md](services.md) | Service registry, ServiceRuntime, service locks |

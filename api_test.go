@@ -1,6 +1,10 @@
 package core_test
 
-import . "dappco.re/go"
+import (
+	"net"
+
+	. "dappco.re/go"
+)
 
 // --- mock stream for testing ---
 
@@ -559,6 +563,177 @@ func TestApi_NewHTTPTestTLSServer_Ugly(t *T) {
 	srv := NewHTTPTestTLSServer(HandlerFunc(func(w ResponseWriter, r *Request) { /* no-op handler exercises empty response lifecycle */ }))
 	srv.Close()
 	AssertNotEmpty(t, srv.URL)
+}
+
+func TestApi_NewServeMux_Good(t *T) {
+	mux := NewServeMux()
+	mux.HandleFunc("/health", func(w ResponseWriter, r *Request) {
+		w.WriteHeader(200)
+		WriteString(w, "ok")
+	})
+	rec := NewHTTPTestRecorder()
+	mux.ServeHTTP(rec, NewHTTPTestRequest("GET", "/health", nil))
+	AssertEqual(t, 200, rec.Code)
+	AssertContains(t, rec.Body.String(), "ok")
+}
+
+func TestApi_NewServeMux_Bad(t *T) {
+	// An unregistered path returns 404.
+	rec := NewHTTPTestRecorder()
+	NewServeMux().ServeHTTP(rec, NewHTTPTestRequest("GET", "/missing", nil))
+	AssertEqual(t, 404, rec.Code)
+}
+
+func TestApi_NewServeMux_Ugly(t *T) {
+	// The most specific pattern wins when routes overlap.
+	mux := NewServeMux()
+	mux.HandleFunc("/", func(w ResponseWriter, r *Request) { WriteString(w, "root") })
+	mux.HandleFunc("/api/", func(w ResponseWriter, r *Request) { WriteString(w, "api") })
+	rec := NewHTTPTestRecorder()
+	mux.ServeHTTP(rec, NewHTTPTestRequest("GET", "/api/x", nil))
+	AssertContains(t, rec.Body.String(), "api")
+}
+
+func TestApi_HTTPStripPrefix_Good(t *T) {
+	var seen string
+	h := HTTPStripPrefix("/api", HandlerFunc(func(w ResponseWriter, r *Request) {
+		seen = r.URL.Path
+	}))
+	h.ServeHTTP(NewHTTPTestRecorder(), NewHTTPTestRequest("GET", "/api/users", nil))
+	AssertEqual(t, "/users", seen) // the prefix is stripped before the inner handler
+}
+
+func TestApi_HTTPStripPrefix_Bad(t *T) {
+	// A path lacking the prefix can't be stripped → 404.
+	h := HTTPStripPrefix("/api", HandlerFunc(func(w ResponseWriter, r *Request) {
+		w.WriteHeader(200)
+	}))
+	rec := NewHTTPTestRecorder()
+	h.ServeHTTP(rec, NewHTTPTestRequest("GET", "/other", nil))
+	AssertEqual(t, 404, rec.Code)
+}
+
+func TestApi_HTTPStripPrefix_Ugly(t *T) {
+	// Stripping the whole path leaves the empty string.
+	var seen string
+	h := HTTPStripPrefix("/api", HandlerFunc(func(w ResponseWriter, r *Request) {
+		seen = r.URL.Path
+	}))
+	h.ServeHTTP(NewHTTPTestRecorder(), NewHTTPTestRequest("GET", "/api", nil))
+	AssertEqual(t, "", seen)
+}
+
+func TestApi_HTTPError_Good(t *T) {
+	rec := NewHTTPTestRecorder()
+	HTTPError(rec, "bad request", 400)
+	AssertEqual(t, 400, rec.Code)
+	AssertContains(t, rec.Body.String(), "bad request")
+}
+
+func TestApi_HTTPError_Bad(t *T) {
+	// An empty message still sets the status code.
+	rec := NewHTTPTestRecorder()
+	HTTPError(rec, "", 400)
+	AssertEqual(t, 400, rec.Code)
+}
+
+func TestApi_HTTPError_Ugly(t *T) {
+	// http.Error appends a trailing newline to the plain-text body.
+	rec := NewHTTPTestRecorder()
+	HTTPError(rec, "boom", 500)
+	AssertEqual(t, 500, rec.Code)
+	AssertTrue(t, HasSuffix(rec.Body.String(), "\n"))
+}
+
+func TestApi_HTTPFS_Good(t *T) {
+	dir := t.TempDir()
+	RequireTrue(t, WriteFile(Path(dir, "f.txt"), []byte("static"), 0o644).OK)
+	f, err := HTTPFS(DirFS(dir)).Open("f.txt")
+	RequireTrue(t, err == nil)
+	CloseStream(f)
+}
+
+func TestApi_HTTPFS_Bad(t *T) {
+	_, err := HTTPFS(DirFS(t.TempDir())).Open("missing.txt")
+	AssertError(t, err)
+}
+
+func TestApi_HTTPFS_Ugly(t *T) {
+	// A traversal path is rejected by the http.FileSystem.
+	_, err := HTTPFS(DirFS(t.TempDir())).Open("../escape")
+	AssertError(t, err)
+}
+
+func TestApi_HTTPFileServer_Good(t *T) {
+	dir := t.TempDir()
+	RequireTrue(t, WriteFile(Path(dir, "f.txt"), []byte("static"), 0o644).OK)
+	h := HTTPFileServer(HTTPFS(DirFS(dir)))
+	rec := NewHTTPTestRecorder()
+	h.ServeHTTP(rec, NewHTTPTestRequest("GET", "/f.txt", nil))
+	AssertEqual(t, 200, rec.Code)
+	AssertContains(t, rec.Body.String(), "static")
+}
+
+func TestApi_HTTPFileServer_Bad(t *T) {
+	h := HTTPFileServer(HTTPFS(DirFS(t.TempDir())))
+	rec := NewHTTPTestRecorder()
+	h.ServeHTTP(rec, NewHTTPTestRequest("GET", "/missing.txt", nil))
+	AssertEqual(t, 404, rec.Code)
+}
+
+func TestApi_HTTPFileServer_Ugly(t *T) {
+	// The root path yields a directory listing.
+	dir := t.TempDir()
+	RequireTrue(t, WriteFile(Path(dir, "a.txt"), []byte("x"), 0o644).OK)
+	h := HTTPFileServer(HTTPFS(DirFS(dir)))
+	rec := NewHTTPTestRecorder()
+	h.ServeHTTP(rec, NewHTTPTestRequest("GET", "/", nil))
+	AssertEqual(t, 200, rec.Code)
+	AssertContains(t, rec.Body.String(), "a.txt")
+}
+
+func TestApi_HTTPListenAndServe_Good(t *T) {
+	// HTTPListenAndServe blocks for the server's lifetime, so it runs in a
+	// goroutine; the test fetches from it and then leaves it (the process
+	// exits at test end). A free port is reserved then released to avoid a
+	// hard-coded port clash.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	RequireTrue(t, err == nil)
+	addr := ln.Addr().String()
+	RequireTrue(t, ln.Close() == nil)
+
+	go HTTPListenAndServe(addr, HandlerFunc(func(w ResponseWriter, r *Request) {
+		WriteString(w, "served")
+	}))
+
+	var got Result
+	for i := 0; i < 100; i++ {
+		if got = HTTPGet("http://" + addr + "/"); got.OK {
+			break
+		}
+		Sleep(20 * Millisecond)
+	}
+	RequireTrue(t, got.OK)
+	resp := got.Value.(*Response)
+	defer resp.Body.Close()
+	body := ReadAll(resp.Body)
+	RequireTrue(t, body.OK)
+	AssertContains(t, body.Value, "served")
+}
+
+func TestApi_HTTPListenAndServe_Bad(t *T) {
+	// An address with no port is rejected immediately.
+	r := HTTPListenAndServe("no-port-here", HandlerFunc(func(w ResponseWriter, r *Request) {}))
+	AssertFalse(t, r.OK)
+}
+
+func TestApi_HTTPListenAndServe_Ugly(t *T) {
+	// Binding an already-occupied address fails immediately.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	RequireTrue(t, err == nil)
+	defer ln.Close()
+	r := HTTPListenAndServe(ln.Addr().String(), HandlerFunc(func(w ResponseWriter, r *Request) {}))
+	AssertFalse(t, r.OK)
 }
 
 func TestApi_NewHTTPTestRecorder_Good(t *T) {

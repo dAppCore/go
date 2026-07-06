@@ -125,8 +125,22 @@ func CopyN(dst Writer, src Reader, n int64) Result {
 // the number of bytes written (int).
 //
 //	r := core.WriteString(stdout, "hello\n")
+//
+// Fast path: when the writer exposes a WriteString method we delegate
+// straight to it (strings.Builder, bytes.Buffer, *os.File on most
+// platforms). For writers without one, we use AsBytes to skip the
+// []byte(s) copy that stdlib io.WriteString does in its fallback —
+// safe because the io.Writer contract forbids retention or mutation
+// of the slice past the call.
 func WriteString(w Writer, s string) Result {
-	n, err := io.WriteString(w, s)
+	if sw, ok := w.(interface{ WriteString(string) (int, error) }); ok {
+		n, err := sw.WriteString(s)
+		if err != nil {
+			return Result{err, false}
+		}
+		return Result{n, true}
+	}
+	n, err := w.Write(AsBytes(s))
 	if err != nil {
 		return Result{err, false}
 	}
@@ -142,15 +156,79 @@ func ReadAll(reader any) Result {
 	if !ok {
 		return Result{E("core.ReadAll", "not a reader", nil), false}
 	}
-	data, err := io.ReadAll(rc)
-	if closer, ok := reader.(Closer); ok {
-		closer.Close()
+	defer func() {
+		if closer, ok := reader.(Closer); ok {
+			closer.Close()
+		}
+	}()
+	// Fast path: if the reader knows its remaining size, allocate the
+	// destination once at the exact size instead of paying io.ReadAll's
+	// 5-10 buffer doublings (which cost ~3x the final byte count in
+	// transient allocations).
+	//
+	// Probed types:
+	//   * interface{ Len() int }   — bytes.Reader, bytes.Buffer, strings.Reader
+	//   * *io.LimitedReader        — exposes max-remaining via .N; if the
+	//                                wrapped reader also exposes Len(), use
+	//                                min(N, Len()), otherwise just N
+	var r Result
+	if sizer, hasLen := reader.(interface{ Len() int }); hasLen {
+		r = readAllSized(rc, sizer.Len())
+	} else if lr, ok := reader.(*io.LimitedReader); ok {
+		n := int(lr.N)
+		if inner, hasLen := lr.R.(interface{ Len() int }); hasLen {
+			if il := inner.Len(); il < n {
+				n = il
+			}
+		}
+		r = readAllSized(rc, n)
+	} else {
+		data, err := io.ReadAll(rc)
+		if err != nil {
+			return Result{Value: WrapCode(err, "io.read.failed", "ReadAll", "read failed"), OK: false}
+		}
+		r = Result{Value: data, OK: true}
 	}
-	if err != nil {
-		return Result{err, false}
+	if !r.OK {
+		return r
 	}
-	return Result{string(data), true}
+	return Result{AsString(r.Value.([]byte)), true}
 }
+
+// readAllSized reads exactly n bytes (or until EOF) into a pre-allocated
+// buffer. Used by ReadAll when the source's remaining length is known.
+// Returns Result{Value: []byte} on success, Result{Value: error} on a
+// non-EOF read failure.
+func readAllSized(r Reader, n int) Result {
+	if n <= 0 {
+		return Result{Value: []byte(nil), OK: true}
+	}
+	buf := make([]byte, n)
+	read := 0
+	for read < n {
+		m, err := r.Read(buf[read:])
+		read += m
+		if err != nil {
+			if err == io.EOF {
+				return Result{Value: buf[:read], OK: true}
+			}
+			return Result{Value: WrapCode(err, "io.read.failed", "readAllSized", "read failed"), OK: false}
+		}
+	}
+	return Result{Value: buf, OK: true}
+}
+
+// Buffer is an alias for bytes.Buffer — an in-memory byte sequence with
+// io.Reader/io.Writer methods. Lets consumers declare buffer-typed
+// fields and locals without importing bytes.
+//
+//	type Sink struct {
+//	    out core.Buffer
+//	}
+//
+//	var buf core.Buffer
+//	buf.WriteString("ready")
+type Buffer = bytes.Buffer
 
 // NewBuffer returns a bytes.Buffer initialised with b.
 // With no input, it returns an empty bytes.Buffer.
@@ -169,4 +247,25 @@ func NewBuffer(b ...[]byte) *bytes.Buffer {
 //	buf := core.NewBufferString("hello")
 func NewBufferString(s string) *bytes.Buffer {
 	return bytes.NewBufferString(s)
+}
+
+// NewBufferReader returns a bytes.Reader over b — the bytes flavour of
+// NewReader, which works on strings. Use for HTTP body construction
+// and other Reader-shaped consumers.
+//
+//	body := core.NewBufferReader([]byte(`{"port":8080}`))
+//	req, _ := core.HTTPNewRequest("POST", url, body)
+func NewBufferReader(b []byte) *bytes.Reader {
+	return bytes.NewReader(b)
+}
+
+// LimitReader returns a Reader that reads from r but stops with EOF
+// after n bytes. Useful for bounding HTTP body reads at a maximum
+// size to prevent memory blow-ups from oversized responses.
+//
+//	body := core.ReadAll(core.LimitReader(resp.Body, 4<<20))
+//	if !body.OK { return body }
+//	bytes := body.Value.([]byte)
+func LimitReader(r Reader, n int64) Reader {
+	return io.LimitReader(r, n)
 }

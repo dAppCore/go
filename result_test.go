@@ -19,6 +19,21 @@ func TestResult_Result_Error_Ugly(t *T) {
 	AssertEqual(t, "unknown error", r.Error())
 }
 
+func TestResult_Result_Err_Good(t *T) {
+	AssertTrue(t, Result{Value: "ready", OK: true}.Err() == nil)
+}
+
+func TestResult_Result_Err_Bad(t *T) {
+	err := NewError("dispatch failed")
+	AssertEqual(t, err, Result{Value: err, OK: false}.Err())
+}
+
+func TestResult_Result_Err_Ugly(t *T) {
+	// non-error failure value: Err() returns the Result itself as an error
+	r := Result{Value: "session refused", OK: false}
+	AssertEqual(t, "session refused", r.Err().Error())
+}
+
 func TestResult_Result_Code_Good(t *T) {
 	r := Result{Value: NewCode("agent.refused", "dispatch refused"), OK: false}
 	AssertEqual(t, "agent.refused", r.Code())

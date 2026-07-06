@@ -266,3 +266,164 @@ func ExampleNewHTTPTestRequest() {
 	// GET
 	// /status
 }
+
+// ExampleMethodGet shows the HTTP method constants exposed by core. They are
+// the canonical method strings re-exported from net/http so consumers build
+// requests without importing net/http directly.
+func ExampleMethodGet() {
+	Println(MethodGet)
+	Println(MethodPost)
+	Println(MethodDelete)
+	// Output:
+	// GET
+	// POST
+	// DELETE
+}
+
+// ExampleStatusOK shows the HTTP status constants exposed by core. The
+// most-reached codes (success, client error, server error) are listed
+// here; the full set follows the http.StatusXxx naming pattern.
+func ExampleStatusOK() {
+	Println(StatusOK)
+	Println(StatusBadRequest)
+	Println(StatusInternalServerError)
+	// Output:
+	// 200
+	// 400
+	// 500
+}
+
+// ExampleFlusher demonstrates type-asserting a ResponseWriter to Flusher
+// for streaming responses. The handler pushes one chunk and flushes
+// immediately — the canonical Server-Sent Events / chunked-transfer shape.
+func ExampleFlusher() {
+	handler := HandlerFunc(func(w ResponseWriter, _ *Request) {
+		WriteString(w, "tick")
+		if f, ok := w.(Flusher); ok {
+			f.Flush()
+		}
+	})
+	srv := NewHTTPTestServer(handler)
+	defer srv.Close()
+
+	r := HTTPGet(srv.URL)
+	defer r.Value.(*Response).Body.Close()
+	body := ReadAll(r.Value.(*Response).Body)
+	Println(body.Value)
+	// Output: tick
+}
+
+// ExampleHTTPFileSystem documents the type alias for HTTP file servers.
+// Construct via HTTPFS to wrap a Lethean FS, or pass a stdlib http.Dir.
+func ExampleHTTPFileSystem() {
+	var _ HTTPFileSystem = HTTPFS(DirFS("/tmp"))
+	Println("aliased")
+	// Output: aliased
+}
+
+// ExampleDefaultHTTPClient uses the package-level default *HTTPClient for a
+// one-off request that doesn't justify a dedicated client.
+func ExampleDefaultHTTPClient() {
+	srv := NewHTTPTestServer(HandlerFunc(func(w ResponseWriter, _ *Request) {
+		WriteString(w, "ok")
+	}))
+	defer srv.Close()
+
+	req := NewHTTPRequest(MethodGet, srv.URL, nil).Value.(*Request)
+	resp, _ := DefaultHTTPClient.Do(req)
+	defer resp.Body.Close()
+	body := ReadAll(resp.Body)
+	Println(body.Value)
+	// Output: ok
+}
+
+// ExampleErrHTTPServerClosed checks for the graceful-shutdown sentinel.
+// A real HTTPServer returns this from ListenAndServe after Shutdown is
+// called; here the example demonstrates the equality-check shape via Is.
+func ExampleErrHTTPServerClosed() {
+	err := ErrHTTPServerClosed
+	Println(Is(err, ErrHTTPServerClosed))
+	// Output: true
+}
+
+// ExampleNewServeMux composes a small mux + serves a request via the
+// test server. Same shape consumers use to register agent endpoints
+// without importing net/http directly.
+func ExampleNewServeMux() {
+	mux := NewServeMux()
+	mux.HandleFunc("/health", func(w ResponseWriter, _ *Request) {
+		WriteString(w, "ok")
+	})
+	srv := NewHTTPTestServer(mux)
+	defer srv.Close()
+
+	r := HTTPGet(srv.URL + "/health")
+	defer r.Value.(*Response).Body.Close()
+	body := ReadAll(r.Value.(*Response).Body)
+	Println(body.Value)
+	// Output: ok
+}
+
+// ExampleHTTPStripPrefix mounts an inner handler under /api/v1/* by
+// stripping the prefix before delegation. Used to compose sub-apps
+// under a versioned path.
+func ExampleHTTPStripPrefix() {
+	inner := HandlerFunc(func(w ResponseWriter, r *Request) {
+		WriteString(w, r.URL.Path)
+	})
+	mux := NewServeMux()
+	mux.Handle("/api/v1/", HTTPStripPrefix("/api/v1", inner))
+	srv := NewHTTPTestServer(mux)
+	defer srv.Close()
+
+	r := HTTPGet(srv.URL + "/api/v1/users")
+	defer r.Value.(*Response).Body.Close()
+	body := ReadAll(r.Value.(*Response).Body)
+	Println(body.Value)
+	// Output: /users
+}
+
+// ExampleHTTPListenAndServe documents the function signature without
+// actually starting a server (would block forever). In production,
+// pair with a Shutdown call on signal.received via a goroutine.
+func ExampleHTTPListenAndServe() {
+	mux := NewServeMux()
+	_ = HTTPListenAndServe // documented; not invoked
+	_ = mux
+}
+
+// ExampleHTTPFileServer constructs a Handler that serves a file tree
+// under any mux path. Pair with HTTPFS to serve a Lethean FS or
+// embed.FS root.
+func ExampleHTTPFileServer() {
+	mux := NewServeMux()
+	mux.Handle("/static/", HTTPStripPrefix("/static/", HTTPFileServer(HTTPFS(DirFS("/tmp")))))
+	_ = mux
+}
+
+// ExampleHTTPFS converts a Lethean FS to an HTTPFileSystem suitable for
+// HTTPFileServer. Combined with embed.FS, the pattern serves static
+// assets without a network read.
+func ExampleHTTPFS() {
+	hfs := HTTPFS(DirFS("/tmp"))
+	_ = hfs
+}
+
+// ExampleHTTPError writes a plain-text error body with the given status
+// code. The handler exits after this call; the Recorder captures the
+// response for assertion in tests.
+// ExampleCore_API returns the HTTP API subsystem through `Core.API`.
+func ExampleCore_API() {
+	Println(New().API() != nil)
+	// Output: true
+}
+
+func ExampleHTTPError() {
+	rec := NewHTTPTestRecorder()
+	HTTPError(rec, "missing field", StatusBadRequest)
+	Println(rec.Code)
+	Println(rec.Body.String())
+	// Output:
+	// 400
+	// missing field
+}

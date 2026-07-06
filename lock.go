@@ -4,7 +4,8 @@
 
 package core
 
-// Lock is the DTO for a named mutex.
+// Lock is the DTO for a named mutex — pure data, no embedded cache.
+// The per-Core cache of *Lock wrappers lives in Core's locks Registry.
 //
 // Mutex is the backing core.RWMutex.
 //
@@ -14,22 +15,21 @@ package core
 type Lock struct {
 	Name  string
 	Mutex *RWMutex
-	locks *Registry[*RWMutex] // per-Core named mutexes
 }
 
 // Lock returns a named Lock, creating the mutex if needed.
 // Locks are per-Core — separate Core instances do not share mutexes.
+// The returned *Lock wrapper is cached in Core's locks Registry, so
+// subsequent calls for the same name reuse the same pointer (race-safe via
+// Registry.GetOrSet — two goroutines racing the first lookup converge on a
+// single shared *RWMutex).
 //
 //	l := c.Lock("drain")
 //	l.Lock(); defer l.Unlock()
 func (c *Core) Lock(name string) *Lock {
-	r := c.lock.locks.Get(name)
-	if r.OK {
-		return &Lock{Name: name, Mutex: r.Value.(*RWMutex)}
-	}
-	m := &RWMutex{}
-	c.lock.locks.Set(name, m)
-	return &Lock{Name: name, Mutex: m}
+	return c.locks.GetOrSet(name, func() *Lock {
+		return &Lock{Name: name, Mutex: &RWMutex{}}
+	}).Value.(*Lock)
 }
 
 // Lock acquires the named mutex for write.
@@ -65,20 +65,24 @@ func (l *Lock) TryLock() Result {
 	return l.Mutex.TryLock()
 }
 
-// LockEnable marks that the service lock should be applied after initialisation.
+// LockEnable marks that the service lock should be applied after
+// initialisation. The lock is service-global — it freezes the whole services
+// registry against further registration; there is no per-service lock (a
+// service is a registry entry, not a lockable registry). Pair with LockApply.
 //
 //	c := core.New()
 //	c.LockEnable()
 //	c.LockApply()
-func (c *Core) LockEnable(name ...string) {
+func (c *Core) LockEnable() {
 	c.services.lockEnabled = true
 }
 
-// LockApply activates the service lock if it was enabled.
+// LockApply activates the service-global lock if it was enabled via LockEnable
+// (or WithServiceLock). A no-op when the lock was never enabled.
 //
 //	c := core.New(core.WithServiceLock())
 //	c.LockApply()
-func (c *Core) LockApply(name ...string) {
+func (c *Core) LockApply() {
 	if c.services.lockEnabled {
 		c.services.Lock()
 	}
@@ -93,12 +97,15 @@ func (c *Core) Startables() Result {
 	if c.services == nil {
 		return Result{}
 	}
-	var out []*Service
+	out := make([]*Service, 0, c.services.Len())
 	c.services.Each(func(_ string, svc *Service) {
 		if svc.OnStart != nil {
 			out = append(out, svc)
 		}
 	})
+	if len(out) == 0 {
+		out = nil // byte-identical to the old var-nil behaviour
+	}
 	return Result{out, true}
 }
 
@@ -111,11 +118,14 @@ func (c *Core) Stoppables() Result {
 	if c.services == nil {
 		return Result{}
 	}
-	var out []*Service
+	out := make([]*Service, 0, c.services.Len())
 	c.services.Each(func(_ string, svc *Service) {
 		if svc.OnStop != nil {
 			out = append(out, svc)
 		}
 	})
+	if len(out) == 0 {
+		out = nil // byte-identical to the old var-nil behaviour
+	}
 	return Result{out, true}
 }

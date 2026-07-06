@@ -4,7 +4,7 @@ import . "dappco.re/go"
 
 // --- Fs (Sandboxed Filesystem) ---
 
-func TestFs_WriteRead_Good(t *T) {
+func TestFs_Write_Read_Good(t *T) {
 	dir := t.TempDir()
 	c := New()
 
@@ -27,15 +27,15 @@ func TestFs_EnsureDir_Good(t *T) {
 	c := New()
 	path := Path(dir, "sub", "dir")
 	AssertTrue(t, c.Fs().EnsureDir(path).OK)
-	AssertTrue(t, c.Fs().IsDir(path))
+	AssertTrue(t, c.Fs().IsDir(path).OK)
 }
 
 func TestFs_IsDir_Good(t *T) {
 	c := New()
 	dir := t.TempDir()
-	AssertTrue(t, c.Fs().IsDir(dir))
-	AssertFalse(t, c.Fs().IsDir(Path(dir, "nonexistent")))
-	AssertFalse(t, c.Fs().IsDir(""))
+	AssertTrue(t, c.Fs().IsDir(dir).OK)
+	AssertFalse(t, c.Fs().IsDir(Path(dir, "nonexistent")).OK)
+	AssertFalse(t, c.Fs().IsDir("").OK)
 }
 
 func TestFs_IsFile_Good(t *T) {
@@ -43,9 +43,9 @@ func TestFs_IsFile_Good(t *T) {
 	c := New()
 	path := Path(dir, "test.txt")
 	c.Fs().Write(path, "data")
-	AssertTrue(t, c.Fs().IsFile(path))
-	AssertFalse(t, c.Fs().IsFile(dir))
-	AssertFalse(t, c.Fs().IsFile(""))
+	AssertTrue(t, c.Fs().IsFile(path).OK)
+	AssertFalse(t, c.Fs().IsFile(dir).OK)
+	AssertFalse(t, c.Fs().IsFile("").OK)
 }
 
 func TestFs_Exists_Good(t *T) {
@@ -53,9 +53,9 @@ func TestFs_Exists_Good(t *T) {
 	c := New()
 	path := Path(dir, "exists.txt")
 	c.Fs().Write(path, "yes")
-	AssertTrue(t, c.Fs().Exists(path))
-	AssertTrue(t, c.Fs().Exists(dir))
-	AssertFalse(t, c.Fs().Exists(Path(dir, "nope")))
+	AssertTrue(t, c.Fs().Exists(path).OK)
+	AssertTrue(t, c.Fs().Exists(dir).OK)
+	AssertFalse(t, c.Fs().Exists(Path(dir, "nope")).OK)
 }
 
 func TestFs_List_Good(t *T) {
@@ -136,7 +136,7 @@ func TestFs_Delete_Good(t *T) {
 	path := Path(dir, "delete.txt")
 	c.Fs().Write(path, "gone")
 	AssertTrue(t, c.Fs().Delete(path).OK)
-	AssertFalse(t, c.Fs().Exists(path))
+	AssertFalse(t, c.Fs().Exists(path).OK)
 }
 
 func TestFs_DeleteAll_Good(t *T) {
@@ -146,7 +146,7 @@ func TestFs_DeleteAll_Good(t *T) {
 	c.Fs().EnsureDir(sub)
 	c.Fs().Write(Path(sub, "file.txt"), "data")
 	AssertTrue(t, c.Fs().DeleteAll(Path(dir, "deep")).OK)
-	AssertFalse(t, c.Fs().Exists(Path(dir, "deep")))
+	AssertFalse(t, c.Fs().Exists(Path(dir, "deep")).OK)
 }
 
 func TestFs_Rename_Good(t *T) {
@@ -156,8 +156,8 @@ func TestFs_Rename_Good(t *T) {
 	nw := Path(dir, "new.txt")
 	c.Fs().Write(old, "data")
 	AssertTrue(t, c.Fs().Rename(old, nw).OK)
-	AssertFalse(t, c.Fs().Exists(old))
-	AssertTrue(t, c.Fs().Exists(nw))
+	AssertFalse(t, c.Fs().Exists(old).OK)
+	AssertTrue(t, c.Fs().Exists(nw).OK)
 }
 
 func TestFs_WriteMode_Good(t *T) {
@@ -172,7 +172,7 @@ func TestFs_WriteMode_Good(t *T) {
 
 // --- Zero Value ---
 
-func TestFs_ZeroValue_Good(t *T) {
+func TestFs_Fs_ZeroValue_Good(t *T) {
 	dir := t.TempDir()
 	zeroFs := &Fs{}
 
@@ -181,9 +181,9 @@ func TestFs_ZeroValue_Good(t *T) {
 	r := zeroFs.Read(path)
 	AssertTrue(t, r.OK)
 	AssertEqual(t, "zero value works", r.Value.(string))
-	AssertTrue(t, zeroFs.IsFile(path))
-	AssertTrue(t, zeroFs.Exists(path))
-	AssertTrue(t, zeroFs.IsDir(dir))
+	AssertTrue(t, zeroFs.IsFile(path).OK)
+	AssertTrue(t, zeroFs.Exists(path).OK)
+	AssertTrue(t, zeroFs.IsDir(dir).OK)
 }
 
 func TestFs_ZeroValue_List_Good(t *T) {
@@ -199,7 +199,7 @@ func TestFs_ZeroValue_List_Good(t *T) {
 
 func TestFs_Exists_NotFound_Bad(t *T) {
 	c := New()
-	AssertFalse(t, c.Fs().Exists("/nonexistent/path/xyz"))
+	AssertFalse(t, c.Fs().Exists("/nonexistent/path/xyz").OK)
 }
 
 // --- Fs path/validatePath edge cases ---
@@ -499,15 +499,13 @@ func TestFs_CloseStream_Good(t *T) {
 }
 
 func TestFs_CloseStream_Bad(t *T) {
-	CloseStream("not a stream")
-
-	AssertTrue(t, true)
+	// Closing a non-stream value is a safe no-op, not a panic.
+	AssertNotPanics(t, func() { CloseStream("not a stream") })
 }
 
 func TestFs_CloseStream_Ugly(t *T) {
-	CloseStream(nil)
-
-	AssertTrue(t, true)
+	// Closing nil is a safe no-op.
+	AssertNotPanics(t, func() { CloseStream(nil) })
 }
 
 func TestFs_Fs_New_Good(t *T) {
@@ -577,26 +575,29 @@ func TestFs_Fs_Root_Ugly(t *T) {
 func TestFs_Fs_TempDir_Good(t *T) {
 	fsys := (&Fs{}).New(ax7TempRoot(t))
 
-	dir := fsys.TempDir("agent-")
+	r := fsys.TempDir("agent-")
+	AssertTrue(t, r.OK)
+	dir := r.Value.(string)
 	defer RemoveAll(dir)
 
 	AssertNotEmpty(t, dir)
-	AssertTrue(t, (&Fs{}).New("/").IsDir(dir))
+	AssertTrue(t, (&Fs{}).New("/").IsDir(dir).OK)
 }
 
 func TestFs_Fs_TempDir_Bad(t *T) {
 	fsys := (&Fs{}).New(ax7TempRoot(t))
 
-	dir := fsys.TempDir(Path("missing", "nested", "agent-"))
+	r := fsys.TempDir(Path("missing", "nested", "agent-"))
 
-	AssertEqual(t, "", dir)
+	AssertFalse(t, r.OK)
+	AssertContains(t, r.Error(), "fs.TempDir")
 }
 
 func TestFs_Fs_TempDir_Ugly(t *T) {
 	fsys := (&Fs{}).New(ax7TempRoot(t))
 
-	first := fsys.TempDir("agent-")
-	second := fsys.TempDir("agent-")
+	first := MustCast[string](fsys.TempDir("agent-"))
+	second := MustCast[string](fsys.TempDir("agent-"))
 	defer RemoveAll(first)
 	defer RemoveAll(second)
 
@@ -694,7 +695,7 @@ func TestFs_Fs_WriteAtomicDirectoryTarget_Bad(t *T) {
 	r := fsys.WriteAtomic("status", "file")
 
 	AssertFalse(t, r.OK)
-	AssertFalse(t, fsys.Exists("status.tmp."))
+	AssertFalse(t, fsys.Exists("status.tmp.").OK)
 }
 
 func TestFs_Fs_WriteAtomic_Ugly(t *T) {
@@ -742,7 +743,7 @@ func TestFs_Fs_EnsureDir_Good(t *T) {
 	r := fsys.EnsureDir("logs/agent")
 
 	AssertTrue(t, r.OK)
-	AssertTrue(t, fsys.IsDir("logs/agent"))
+	AssertTrue(t, fsys.IsDir("logs/agent").OK)
 }
 
 func TestFs_Fs_EnsureDir_Bad(t *T) {
@@ -760,66 +761,66 @@ func TestFs_Fs_EnsureDir_Ugly(t *T) {
 	r := fsys.EnsureDir("")
 
 	AssertTrue(t, r.OK)
-	AssertFalse(t, fsys.IsDir(""))
+	AssertFalse(t, fsys.IsDir("").OK)
 }
 
 func TestFs_Fs_IsDir_Good(t *T) {
 	fsys := (&Fs{}).New(ax7TempRoot(t))
 	AssertTrue(t, fsys.EnsureDir("logs").OK)
 
-	AssertTrue(t, fsys.IsDir("logs"))
+	AssertTrue(t, fsys.IsDir("logs").OK)
 }
 
 func TestFs_Fs_IsDir_Bad(t *T) {
 	fsys := (&Fs{}).New(ax7TempRoot(t))
 	AssertTrue(t, fsys.Write("logs.txt", "file").OK)
 
-	AssertFalse(t, fsys.IsDir("logs.txt"))
+	AssertFalse(t, fsys.IsDir("logs.txt").OK)
 }
 
 func TestFs_Fs_IsDir_Ugly(t *T) {
 	fsys := (&Fs{}).New(ax7TempRoot(t))
 
-	AssertFalse(t, fsys.IsDir(""))
+	AssertFalse(t, fsys.IsDir("").OK)
 }
 
 func TestFs_Fs_IsFile_Good(t *T) {
 	fsys := (&Fs{}).New(ax7TempRoot(t))
 	AssertTrue(t, fsys.Write("config.json", "file").OK)
 
-	AssertTrue(t, fsys.IsFile("config.json"))
+	AssertTrue(t, fsys.IsFile("config.json").OK)
 }
 
 func TestFs_Fs_IsFile_Bad(t *T) {
 	fsys := (&Fs{}).New(ax7TempRoot(t))
 	AssertTrue(t, fsys.EnsureDir("config").OK)
 
-	AssertFalse(t, fsys.IsFile("config"))
+	AssertFalse(t, fsys.IsFile("config").OK)
 }
 
 func TestFs_Fs_IsFile_Ugly(t *T) {
 	fsys := (&Fs{}).New(ax7TempRoot(t))
 
-	AssertFalse(t, fsys.IsFile(""))
+	AssertFalse(t, fsys.IsFile("").OK)
 }
 
 func TestFs_Fs_Exists_Good(t *T) {
 	fsys := (&Fs{}).New(ax7TempRoot(t))
 	AssertTrue(t, fsys.Write("config.json", "file").OK)
 
-	AssertTrue(t, fsys.Exists("config.json"))
+	AssertTrue(t, fsys.Exists("config.json").OK)
 }
 
 func TestFs_Fs_Exists_Bad(t *T) {
 	fsys := (&Fs{}).New(ax7TempRoot(t))
 
-	AssertFalse(t, fsys.Exists("missing.json"))
+	AssertFalse(t, fsys.Exists("missing.json").OK)
 }
 
 func TestFs_Fs_Exists_Ugly(t *T) {
 	fsys := (&Fs{}).New(ax7TempRoot(t))
 
-	AssertTrue(t, fsys.Exists(""))
+	AssertTrue(t, fsys.Exists("").OK)
 }
 
 func TestFs_Fs_List_Good(t *T) {
@@ -1035,7 +1036,7 @@ func TestFs_Fs_Delete_Good(t *T) {
 	r := fsys.Delete("old.log")
 
 	AssertTrue(t, r.OK)
-	AssertFalse(t, fsys.Exists("old.log"))
+	AssertFalse(t, fsys.Exists("old.log").OK)
 }
 
 func TestFs_Fs_Delete_Bad(t *T) {
@@ -1072,7 +1073,7 @@ func TestFs_Fs_DeleteAll_Good(t *T) {
 	r := fsys.DeleteAll("sessions")
 
 	AssertTrue(t, r.OK)
-	AssertFalse(t, fsys.Exists("sessions"))
+	AssertFalse(t, fsys.Exists("sessions").OK)
 }
 
 func TestFs_Fs_DeleteAll_Bad(t *T) {
@@ -1109,8 +1110,8 @@ func TestFs_Fs_Rename_Good(t *T) {
 	r := fsys.Rename("agent.tmp", "agent.json")
 
 	AssertTrue(t, r.OK)
-	AssertFalse(t, fsys.Exists("agent.tmp"))
-	AssertTrue(t, fsys.Exists("agent.json"))
+	AssertFalse(t, fsys.Exists("agent.tmp").OK)
+	AssertTrue(t, fsys.Exists("agent.json").OK)
 }
 
 func TestFs_Fs_Rename_Bad(t *T) {
@@ -1220,6 +1221,23 @@ func TestFs_Fs_WalkSeqSkip_Ugly(t *T) {
 	AssertTrue(t, seen["skipme.txt"])
 }
 
+func TestFs_ReadDir_Good(t *T) {
+	dir := t.TempDir()
+	RequireTrue(t, WriteFile(Path(dir, "a.txt"), []byte("x"), 0o644).OK)
+	RequireTrue(t, WriteFile(Path(dir, "b.txt"), []byte("y"), 0o644).OK)
+
+	r := ReadDir(DirFS(dir), ".")
+
+	RequireTrue(t, r.OK)
+	AssertLen(t, r.Value.([]FsDirEntry), 2)
+}
+
+func TestFs_ReadDir_Bad(t *T) {
+	// Reading a path that doesn't exist fails.
+	r := ReadDir(DirFS(t.TempDir()), "does-not-exist")
+	AssertFalse(t, r.OK)
+}
+
 func TestFs_ReadDir_Ugly(t *T) {
 	r := ReadDir(DirFS(t.TempDir()), ".")
 
@@ -1253,6 +1271,20 @@ func TestFs_ReadFSFile_Ugly(t *T) {
 	AssertEqual(t, []byte{}, r.Value.([]byte))
 }
 
+func TestFs_Sub_Good(t *T) {
+	dir := t.TempDir()
+	RequireTrue(t, MkdirAll(Path(dir, "sub"), 0o755).OK)
+	RequireTrue(t, WriteFile(Path(dir, "sub", "f.txt"), []byte("scoped"), 0o644).OK)
+
+	r := Sub(DirFS(dir), "sub")
+	RequireTrue(t, r.OK)
+
+	// The sub-FS is rooted at sub/: f.txt resolves at its top level.
+	read := ReadFSFile(r.Value.(FS), "f.txt")
+	AssertTrue(t, read.OK)
+	AssertEqual(t, []byte("scoped"), read.Value.([]byte))
+}
+
 func TestFs_Sub_Bad(t *T) {
 	r := Sub(DirFS(t.TempDir()), "../escape")
 
@@ -1276,7 +1308,7 @@ func TestFs_WalkDir_Good(t *T) {
 	walkSeqSeed(t, dir)
 	count := 0
 
-	err := WalkDir(DirFS(dir), ".", func(_ string, _ FsDirEntry, err error) error {
+	r := WalkDir(DirFS(dir), ".", func(_ string, _ FsDirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -1284,16 +1316,16 @@ func TestFs_WalkDir_Good(t *T) {
 		return nil
 	})
 
-	AssertNoError(t, err)
+	AssertTrue(t, r.OK)
 	AssertGreater(t, count, 1)
 }
 
 func TestFs_WalkDir_Bad(t *T) {
-	err := WalkDir(DirFS(t.TempDir()), "missing", func(_ string, _ FsDirEntry, err error) error {
+	r := WalkDir(DirFS(t.TempDir()), "missing", func(_ string, _ FsDirEntry, err error) error {
 		return err
 	})
 
-	AssertError(t, err)
+	AssertFalse(t, r.OK)
 }
 
 func TestFs_WalkDir_Ugly(t *T) {
@@ -1301,7 +1333,7 @@ func TestFs_WalkDir_Ugly(t *T) {
 	walkSeqSeed(t, dir)
 	seenVendorChild := false
 
-	err := WalkDir(DirFS(dir), ".", func(_ string, entry FsDirEntry, err error) error {
+	r := WalkDir(DirFS(dir), ".", func(_ string, entry FsDirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -1314,7 +1346,7 @@ func TestFs_WalkDir_Ugly(t *T) {
 		return nil
 	})
 
-	AssertNoError(t, err)
+	AssertTrue(t, r.OK)
 	AssertFalse(t, seenVendorChild)
 }
 

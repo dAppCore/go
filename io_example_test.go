@@ -90,3 +90,42 @@ func ExampleNewBufferString() {
 	// hello world
 	// 11
 }
+
+// ExampleBuffer declares a Buffer-typed local through the `Buffer` alias
+// for in-memory payload assembly. Buffer creation stays on the core
+// wrapper surface for later stream or encoding work.
+func ExampleBuffer() {
+	var b Buffer
+	b.WriteString("ready")
+	Println(b.String())
+	// Output: ready
+}
+
+// ExampleNewBufferReader creates a bytes.Reader over a byte slice through
+// `NewBufferReader` for HTTP body construction. Buffer creation stays on
+// the core wrapper surface for later stream or encoding work.
+func ExampleNewBufferReader() {
+	rd := NewBufferReader([]byte("hello"))
+	out := make([]byte, 5)
+	rd.Read(out)
+	Println(string(out))
+	// Output: hello
+}
+
+// ExampleLimitReader bounds a stream read at n bytes through `LimitReader`
+// for streaming payloads. Pair with ReadAll to cap HTTP body reads at a
+// safe maximum size.
+func ExampleLimitReader() {
+	src := NewReader("hello world")
+	bounded := LimitReader(src, 5)
+	r := ReadAll(bounded)
+	Println(r.Value)
+	// Output: hello
+}
+
+// ExampleReadAll reads a reader to completion through `ReadAll`.
+func ExampleReadAll() {
+	r := ReadAll(NewReader("agent ready"))
+	Println(r.Value)
+	// Output: agent ready
+}

@@ -71,16 +71,18 @@ func (d *Data) New(opts Options) Result {
 }
 
 // resolve splits a path like "brain/coding.md" into mount name + relative path.
+// Uses Index + string-slicing so the split is zero-alloc — SplitN
+// would allocate a []string of length two plus the slice header.
 func (d *Data) resolve(path string) (*Embed, string) {
-	parts := SplitN(path, "/", 2)
-	if len(parts) < 2 {
+	i := Index(path, "/")
+	if i < 0 {
 		return nil, ""
 	}
-	r := d.Get(parts[0])
+	r := d.Get(path[:i])
 	if !r.OK {
 		return nil, ""
 	}
-	return r.Value.(*Embed), parts[1]
+	return r.Value.(*Embed), path[i+1:]
 }
 
 // ReadFile reads a file by full path.
@@ -133,7 +135,7 @@ func (d *Data) ListNames(path string) Result {
 		return r
 	}
 	entries := r.Value.([]FsDirEntry)
-	var names []string
+	names := make([]string, 0, len(entries))
 	for _, e := range entries {
 		name := e.Name()
 		if !e.IsDir() {

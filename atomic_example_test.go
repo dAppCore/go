@@ -210,6 +210,160 @@ func ExampleAtomicPointer_Swap() {
 // ExampleAtomicPointer_CompareAndSwap updates `AtomicPointer.CompareAndSwap` only when the
 // previous value matches for shared runtime state. Concurrent state changes use explicit
 // load, store, swap, and compare-and-swap shapes.
+// ExampleAtomicBool_Load reads a boolean atomically through `AtomicBool.Load`.
+func ExampleAtomicBool_Load() {
+	var b AtomicBool
+	b.Store(true)
+	Println(b.Load())
+	// Output: true
+}
+
+// ExampleAtomicBool_Store writes a boolean atomically through `AtomicBool.Store`.
+func ExampleAtomicBool_Store() {
+	var b AtomicBool
+	b.Store(true)
+	Println(b.Load())
+	// Output: true
+}
+
+// ExampleAtomicInt32_Load reads an int32 atomically through `AtomicInt32.Load`.
+func ExampleAtomicInt32_Load() {
+	var n AtomicInt32
+	n.Store(5)
+	Println(n.Load())
+	// Output: 5
+}
+
+// ExampleAtomicInt32_Store writes an int32 atomically through `AtomicInt32.Store`.
+func ExampleAtomicInt32_Store() {
+	var n AtomicInt32
+	n.Store(42)
+	Println(n.Load())
+	// Output: 42
+}
+
+// ExampleAtomicInt32_Add atomically adds and returns the new value through `AtomicInt32.Add`.
+func ExampleAtomicInt32_Add() {
+	var n AtomicInt32
+	n.Store(5)
+	Println(n.Add(3))
+	// Output: 8
+}
+
+// ExampleAtomicInt32_Swap stores and returns the previous value through `AtomicInt32.Swap`.
+func ExampleAtomicInt32_Swap() {
+	var n AtomicInt32
+	n.Store(5)
+	Println(n.Swap(9))
+	// Output: 5
+}
+
+// ExampleAtomicInt64_Load reads an int64 atomically through `AtomicInt64.Load`.
+func ExampleAtomicInt64_Load() {
+	var n AtomicInt64
+	n.Store(5)
+	Println(n.Load())
+	// Output: 5
+}
+
+// ExampleAtomicInt64_Store writes an int64 atomically through `AtomicInt64.Store`.
+func ExampleAtomicInt64_Store() {
+	var n AtomicInt64
+	n.Store(42)
+	Println(n.Load())
+	// Output: 42
+}
+
+// ExampleAtomicInt64_Add atomically adds and returns the new value through `AtomicInt64.Add`.
+func ExampleAtomicInt64_Add() {
+	var n AtomicInt64
+	n.Store(5)
+	Println(n.Add(3))
+	// Output: 8
+}
+
+// ExampleAtomicUint32_Load reads a uint32 atomically through `AtomicUint32.Load`.
+func ExampleAtomicUint32_Load() {
+	var n AtomicUint32
+	n.Store(5)
+	Println(n.Load())
+	// Output: 5
+}
+
+// ExampleAtomicUint32_Store writes a uint32 atomically through `AtomicUint32.Store`.
+func ExampleAtomicUint32_Store() {
+	var n AtomicUint32
+	n.Store(42)
+	Println(n.Load())
+	// Output: 42
+}
+
+// ExampleAtomicUint32_Add atomically adds and returns the new value through `AtomicUint32.Add`.
+func ExampleAtomicUint32_Add() {
+	var n AtomicUint32
+	n.Store(5)
+	Println(n.Add(3))
+	// Output: 8
+}
+
+// ExampleAtomicUint32_Swap stores and returns the previous value through `AtomicUint32.Swap`.
+func ExampleAtomicUint32_Swap() {
+	var n AtomicUint32
+	n.Store(5)
+	Println(n.Swap(9))
+	// Output: 5
+}
+
+// ExampleAtomicUint64_Load reads a uint64 atomically through `AtomicUint64.Load`.
+func ExampleAtomicUint64_Load() {
+	var n AtomicUint64
+	n.Store(5)
+	Println(n.Load())
+	// Output: 5
+}
+
+// ExampleAtomicUint64_Store writes a uint64 atomically through `AtomicUint64.Store`.
+func ExampleAtomicUint64_Store() {
+	var n AtomicUint64
+	n.Store(42)
+	Println(n.Load())
+	// Output: 42
+}
+
+// ExampleAtomicUint64_Add atomically adds and returns the new value through `AtomicUint64.Add`.
+func ExampleAtomicUint64_Add() {
+	var n AtomicUint64
+	n.Store(5)
+	Println(n.Add(3))
+	// Output: 8
+}
+
+// ExampleAtomicUint64_Swap stores and returns the previous value through `AtomicUint64.Swap`.
+func ExampleAtomicUint64_Swap() {
+	var n AtomicUint64
+	n.Store(5)
+	Println(n.Swap(9))
+	// Output: 5
+}
+
+// ExampleAtomicPointer_Load reads a pointer atomically through `AtomicPointer.Load`.
+func ExampleAtomicPointer_Load() {
+	var p AtomicPointer[int]
+	v := 42
+	p.Store(&v)
+	Println(*p.Load())
+	// Output: 42
+}
+
+// ExampleAtomicPointer_Store writes a pointer atomically through `AtomicPointer.Store`.
+func ExampleAtomicPointer_Store() {
+	var p AtomicPointer[string]
+	s := "agent"
+	p.Store(&s)
+	Println(*p.Load())
+	// Output: agent
+}
+
 func ExampleAtomicPointer_CompareAndSwap() {
 	var current AtomicPointer[config]
 	first := &config{name: "v1"}

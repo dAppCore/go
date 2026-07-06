@@ -61,8 +61,17 @@ const (
 	KindSlice         = reflect.Slice
 	KindString        = reflect.String
 	KindStruct        = reflect.Struct
+	KindUintptr       = reflect.Uintptr
 	KindUnsafePointer = reflect.UnsafePointer
 )
+
+// StructField is an alias for reflect.StructField — one field's
+// descriptor (Name, Type, Tag, offset) returned by Type.Field during
+// struct introspection.
+//
+//	f := core.TypeOf(opts).Field(0)
+//	tag := f.Tag.Get("json")
+type StructField = reflect.StructField
 
 // TypeOf returns the runtime type of v. Returns nil if v is a nil
 // interface value.
@@ -99,4 +108,69 @@ func DeepEqual(x, y any) bool {
 //	zero := core.Zero(t.Elem()).Interface()
 func Zero(t Type) Value {
 	return reflect.Zero(t)
+}
+
+// TypeFor returns the Type for the compile-time type T. The type-safe
+// replacement for TypeOf((*T)(nil)).Elem() — no nil-pointer dance, no
+// runtime value needed.
+//
+//	t := core.TypeFor[MyStruct]()
+//	if t.Kind() == core.KindStruct { ... }
+func TypeFor[T any]() Type {
+	return reflect.TypeFor[T]()
+}
+
+// NewValue returns a Value representing a pointer to a new zero value
+// of type t — the reflective equivalent of new(T). Named NewValue (not
+// New) because core.New is the framework constructor.
+//
+//	ptr := core.NewValue(core.TypeFor[Config]())  // *Config, zeroed
+//	cfg := ptr.Elem().Interface().(Config)
+func NewValue(t Type) Value {
+	return reflect.New(t)
+}
+
+// MakeSlice returns a Value representing a new slice of element type's
+// slice t with the given length and capacity. t must have Kind Slice;
+// callers control that, so this stays infallible (panics on a non-slice
+// type, matching the stdlib contract).
+//
+//	s := core.MakeSlice(core.TypeFor[[]int](), 0, 8)
+func MakeSlice(t Type, len, cap int) Value {
+	return reflect.MakeSlice(t, len, cap)
+}
+
+// MakeMap returns a Value representing a new empty map of map type t.
+//
+//	m := core.MakeMap(core.TypeFor[map[string]int]())
+func MakeMap(t Type) Value {
+	return reflect.MakeMap(t)
+}
+
+// MakeMapWithSize returns a new empty map of type t pre-sized for about
+// n entries — the reflective make(map, n) hint.
+//
+//	m := core.MakeMapWithSize(core.TypeFor[map[string]int](), 64)
+func MakeMapWithSize(t Type, n int) Value {
+	return reflect.MakeMapWithSize(t, n)
+}
+
+// CopyValue copies the contents of src into dst until dst is full or
+// src is exhausted, returning the number of elements copied. Both must
+// be slices (or dst an array) with assignable element types. Named
+// CopyValue (not Copy) because core.Copy is the io stream copier.
+//
+//	n := core.CopyValue(dstVal, srcVal)
+func CopyValue(dst, src Value) int {
+	return reflect.Copy(dst, src)
+}
+
+// MakeFunc returns a new function Value of type t whose body calls fn
+// with the in-arguments and returns fn's results. Used to synthesise
+// functions (proxies, generic adapters) at runtime — reach for it only
+// when a closure over a concrete signature genuinely cannot.
+//
+//	fn := core.MakeFunc(t, func(args []core.Value) []core.Value { ... })
+func MakeFunc(t Type, fn func(args []Value) (results []Value)) Value {
+	return reflect.MakeFunc(t, fn)
 }

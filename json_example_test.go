@@ -53,3 +53,66 @@ func ExampleJSONUnmarshalString_config() {
 	Println(cfg.Host, cfg.Port)
 	// Output: localhost 8080
 }
+
+// ExampleRawMessage defers JSON decoding through the `RawMessage` alias
+// for envelope-then-payload parsing. Serialisation and parsing return
+// core Results for configuration payloads.
+func ExampleRawMessage() {
+	type envelope struct {
+		Type string     `json:"type"`
+		Data RawMessage `json:"data"`
+	}
+	var env envelope
+	JSONUnmarshal([]byte(`{"type":"ping","data":{"port":8080}}`), &env)
+	Println(env.Type)
+	Println(string(env.Data))
+	// Output:
+	// ping
+	// {"port":8080}
+}
+
+// ExampleJSONNewEncoder streams two values straight to stdout as JSONL
+// — one JSON object per line — without buffering the whole batch. Encode
+// writes the trailing newline itself.
+func ExampleJSONNewEncoder() {
+	type row struct {
+		Name string `json:"name"`
+	}
+	enc := JSONNewEncoder(Stdout())
+	enc.Encode(row{Name: "a"})
+	enc.Encode(row{Name: "b"})
+	// Output:
+	// {"name":"a"}
+	// {"name":"b"}
+}
+
+// ExampleJSONNewDecoder pulls a single value from a reader, the
+// streaming counterpart to JSONUnmarshal.
+func ExampleJSONNewDecoder() {
+	type cfg struct {
+		Port int `json:"port"`
+	}
+	var c cfg
+	JSONNewDecoder(NewReader(`{"port":8080}`)).Decode(&c)
+	Println(c.Port)
+	// Output: 8080
+}
+
+// ExampleJSONValid gates a payload without decoding it.
+func ExampleJSONValid() {
+	Println(JSONValid([]byte(`{"ok":true}`)))
+	Println(JSONValid([]byte(`{"ok":`)))
+	// Output:
+	// true
+	// false
+}
+
+// ExampleJSONMarshalIndent renders indented JSON through `JSONMarshalIndent`.
+func ExampleJSONMarshalIndent() {
+	r := JSONMarshalIndent(map[string]int{"count": 3}, "", "  ")
+	Println(string(r.Value.([]byte)))
+	// Output:
+	// {
+	//   "count": 3
+	// }
+}

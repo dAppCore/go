@@ -113,9 +113,7 @@ func (c *Core) RegisterService(name string, instance any) Result {
 	if handler, ok := instance.(interface {
 		HandleIPCEvents(*Core, Message) Result
 	}); ok {
-		c.ipc.ipcMu.Lock()
-		c.ipc.ipcHandlers = append(c.ipc.ipcHandlers, handler.HandleIPCEvents)
-		c.ipc.ipcMu.Unlock()
+		c.RegisterAction(handler.HandleIPCEvents)
 	}
 
 	return Result{OK: true}

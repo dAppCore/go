@@ -11,9 +11,14 @@ import "maps"
 //
 //	keys := core.MapKeys(map[string]int{"a": 1, "b": 2})
 func MapKeys[K comparable, V any](m map[K]V) []K {
-	keys := make([]K, 0, len(m))
+	// Pre-size to exact length and use direct index assignment — skips
+	// the bounds check + len-increment cycle that append performs on
+	// every iteration.
+	keys := make([]K, len(m))
+	i := 0
 	for key := range m {
-		keys = append(keys, key)
+		keys[i] = key
+		i++
 	}
 	return keys
 }
@@ -23,9 +28,11 @@ func MapKeys[K comparable, V any](m map[K]V) []K {
 //
 //	values := core.MapValues(map[string]int{"a": 1, "b": 2})
 func MapValues[K comparable, V any](m map[K]V) []V {
-	values := make([]V, 0, len(m))
+	values := make([]V, len(m))
+	i := 0
 	for _, value := range m {
-		values = append(values, value)
+		values[i] = value
+		i++
 	}
 	return values
 }
@@ -36,6 +43,21 @@ func MapValues[K comparable, V any](m map[K]V) []V {
 //	copy := core.MapClone(map[string]int{"a": 1})
 func MapClone[K comparable, V any](m map[K]V) map[K]V {
 	return maps.Clone(m)
+}
+
+// MapString returns the string at key, or "" when the key is absent or its value
+// is not a string — the safe typed accessor for a decoded map[K]any (a JSON
+// object, a metadata blob), replacing the hand-rolled strVal helpers across
+// consumers.
+//
+//	name := core.MapString(row, "name")
+func MapString[K comparable](m map[K]any, key K) string {
+	if v, ok := m[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
 }
 
 // MapFilter returns a new map containing only entries for which pred

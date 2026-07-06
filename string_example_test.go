@@ -127,20 +127,6 @@ func ExampleNewReader() {
 	// Output: hello
 }
 
-// ExampleSprint formats values as text through `Sprint` for command text handling. Text
-// predicates and transforms stay on the core string wrapper surface.
-func ExampleSprint() {
-	Println(Sprint("port=", 8080))
-	// Output: port=8080
-}
-
-// ExampleSprintf formats templated text through `Sprintf` for command text handling. Text
-// predicates and transforms stay on the core string wrapper surface.
-func ExampleSprintf() {
-	Println(Sprintf("port=%d", 8080))
-	// Output: port=8080
-}
-
 // ExampleHTMLEscape escapes dashboard text through `HTMLEscape` for dashboard HTML text.
 // UI-bound strings are escaped and unescaped without importing html directly.
 func ExampleHTMLEscape() {
@@ -153,4 +139,139 @@ func ExampleHTMLEscape() {
 func ExampleHTMLUnescape() {
 	Println(HTMLUnescape("&lt;strong&gt;Core&lt;/strong&gt;"))
 	// Output: <strong>Core</strong>
+}
+
+// ExampleTrimCutset trims any character class from both ends of a string
+// through `TrimCutset` for command text handling. Text predicates and
+// transforms stay on the core string wrapper surface.
+func ExampleTrimCutset() {
+	Println(TrimCutset("//path//", "/"))
+	// Output: path
+}
+
+// ExampleTrimLeft trims any leading character class through `TrimLeft`
+// for command text handling. Text predicates and transforms stay on the
+// core string wrapper surface.
+func ExampleTrimLeft() {
+	Println(TrimLeft("---verbose", "-"))
+	// Output: verbose
+}
+
+// ExampleTrimRight trims any trailing character class through `TrimRight`
+// for command text handling. Text predicates and transforms stay on the
+// core string wrapper surface.
+func ExampleTrimRight() {
+	Println(TrimRight("hello!!!", "!"))
+	// Output: hello
+}
+
+// ExampleIndex finds a substring position through `Index` for command text
+// handling. Text predicates and transforms stay on the core string
+// wrapper surface.
+func ExampleIndex() {
+	Println(Index("key=value", "="))
+	// Output: 3
+}
+
+// ExampleBuilder declares a Builder-typed local through the `Builder`
+// alias for command text handling. Text predicates and transforms stay
+// on the core string wrapper surface.
+func ExampleBuilder() {
+	var b Builder
+	b.WriteString("hello")
+	b.WriteString(" world")
+	Println(b.String())
+	// Output: hello world
+}
+
+// ExampleLastIndex finds the last instance of a substring through
+// `LastIndex` for command text handling. Pair with Index when consumer
+// code needs both ends of a delimiter.
+func ExampleLastIndex() {
+	Println(LastIndex("host.example.com:8080", ":"))
+	Println(LastIndex("no-colon", ":"))
+	// Output:
+	// 16
+	// -1
+}
+
+// ExampleCut splits a header line on its first separator, taking both
+// halves and whether the separator was present in one pass.
+func ExampleCut() {
+	name, value, found := Cut("Authorization: Bearer abc", ": ")
+	Println(name)
+	Println(value)
+	Println(found)
+	// Output:
+	// Authorization
+	// Bearer abc
+	// true
+}
+
+// ExampleRepeat builds a fixed-width rule through `Repeat`.
+func ExampleRepeat() {
+	Println(Repeat("=", 8))
+	// Output: ========
+}
+
+// ExampleFields tokenises a command line on whitespace, collapsing any
+// run of spaces — unlike Split which needs an explicit separator and
+// keeps empties.
+func ExampleFields() {
+	Println(Join(",", Fields("  go   test ./... ")...))
+	// Output: go,test,./...
+}
+
+// ExampleEqualFold compares two scheme names case-insensitively without
+// allocating Lower copies of either.
+func ExampleEqualFold() {
+	Println(EqualFold("Bearer", "bearer"))
+	// Output: true
+}
+
+// ExampleClone returns an independent copy of a string through `Clone`.
+func ExampleClone() {
+	Println(Clone("agent"))
+	// Output: agent
+}
+
+// ExampleIndexAny returns the first index of any listed rune through `IndexAny`.
+func ExampleIndexAny() {
+	Println(IndexAny("agent", "ge"))
+	// Output: 1
+}
+
+// ExampleContainsAny reports whether any listed rune is present through `ContainsAny`.
+func ExampleContainsAny() {
+	Println(ContainsAny("agent", "xyz"))
+	Println(ContainsAny("agent", "ge"))
+	// Output:
+	// false
+	// true
+}
+
+// ExampleContainsRune reports whether a rune is present through `ContainsRune`.
+func ExampleContainsRune() {
+	Println(ContainsRune("agent", 'g'))
+	// Output: true
+}
+
+// ExampleCount counts non-overlapping occurrences through `Count`.
+func ExampleCount() {
+	Println(Count("banana", "a"))
+	// Output: 3
+}
+
+// ExampleCutPrefix splits off a leading prefix through `CutPrefix`.
+func ExampleCutPrefix() {
+	after, found := CutPrefix("agent.go", "agent.")
+	Println(after, found)
+	// Output: go true
+}
+
+// ExampleCutSuffix splits off a trailing suffix through `CutSuffix`.
+func ExampleCutSuffix() {
+	before, found := CutSuffix("agent.go", ".go")
+	Println(before, found)
+	// Output: agent true
 }

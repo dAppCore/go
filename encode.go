@@ -13,8 +13,17 @@ import (
 // HexEncode returns src encoded as a lowercase hexadecimal string.
 //
 //	s := core.HexEncode([]byte("hello"))
+//
+// Zero-copy: skips the stdlib EncodeToString return-side copy by
+// aliasing the freshly-allocated dst buffer via AsString. Saves one
+// alloc per call — load-bearing on SHA256HexString and friends.
 func HexEncode(src []byte) string {
-	return hex.EncodeToString(src)
+	if len(src) == 0 {
+		return ""
+	}
+	dst := make([]byte, hex.EncodedLen(len(src)))
+	hex.Encode(dst, src)
+	return AsString(dst)
 }
 
 // HexDecode decodes a hexadecimal string into bytes.
@@ -32,8 +41,16 @@ func HexDecode(s string) Result {
 // Base64Encode returns src encoded as a standard base64 string.
 //
 //	s := core.Base64Encode([]byte("hello"))
+//
+// Zero-copy return: pre-allocates the encoded buffer and aliases via
+// AsString to skip stdlib's return-side copy. Saves one alloc per call.
 func Base64Encode(src []byte) string {
-	return base64.StdEncoding.EncodeToString(src)
+	if len(src) == 0 {
+		return ""
+	}
+	dst := make([]byte, base64.StdEncoding.EncodedLen(len(src)))
+	base64.StdEncoding.Encode(dst, src)
+	return AsString(dst)
 }
 
 // Base64Decode decodes a standard base64 string into bytes.

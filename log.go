@@ -6,7 +6,9 @@
 package core
 
 import (
+	"bytes"
 	goio "io"
+	"strconv"
 )
 
 // Level defines logging verbosity.
@@ -219,74 +221,111 @@ func (l *Log) log(level Level, prefix, msg string, keyvals ...any) {
 
 	timestamp := styleTimestamp(Now().Format("15:04:05"))
 
-	// Copy keyvals to avoid mutating the caller's slice
-	keyvals = append([]any(nil), keyvals...)
+	// Build the output line in a single buffer sized for the common case.
+	// Avoids the O(N²) string-concat in the per-keyval loop and the
+	// intermediate Sprintf allocations the old path went through.
+	// bytes.Buffer over strings.Builder so we can hand its backing slice
+	// to output.Write without a second copy.
+	var line bytes.Buffer
+	line.Grow(len(timestamp) + len(prefix) + len(msg) + 8 + 24*len(keyvals)/2)
+	line.WriteString(timestamp)
+	line.WriteByte(' ')
+	line.WriteString(prefix)
+	line.WriteByte(' ')
+	line.WriteString(msg)
 
-	// Automatically extract context from error if present in keyvals
-	origLen := len(keyvals)
-	for i := 0; i < origLen; i += 2 {
-		if i+1 < origLen {
-			if err, ok := keyvals[i+1].(error); ok {
-				if op := Operation(err); op != "" {
-					// Check if op is already in keyvals
-					hasOp := false
-					for j := 0; j < len(keyvals); j += 2 {
-						if k, ok := keyvals[j].(string); ok && k == "op" {
-							hasOp = true
-							break
-						}
-					}
-					if !hasOp {
-						keyvals = append(keyvals, "op", op)
-					}
-				}
-				if stack := FormatStackTrace(err); stack != "" {
-					// Check if stack is already in keyvals
-					hasStack := false
-					for j := 0; j < len(keyvals); j += 2 {
-						if k, ok := keyvals[j].(string); ok && k == "stack" {
-							hasStack = true
-							break
-						}
-					}
-					if !hasStack {
-						keyvals = append(keyvals, "stack", stack)
-					}
-				}
+	// Extract op/stack from error context — done in-place against the
+	// caller's slice (we never mutate it; we only read + emit extras at
+	// the end). Two-pass: pass 1 discovers what's already present.
+	hasOp, hasStack := false, false
+	for j := 0; j < len(keyvals); j += 2 {
+		if k, ok := keyvals[j].(string); ok {
+			switch k {
+			case "op":
+				hasOp = true
+			case "stack":
+				hasStack = true
 			}
 		}
 	}
 
-	// Format key-value pairs
-	var kvStr string
-	if len(keyvals) > 0 {
-		kvStr = " "
-		for i := 0; i < len(keyvals); i += 2 {
-			if i > 0 {
-				kvStr += " "
-			}
-			key := keyvals[i]
-			var val any
-			if i+1 < len(keyvals) {
-				val = keyvals[i+1]
-			}
+	// Scratch buffer reused across keyvals for strconv.AppendX calls.
+	// On stack — no heap alloc unless writeKV's closure escapes (it
+	// doesn't; it only escapes within this function's lifetime).
+	var scratch [64]byte
 
-			// Redaction logic
+	writeKV := func(key any, val any) {
+		line.WriteByte(' ')
+		// Fast path: key is already a string (the >99% case for structured logs).
+		// Avoids Sprint(key) entirely + lets us write key bytes directly.
+		if ks, ok := key.(string); ok {
+			if SliceContains(redactKeys, ks) {
+				val = "[REDACTED]"
+			}
+			line.WriteString(ks)
+			line.WriteByte('=')
+		} else {
 			keyStr := Sprint(key)
 			if SliceContains(redactKeys, keyStr) {
 				val = "[REDACTED]"
 			}
+			line.WriteString(keyStr)
+			line.WriteByte('=')
+		}
+		// Value formatting: byte-level fast paths for the common types
+		// (string / int / uint / bool / float64) drive directly into
+		// the line buffer via strconv.AppendX — zero alloc per keyval.
+		// All other types fall through to Sprintf("%v"), matching the
+		// previous behaviour for less common values.
+		switch v := val.(type) {
+		case string:
+			line.Write(strconv.AppendQuote(scratch[:0], v))
+		case int:
+			line.Write(strconv.AppendInt(scratch[:0], int64(v), 10))
+		case int64:
+			line.Write(strconv.AppendInt(scratch[:0], v, 10))
+		case uint:
+			line.Write(strconv.AppendUint(scratch[:0], uint64(v), 10))
+		case uint64:
+			line.Write(strconv.AppendUint(scratch[:0], v, 10))
+		case bool:
+			line.Write(strconv.AppendBool(scratch[:0], v))
+		case float64:
+			line.Write(strconv.AppendFloat(scratch[:0], v, 'g', -1, 64))
+		default:
+			line.WriteString(Sprintf("%v", val))
+		}
+	}
 
-			// Secure formatting to prevent log injection
-			if s, ok := val.(string); ok {
-				kvStr += Sprintf("%v=%q", key, s)
-			} else {
-				kvStr += Sprintf("%v=%v", key, val)
+	for i := 0; i < len(keyvals); i += 2 {
+		key := keyvals[i]
+		var val any
+		if i+1 < len(keyvals) {
+			val = keyvals[i+1]
+		}
+		writeKV(key, val)
+
+		// Pass 2 (interleaved): if val is an error, surface op/stack
+		// once at the end. We collect by writing immediately the FIRST
+		// time we encounter each — subsequent errors don't re-emit.
+		if err, ok := val.(error); ok {
+			if !hasOp {
+				if op := Operation(err); op != "" {
+					writeKV("op", op)
+					hasOp = true
+				}
+			}
+			if !hasStack {
+				if stack := FormatStackTrace(err); stack != "" {
+					writeKV("stack", stack)
+					hasStack = true
+				}
 			}
 		}
 	}
 
-	Print(output, "%s %s %s%s", timestamp, prefix, msg, kvStr)
+	line.WriteByte('\n')
+	_, _ = output.Write(line.Bytes())
 }
 
 // Debug logs a debug message with optional key-value pairs.

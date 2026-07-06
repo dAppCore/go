@@ -5,7 +5,7 @@ import . "dappco.re/go"
 // ExampleCore_accessors reads the grouped accessor methods through `Core` for Core
 // orchestration. Core keeps orchestration helpers reachable from one predictable facade.
 func ExampleCore_accessors() {
-	c := New(WithOption("name", "ops"))
+	c := New(WithCli(), WithOption("name", "ops"))
 
 	Println(c.Options().String("name"))
 	Println(c.App().Name)
@@ -145,12 +145,96 @@ func ExampleCore_Must() {
 
 // ExampleCore_RegistryOf retrieves a named registry through `Core.RegistryOf` for Core
 // orchestration. Core keeps orchestration helpers reachable from one predictable facade.
+// ExampleCore_Options returns the key-value options store through `Core.Options`.
+func ExampleCore_Options() {
+	c := New(WithOption("env", "prod"))
+	Println(c.Options() != nil)
+	// Output: true
+}
+
+// ExampleCore_App returns application metadata through `Core.App`.
+func ExampleCore_App() {
+	Println(New().App() != nil)
+	// Output: true
+}
+
+// ExampleCore_Data returns the embedded-asset registry through `Core.Data`.
+func ExampleCore_Data() {
+	Println(New().Data() != nil)
+	// Output: true
+}
+
+// ExampleCore_Drive returns the remote-endpoint registry through `Core.Drive`.
+func ExampleCore_Drive() {
+	Println(New().Drive() != nil)
+	// Output: true
+}
+
+// ExampleCore_Fs returns the sandboxed filesystem through `Core.Fs`.
+func ExampleCore_Fs() {
+	Println(New().Fs() != nil)
+	// Output: true
+}
+
+// ExampleCore_Config returns the configuration subsystem through `Core.Config`.
+func ExampleCore_Config() {
+	Println(New().Config() != nil)
+	// Output: true
+}
+
+// ExampleCore_Feature returns a feature-flag handle through `Core.Feature`.
+func ExampleCore_Feature() {
+	c := New()
+	c.Feature("dark-mode").Enable()
+	Println(c.Feature("dark-mode").Enabled())
+	// Output: true
+}
+
+// ExampleCore_Error returns the panic-recovery subsystem through `Core.Error`.
+func ExampleCore_Error() {
+	Println(New().Error() != nil)
+	// Output: true
+}
+
+// ExampleCore_Log returns the structured logger through `Core.Log`.
+func ExampleCore_Log() {
+	Println(New().Log() != nil)
+	// Output: true
+}
+
+// ExampleCore_Cli returns the CLI subsystem through `Core.Cli`.
+func ExampleCore_Cli() {
+	Println(New(WithCli()).Cli() != nil)
+	// Output: true
+}
+
+// ExampleCore_IPC returns the IPC action/task subsystem through `Core.IPC`.
+func ExampleCore_IPC() {
+	Println(New().IPC() != nil)
+	// Output: true
+}
+
+// ExampleCore_I18n returns the translation subsystem through `Core.I18n`.
+func ExampleCore_I18n() {
+	Println(New().I18n() != nil)
+	// Output: true
+}
+
+// ExampleCore_WithContext derives a Core bound to a context through `Core.WithContext`.
+func ExampleCore_WithContext() {
+	Println(New().WithContext(Background()) != nil)
+	// Output: true
+}
+
 func ExampleCore_RegistryOf() {
 	c := New()
 	c.Action("deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
-	Println(c.RegistryOf("actions").Names())
-	Println(c.RegistryOf("missing").Len())
+	r := c.RegistryOf("actions")
+	Println(r.OK)
+	Println(r.Value.(*Registry[any]).Names())
+	Println(c.RegistryOf("missing").OK)
 	// Output:
+	// true
 	// [deploy]
-	// 0
+	// false
 }

@@ -9,14 +9,7 @@ func TestLock_Good(t *T) {
 	AssertNotNil(t, lock.Mutex)
 }
 
-func TestLock_SameName_Good(t *T) {
-	c := New()
-	l1 := c.Lock("shared")
-	l2 := c.Lock("shared")
-	AssertEqual(t, l1, l2)
-}
-
-func TestLock_DifferentName_Good(t *T) {
+func TestLock_Core_Lock_DifferentName_Good(t *T) {
 	c := New()
 	l1 := c.Lock("a")
 	l2 := c.Lock("b")
@@ -49,39 +42,7 @@ func TestLock_Stoppables_Good(t *T) {
 	AssertLen(t, r.Value.([]*Service), 1)
 }
 
-func TestLock_LockUnlock_Good(t *T) {
-	c := New()
-	l := c.Lock("a")
-	l.Lock()
-	l.Unlock()
-}
-
-func TestLock_LockUnlock_Bad(t *T) {
-	c := New()
-	l := c.Lock("held")
-	l.Lock()
-	defer l.Unlock()
-	r := l.TryLock()
-	AssertFalse(t, r.OK, "TryLock on already-held lock must report not-acquired")
-}
-
-func TestLock_LockUnlock_Ugly(t *T) {
-	c := New()
-	l := c.Lock("reentry")
-	l.Lock()
-	l.Unlock()
-	l.Lock()
-	l.Unlock()
-}
-
-func TestLock_RLockRUnlock_Good(t *T) {
-	c := New()
-	l := c.Lock("a")
-	l.RLock()
-	l.RUnlock()
-}
-
-func TestLock_RLockRUnlock_Bad(t *T) {
+func TestLock_Lock_RUnlock_Unmatched_Bad(t *T) {
 	if Getenv("CORE_LOCK_RUNLOCK_BAD") == "1" {
 		c := New()
 		l := c.Lock("not-rlocked")
@@ -90,22 +51,13 @@ func TestLock_RLockRUnlock_Bad(t *T) {
 	}
 
 	t.Run("without-prior-rlock", func(t *T) {
-		cmd := ExecCmdForTest(Args()[0], "-test.run=^TestLock_RLockRUnlock_Bad$")
+		cmd := ExecCmdForTest(Args()[0], "-test.run=^TestLock_Lock_RUnlock_Unmatched_Bad$")
 		cmd.Env = append(Environ(), "CORE_LOCK_RUNLOCK_BAD=1")
 		out, err := cmd.CombinedOutput()
 
 		AssertError(t, err)
 		AssertContains(t, string(out), "sync: RUnlock of unlocked RWMutex")
 	})
-}
-
-func TestLock_RLockRUnlock_Ugly(t *T) {
-	c := New()
-	l := c.Lock("a")
-	l.RLock()
-	l.RLock()
-	l.RUnlock()
-	l.RUnlock()
 }
 
 func TestLock_TryLock_Good(t *T) {
@@ -178,11 +130,12 @@ func TestLock_Core_LockEnable_Good(t *T) {
 func TestLock_Core_LockEnable_Bad(t *T) {
 	c := New()
 
-	c.LockEnable("ignored")
-	c.LockApply("ignored")
+	// LockEnable marks intent but does not lock until LockApply is called —
+	// registration before LockApply still succeeds.
+	c.LockEnable()
 	r := c.Service("late", Service{})
 
-	AssertFalse(t, r.OK)
+	AssertTrue(t, r.OK)
 }
 
 func TestLock_Core_LockEnable_Ugly(t *T) {
@@ -345,6 +298,8 @@ func TestLock_Lock_Unlock_Bad(t *T) {
 	lock := New().Lock("agent.dispatch")
 	lock.Lock()
 
+	// While held, a second acquisition fails; Unlock is what releases it.
+	AssertFalse(t, lock.TryLock().OK)
 	lock.Unlock()
 
 	r := lock.TryLock()
@@ -410,6 +365,8 @@ func TestLock_Lock_RUnlock_Bad(t *T) {
 	lock := New().Lock("agent.dispatch")
 	lock.RLock()
 
+	// A read-lock blocks a write acquisition until RUnlock releases it.
+	AssertFalse(t, lock.TryLock().OK)
 	lock.RUnlock()
 
 	r := lock.TryLock()

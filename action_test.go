@@ -633,9 +633,10 @@ func TestAction_Core_Progress_Good(t *T) {
 func TestAction_Core_Progress_Bad(t *T) {
 	c := New()
 
-	c.Progress("task-absent", -1, "refused", "agent.dispatch")
-
-	AssertTrue(t, true)
+	// Reporting progress for an unknown task is a safe no-op, not a panic.
+	AssertNotPanics(t, func() {
+		c.Progress("task-absent", -1, "refused", "agent.dispatch")
+	})
 }
 
 func TestAction_Core_Progress_Ugly(t *T) {

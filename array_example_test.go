@@ -123,3 +123,10 @@ func ExampleArray_AsSlice() {
 	Println(a.AsSlice())
 	// Output: [alpha bravo]
 }
+
+// ExampleArray_IndexOf returns the index of a value through `Array.IndexOf`.
+func ExampleArray_IndexOf() {
+	a := NewArray("codex", "hades", "homelab")
+	Println(a.IndexOf("hades"))
+	// Output: 1
+}

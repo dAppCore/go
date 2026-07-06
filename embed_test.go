@@ -15,11 +15,28 @@ func mustMountTestFS(t *T, basedir string) *Embed {
 func TestEmbed_Mount_Good(t *T) {
 	r := Mount(testFS, "tests/data")
 	AssertTrue(t, r.OK)
+	emb := r.Value.(*Embed)
+	// Mount validates the basedir by listing it and returns a scoped view
+	// anchored there.
+	AssertEqual(t, "tests/data", emb.BaseDirectory())
+	rd := emb.ReadDir(".")
+	AssertTrue(t, rd.OK)
+	AssertNotEmpty(t, rd.Value.([]FsDirEntry))
+	// Reads resolve relative to the anchor.
+	rs := emb.ReadString("test.txt")
+	AssertTrue(t, rs.OK)
+	AssertEqual(t, "hello from testdata\n", rs.Value.(string))
 }
 
 func TestEmbed_Mount_Bad(t *T) {
 	r := Mount(testFS, "nonexistent")
 	AssertFalse(t, r.OK)
+	// A non-listable basedir fails the upfront ReadDir(".") probe, so Mount
+	// returns that failed Result (carrying the error) rather than an *Embed.
+	_, isEmbed := r.Value.(*Embed)
+	AssertFalse(t, isEmbed)
+	AssertError(t, r.Value.(error))
+	AssertNotEmpty(t, r.Error())
 }
 
 // --- Embed methods ---
@@ -60,14 +77,19 @@ func TestEmbed_Sub_Good(t *T) {
 	AssertTrue(t, r2.OK)
 }
 
-func TestEmbed_BaseDir_Good(t *T) {
-	emb := mustMountTestFS(t, "tests/data")
-	AssertEqual(t, "tests/data", emb.BaseDirectory())
-}
-
 func TestEmbed_FS_Good(t *T) {
 	emb := mustMountTestFS(t, "tests/data")
-	AssertNotNil(t, emb.FS())
+	fsys := emb.FS()
+	AssertNotNil(t, fsys)
+	// FS() exposes the underlying *unscoped* FS: paths are from the embed
+	// root, so the basedir prefix must be supplied explicitly.
+	full := ReadFSFile(fsys, "tests/data/test.txt")
+	AssertTrue(t, full.OK)
+	AssertEqual(t, "hello from testdata\n", string(full.Value.([]byte)))
+	// The path that works through the scoped Embed fails on the raw FS,
+	// confirming FS() is not re-anchored at the basedir.
+	scoped := ReadFSFile(fsys, "test.txt")
+	AssertFalse(t, scoped.OK)
 }
 
 func TestEmbed_EmbedFS_Good(t *T) {
@@ -90,13 +112,6 @@ func TestEmbed_Extract_Good(t *T) {
 }
 
 // --- Asset Pack ---
-
-func TestEmbed_AddGetAsset_Good(t *T) {
-	AddAsset("test-group", "greeting", MustCompressTestAsset(t, "hello world"))
-	r := GetAsset("test-group", "greeting")
-	AssertTrue(t, r.OK)
-	AssertEqual(t, "hello world", r.Value.(string))
-}
 
 func TestEmbed_GetAsset_Bad(t *T) {
 	AddAsset("missing-name-group", "present", MustCompressTestAsset(t, "ready"))
@@ -134,7 +149,7 @@ func TestEmbed_ScanAssets_Bad(t *T) {
 	AssertFalse(t, r.OK)
 }
 
-func TestEmbed_ScanAssetsGroup_Good(t *T) {
+func TestEmbed_ScanAssets_Group_Good(t *T) {
 	dir := t.TempDir()
 	source := `package agent
 
@@ -228,12 +243,6 @@ func TestEmbed_Extract_BadTargetDir_Ugly(t *T) {
 	r := Extract(DirFS(srcDir), "/nonexistent/deeply/nested/impossible", nil)
 	// Should fail gracefully, not panic
 	_ = r
-}
-
-func TestEmbed_PathTraversal_Ugly(t *T) {
-	emb := mustMountTestFS(t, "tests/data")
-	r := emb.ReadFile("../../etc/passwd")
-	AssertFalse(t, r.OK)
 }
 
 func TestEmbed_Sub_BaseDir_Good(t *T) {
@@ -376,7 +385,7 @@ func TestEmbed_GeneratePack_Ugly(t *T) {
 	AssertContains(t, r.Value.(string), `core.AddAsset("assets", "agent.txt"`)
 }
 
-func TestEmbed_GeneratePackDeduplicates_Ugly(t *T) {
+func TestEmbed_GeneratePack_Deduplicates_Ugly(t *T) {
 	dir := t.TempDir()
 	group := Path(dir, "assets")
 	f := (&Fs{}).New("/")
@@ -440,7 +449,7 @@ func TestEmbed_Embed_Open_Ugly(t *T) {
 	AssertFalse(t, r.OK)
 }
 
-func TestEmbed_Embed_OpenTraversal_Bad(t *T) {
+func TestEmbed_Embed_Open_Traversal_Bad(t *T) {
 	emb := mustMountTestFS(t, ".")
 	r := emb.Open("../secrets")
 
@@ -467,14 +476,14 @@ func TestEmbed_Embed_ReadDir_Ugly(t *T) {
 	AssertFalse(t, r.OK)
 }
 
-func TestEmbed_Embed_ReadDirTraversal_Bad(t *T) {
+func TestEmbed_Embed_ReadDir_Traversal_Bad(t *T) {
 	emb := mustMountTestFS(t, "tests/data")
 	r := emb.ReadDir("../../secrets")
 
 	AssertFalse(t, r.OK)
 }
 
-func TestEmbed_Embed_ReadDirParentTraversal_Ugly(t *T) {
+func TestEmbed_Embed_ReadDir_ParentTraversal_Ugly(t *T) {
 	emb := mustMountTestFS(t, ".")
 	r := emb.ReadDir("../secrets")
 
@@ -501,7 +510,7 @@ func TestEmbed_Embed_ReadFile_Ugly(t *T) {
 	AssertFalse(t, r.OK)
 }
 
-func TestEmbed_Embed_ReadFileTraversal_Bad(t *T) {
+func TestEmbed_Embed_ReadFile_Traversal_Bad(t *T) {
 	emb := mustMountTestFS(t, ".")
 	r := emb.ReadFile("../secrets/token")
 
@@ -631,7 +640,7 @@ func TestEmbed_Extract_Ugly(t *T) {
 	read := f.Read(Path(target, "README.md"))
 	AssertTrue(t, read.OK)
 	AssertEqual(t, "agent codex", read.Value)
-	AssertFalse(t, f.Exists(Path(target, "skip.txt")))
+	AssertFalse(t, f.Exists(Path(target, "skip.txt")).OK)
 }
 
 func TestEmbed_ExtractCustomFilter_Good(t *T) {

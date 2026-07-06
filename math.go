@@ -33,20 +33,17 @@ func Compare[T Ordered](a, b T) int {
 //
 //	low := core.Min(3, 7)
 func Min[T Ordered](a, b T) T {
-	if Compare(a, b) <= 0 {
-		return a
-	}
-	return b
+	// Go's builtin min is a compiler intrinsic — direct comparison
+	// without the cmp.Compare three-way-return overhead that mattered
+	// for float Min/Max (NaN-aware) and saved a branch on every call.
+	return min(a, b)
 }
 
 // Max returns the larger of a and b.
 //
 //	high := core.Max(3, 7)
 func Max[T Ordered](a, b T) T {
-	if Compare(a, b) >= 0 {
-		return a
-	}
-	return b
+	return max(a, b)
 }
 
 // Abs returns the absolute value of x.
@@ -57,6 +54,36 @@ func Abs[T signedOrFloat](x T) T {
 		return -x
 	}
 	return x
+}
+
+// Clamp constrains x to the closed interval [lo, hi]. If lo > hi the
+// result is undefined (caller's responsibility). Used by gradient
+// clipping, normalisation, slider/progress bounds, and tile coords.
+//
+//	pct := core.Clamp(progress, 0.0, 100.0)
+//	idx := core.Clamp(cursor, 0, len(items)-1)
+func Clamp[T Ordered](x, lo, hi T) T {
+	if x < lo {
+		return lo
+	}
+	if x > hi {
+		return hi
+	}
+	return x
+}
+
+// Sign returns -1 when x is negative, 0 when zero, and +1 when positive.
+// NaN inputs return 0.
+//
+//	dir := core.Sign(delta)
+func Sign[T signedOrFloat](x T) T {
+	if x > 0 {
+		return 1
+	}
+	if x < 0 {
+		return -1
+	}
+	return 0
 }
 
 // NaN returns an IEEE 754 not-a-number value.

@@ -5,6 +5,12 @@
 
 package core
 
+import (
+	cryptorand "crypto/rand"
+	"encoding/hex"
+	"strconv"
+)
+
 // --- ID Generation ---
 
 var idCounter AtomicUint64
@@ -14,16 +20,37 @@ var idCounter AtomicUint64
 //
 //	id := core.ID()  // "id-1-a3f2b1"
 //	id2 := core.ID() // "id-2-c7e4d9"
+//
+// Implementation: builds into a single pre-sized []byte then handed to
+// AsString — one heap allocation total even when the prefix + counter
+// + hex suffix would otherwise each cost a string. Previously cost 5
+// allocs through Concat / FormatUint / RandomBytes / HexEncode / final.
 func ID() string {
-	return Concat("id-", FormatUint(idCounter.Add(1), 10), "-", shortRand())
+	// "id-" + uint64 (max 20 digits) + "-" + 6 hex chars = 30 cap.
+	buf := make([]byte, 0, 32)
+	buf = append(buf, "id-"...)
+	buf = strconv.AppendUint(buf, idCounter.Add(1), 10)
+	buf = append(buf, '-')
+
+	var rnd [3]byte
+	if _, err := cryptorand.Read(rnd[:]); err != nil {
+		buf = append(buf, "000000"...)
+	} else {
+		buf = hex.AppendEncode(buf, rnd[:])
+	}
+	return AsString(buf)
 }
 
+// shortRand returns 6 hex characters of crypto-random data, or "000000"
+// on entropy failure. Used by Fs.WriteAtomic to suffix temp filenames.
 func shortRand() string {
-	r := RandomBytes(3)
-	if !r.OK {
+	buf := make([]byte, 0, 6)
+	var rnd [3]byte
+	if _, err := cryptorand.Read(rnd[:]); err != nil {
 		return "000000"
 	}
-	return HexEncode(r.Value.([]byte))
+	buf = hex.AppendEncode(buf, rnd[:])
+	return AsString(buf)
 }
 
 // --- Validation ---
@@ -143,12 +170,21 @@ func ArgBool(index int, args ...any) bool {
 //
 //	clean := core.FilterArgs(os.Args[1:])
 func FilterArgs(args []string) []string {
-	var clean []string
+	if len(args) == 0 {
+		return nil
+	}
+	// Pre-size to len(args): almost every arg survives the filter, so the
+	// append never grows the backing array (was an unpresized geometric
+	// regrow on every CLI invocation via Cli.Run).
+	clean := make([]string, 0, len(args))
 	for _, a := range args {
 		if a == "" || HasPrefix(a, "-test.") {
 			continue
 		}
 		clean = append(clean, a)
+	}
+	if len(clean) == 0 {
+		return nil // byte-identical to the old var-nil behaviour
 	}
 	return clean
 }

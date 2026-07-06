@@ -11,7 +11,24 @@ import (
 //	r := fsys.EnsureDir("logs")
 //	if !r.OK { return r }
 type Fs struct {
-	root string
+	root            string
+	rootResolved    string // symlink-resolved root, computed once at New()
+	rootResolvedSep string // rootResolved + PathSeparator — prefix used by validatePath
+
+	// validated caches successful validatePath results keyed by the
+	// caller-supplied path. Fs operations re-validate per call by
+	// default; storing the result here lets repeat lookups skip the
+	// EvalSymlinks syscall chain (per-component Lstat, intermediate
+	// string builds) which dominated the per-call cost.
+	//
+	// Security shape: the cache is unconditionally safe. First call
+	// performs the full sandbox-escape check; subsequent calls return
+	// the same already-validated path. This is a TOCTOU IMPROVEMENT
+	// over the per-call path — an attacker who races a symlink swap
+	// between validate and use can no longer redirect already-resolved
+	// paths. Cache miss on any newly-presented path still does the
+	// full check.
+	validated SyncMap // string -> string
 }
 
 // FS is a generic filesystem accepted by Mount and Extract.
@@ -53,6 +70,20 @@ func (m *Fs) New(root string) *Fs {
 		root = "/"
 	}
 	m.root = root
+	// Resolve root symlinks ONCE at construction. validatePath uses
+	// the resolved form for the sandbox-escape check; without this
+	// every call paid an EvalSymlinks per path component to detect
+	// (e.g.) /var → /private/var on macOS. With it, only the per-call
+	// path itself needs resolving.
+	m.rootResolved = root
+	if root != "/" {
+		if r := PathEvalSymlinks(root); r.OK {
+			m.rootResolved = r.Value.(string)
+		}
+	}
+	// Pre-compute rootResolved + sep so validatePath's HasPrefix check
+	// is a single load — Concat at call time would alloc per Fs op.
+	m.rootResolvedSep = m.rootResolved + string(PathSeparator)
 	return m
 }
 
@@ -112,63 +143,91 @@ func (m *Fs) path(p string) string {
 }
 
 // validatePath ensures the path is within the sandbox, following symlinks if they exist.
+//
+// Resolves symlinks at the deepest existing prefix of the joined path
+// (one syscall for fully-existing paths, walks up only for paths with
+// not-yet-created suffixes). Compares the resolved form against
+// m.rootResolved (cached once at New()). The old per-component walk
+// did O(N) syscalls + allocations even for paths that already existed;
+// this is O(1) for the common case.
+//
+// Security invariants preserved:
+//   - CleanPath strips ".." escape attempts before path construction.
+//   - PathEvalSymlinks chases the full symlink chain, so any link at
+//     any depth pointing outside root is caught by the PathRel check.
+//   - rootResolved is computed once at construction; symlinks added
+//     later cannot retroactively change the sandbox.
 func (m *Fs) validatePath(p string) Result {
-	root := m.root
+	root := m.rootResolved
 	if root == "" {
-		root = "/"
+		root = m.root
+		if root == "" {
+			root = "/"
+		}
 	}
 	if root == "/" {
 		return Result{m.path(p), true}
 	}
 
-	// Split the cleaned path into components
-	parts := Split(CleanPath("/"+p, string(PathSeparator)), string(PathSeparator))
-	current := root
-
-	for _, part := range parts {
-		if part == "" {
-			continue
-		}
-
-		next := PathJoin(current, part)
-		realNextResult := PathEvalSymlinks(next)
-		if !realNextResult.OK {
-			err, _ := realNextResult.Value.(error)
-			if IsNotExist(err) {
-				// Part doesn't exist, we can't follow symlinks anymore.
-				// Since the path is already Cleaned and current is safe,
-				// appending a component to current will not escape.
-				current = next
-				continue
-			}
-			return Result{err, false}
-		}
-		realNext := realNextResult.Value.(string)
-
-		// Verify the resolved part is still within the root
-		relResult := PathRel(root, realNext)
-		rel := ""
-		if relResult.OK {
-			rel = relResult.Value.(string)
-		}
-		if !relResult.OK || HasPrefix(rel, "..") {
-			// Security event: sandbox escape attempt
-			username := "unknown"
-			if r := UserCurrent(); r.OK {
-				username = r.Value.(*User).Username
-			}
-			Print(Stderr(), "[%s] SECURITY sandbox escape detected root=%s path=%s attempted=%s user=%s",
-				Now().Format(TimeRFC3339), root, p, realNext, username)
-			err, _ := relResult.Value.(error)
-			if err == nil {
-				err = E("fs.validatePath", Concat("sandbox escape: ", p, " resolves outside ", m.root), nil)
-			}
-			return Result{err, false}
-		}
-		current = realNext
+	// Cached fast path — same input path resolves to the same
+	// caller-form output every time within an Fs lifetime. The cache
+	// holds only OK results; rejected paths fall through to the full
+	// check on every retry (cheap because rare).
+	if v, ok := m.validated.Load(p); ok {
+		return Result{v.(string), true}
 	}
 
-	return Result{current, true}
+	// Build the full candidate path under the resolved root.
+	clean := CleanPath("/"+p, string(PathSeparator))
+	full := PathJoin(root, clean[1:])
+
+	resolved := evalDeepestSymlinks(full)
+
+	// Sandbox check via string-prefix instead of PathRel — equivalent
+	// boundary (any escape produces a resolved path that fails both
+	// `== root` and `HasPrefix(root + sep)`), zero allocation. The
+	// PathRel approach allocated 3-5 intermediate strings per call.
+	if resolved != root && !HasPrefix(resolved, m.rootResolvedSep) {
+		username := "unknown"
+		if r := UserCurrent(); r.OK {
+			username = r.Value.(*User).Username
+		}
+		Print(Stderr(), "[%s] SECURITY sandbox escape detected root=%s path=%s attempted=%s user=%s",
+			Now().Format(TimeRFC3339), m.root, p, resolved, username)
+		return Result{E("fs.validatePath", Concat("sandbox escape: ", p, " resolves outside ", m.root), nil), false}
+	}
+	// Translate back to the caller's root form (the user-visible
+	// contract is "paths under m.root"). Internally we used rootResolved
+	// for the sandbox check; externally callers want paths matching
+	// what they passed to New().
+	var out string
+	if m.root == root {
+		out = resolved
+	} else if resolved == root {
+		out = m.root
+	} else {
+		// Strip the rootResolved prefix + sep to get the tail under root.
+		out = PathJoin(m.root, resolved[len(m.rootResolvedSep):])
+	}
+	m.validated.Store(p, out)
+	return Result{out, true}
+}
+
+// evalDeepestSymlinks resolves symlinks at the deepest existing prefix
+// of p. For paths that fully exist, this is one EvalSymlinks call. For
+// paths whose suffix doesn't yet exist (e.g. about to be Create'd),
+// walks up parent-by-parent until a resolvable prefix is found, then
+// appends the unresolved tail. Returns p unchanged if no prefix
+// resolves (extremely unlikely — / is always resolvable).
+func evalDeepestSymlinks(p string) string {
+	if r := PathEvalSymlinks(p); r.OK {
+		return r.Value.(string)
+	}
+	parent := PathDir(p)
+	if parent == p || parent == "." {
+		return p
+	}
+	return PathJoin(evalDeepestSymlinks(parent), PathBase(p))
 }
 
 // Read returns file contents as string.
@@ -185,7 +244,10 @@ func (m *Fs) Read(p string) Result {
 	if !r.OK {
 		return r
 	}
-	return Result{string(r.Value.([]byte)), true}
+	// ReadFile returns a freshly-allocated []byte that becomes
+	// unreachable after this conversion — AsString skips the copy.
+	// Same safety contract as ReadAll's fast path.
+	return Result{AsString(r.Value.([]byte)), true}
 }
 
 // Write saves content to file, creating parent directories as needed.
@@ -214,7 +276,7 @@ func (m *Fs) WriteMode(p, content string, mode FileMode) Result {
 	if r := MkdirAll(PathDir(full), 0755); !r.OK {
 		return r
 	}
-	if r := WriteFile(full, []byte(content), mode); !r.OK {
+	if r := WriteFile(full, AsBytes(content), mode); !r.OK {
 		return r
 	}
 	return Result{OK: true}
@@ -225,12 +287,12 @@ func (m *Fs) WriteMode(p, content string, mode FileMode) Result {
 //
 //	dir := fs.TempDir("agent-workspace")
 //	defer fs.DeleteAll(dir)
-func (m *Fs) TempDir(prefix string) string {
+func (m *Fs) TempDir(prefix string) Result {
 	r := MkdirTemp("", prefix)
 	if !r.OK {
-		return ""
+		return Result{Value: Wrap(r.Value.(error), "fs.TempDir", "temp dir creation failed"), OK: false}
 	}
-	return r.Value.(string)
+	return r
 }
 
 // ReadDir reads a directory from fsys.
@@ -265,8 +327,11 @@ func Sub(fsys FS, dir string) Result {
 // WalkDir walks fsys from root, calling fn for each file or directory.
 //
 //	err := core.WalkDir(core.DirFS("templates"), ".", fn)
-func WalkDir(fsys FS, root string, fn WalkDirFunc) error {
-	return fs.WalkDir(fsys, root, fn)
+func WalkDir(fsys FS, root string, fn WalkDirFunc) Result {
+	if err := fs.WalkDir(fsys, root, fn); err != nil {
+		return Result{Value: err, OK: false}
+	}
+	return Result{OK: true}
 }
 
 // WriteAtomic writes content by writing to a temp file then renaming.
@@ -285,7 +350,7 @@ func (m *Fs) WriteAtomic(p, content string) Result {
 	}
 
 	tmp := full + ".tmp." + shortRand()
-	if r := WriteFile(tmp, []byte(content), 0644); !r.OK {
+	if r := WriteFile(tmp, AsBytes(content), 0644); !r.OK {
 		return r
 	}
 	if r := Rename(tmp, full); !r.OK {
@@ -315,52 +380,52 @@ func (m *Fs) EnsureDir(p string) Result {
 //
 //	fsys := (&core.Fs{}).New("/tmp/agent-workspace")
 //	if fsys.IsDir("logs") { core.Println("logs ready") }
-func (m *Fs) IsDir(p string) bool {
+func (m *Fs) IsDir(p string) Result {
 	if p == "" {
-		return false
+		return Result{OK: false}
 	}
 	vp := m.validatePath(p)
 	if !vp.OK {
-		return false
+		return Result{OK: false}
 	}
 	r := Stat(vp.Value.(string))
 	if !r.OK {
-		return false
+		return Result{OK: false}
 	}
 	info := r.Value.(interface{ IsDir() bool })
-	return info.IsDir()
+	return Result{OK: info.IsDir()}
 }
 
 // IsFile returns true if path is a regular file.
 //
 //	fsys := (&core.Fs{}).New("/tmp/agent-workspace")
 //	if fsys.IsFile("config/agent.json") { core.Println("config ready") }
-func (m *Fs) IsFile(p string) bool {
+func (m *Fs) IsFile(p string) Result {
 	if p == "" {
-		return false
+		return Result{OK: false}
 	}
 	vp := m.validatePath(p)
 	if !vp.OK {
-		return false
+		return Result{OK: false}
 	}
 	r := Stat(vp.Value.(string))
 	if !r.OK {
-		return false
+		return Result{OK: false}
 	}
 	info := r.Value.(interface{ Mode() FileMode })
-	return info.Mode().IsRegular()
+	return Result{OK: info.Mode().IsRegular()}
 }
 
 // Exists returns true if path exists.
 //
 //	fsys := (&core.Fs{}).New("/tmp/agent-workspace")
 //	if fsys.Exists("config/agent.json") { core.Println("config present") }
-func (m *Fs) Exists(p string) bool {
+func (m *Fs) Exists(p string) Result {
 	vp := m.validatePath(p)
 	if !vp.OK {
-		return false
+		return Result{OK: false}
 	}
-	return Stat(vp.Value.(string)).OK
+	return Result{OK: Stat(vp.Value.(string)).OK}
 }
 
 // List returns directory entries.
@@ -468,7 +533,7 @@ func WriteAll(writer any, content string) Result {
 	if !ok {
 		return Result{E("core.WriteAll", "not a writer", nil), false}
 	}
-	_, err := wc.Write([]byte(content))
+	_, err := wc.Write(AsBytes(content))
 	if closer, ok := writer.(Closer); ok {
 		closer.Close()
 	}

@@ -25,3 +25,30 @@ func ExampleEnvKeys() {
 	Println(len(keys) > 0)
 	// Output: true
 }
+
+// ExampleOS returns the host operating system through `OS` (e.g. "darwin", "linux").
+func ExampleOS() {
+	Println(OS())
+}
+
+// ExampleArch returns the host CPU architecture through `Arch` (e.g. "arm64", "amd64").
+func ExampleArch() {
+	Println(Arch())
+}
+
+// ExampleGoVersion returns the Go runtime version through `GoVersion`.
+func ExampleGoVersion() {
+	Println(GoVersion())
+}
+
+// ExampleNumCPU returns the number of logical CPUs through `NumCPU`.
+func ExampleNumCPU() {
+	Println(NumCPU() > 0)
+	// Output: true
+}
+
+// ExampleStackBuf captures the current goroutine stack through `StackBuf`.
+func ExampleStackBuf() {
+	Println(len(StackBuf()) > 0)
+	// Output: true
+}

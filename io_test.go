@@ -201,3 +201,72 @@ func TestIo_NewBufferString_Ugly(t *T) {
 	AssertEqual(t, []byte{'a', 0, 'b'}, buf.Bytes())
 	AssertEqual(t, 3, buf.Len())
 }
+
+func TestIo_Buffer_Good(t *T) {
+	var b Buffer
+	b.WriteString("ready")
+
+	AssertEqual(t, "ready", b.String())
+}
+
+func TestIo_Buffer_Bad(t *T) {
+	var b Buffer
+
+	AssertEqual(t, "", b.String())
+	AssertEqual(t, 0, b.Len())
+}
+
+func TestIo_Buffer_Ugly(t *T) {
+	type Sink struct {
+		out Buffer
+	}
+	s := Sink{}
+	s.out.WriteString("ok")
+
+	AssertEqual(t, "ok", s.out.String())
+}
+
+func TestIo_NewBufferReader_Good(t *T) {
+	rd := NewBufferReader([]byte("hello"))
+	out := make([]byte, 5)
+	n, err := rd.Read(out)
+
+	AssertNoError(t, err)
+	AssertEqual(t, 5, n)
+	AssertEqual(t, "hello", string(out))
+}
+
+func TestIo_NewBufferReader_Bad(t *T) {
+	rd := NewBufferReader(nil)
+	out := make([]byte, 5)
+	_, err := rd.Read(out)
+
+	AssertNotNil(t, err)
+}
+
+func TestIo_LimitReader_Good(t *T) {
+	// Reads at most n bytes from the underlying reader.
+	out := ReadAll(LimitReader(NewReader("payload"), 3))
+	RequireTrue(t, out.OK)
+	AssertEqual(t, "pay", out.Value)
+}
+
+func TestIo_LimitReader_Bad(t *T) {
+	// A zero limit yields no bytes (but still a valid read).
+	out := ReadAll(LimitReader(NewReader("payload"), 0))
+	RequireTrue(t, out.OK)
+	AssertEqual(t, "", out.Value)
+}
+
+func TestIo_LimitReader_Ugly(t *T) {
+	// A limit beyond the source returns the whole source, no error.
+	out := ReadAll(LimitReader(NewReader("hi"), 100))
+	RequireTrue(t, out.OK)
+	AssertEqual(t, "hi", out.Value)
+}
+
+func TestIo_NewBufferReader_Ugly(t *T) {
+	rd := NewBufferReader([]byte{0, 0xff, 0x7f})
+
+	AssertEqual(t, int64(3), rd.Size())
+}
