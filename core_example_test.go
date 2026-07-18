@@ -228,13 +228,13 @@ func ExampleCore_WithContext() {
 
 func ExampleCore_RegistryOf() {
 	c := New()
-	c.Action("deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
+	c.Action("agent.deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
 	r := c.RegistryOf("actions")
 	Println(r.OK)
 	Println(r.Value.(*Registry[any]).Names())
 	Println(c.RegistryOf("missing").OK)
 	// Output:
 	// true
-	// [deploy]
+	// [agent.deploy]
 	// false
 }

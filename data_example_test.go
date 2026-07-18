@@ -6,7 +6,7 @@ import . "dappco.re/go"
 // can be read, listed, and extracted through Result-returning helpers.
 func ExampleData_New() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-data-example")
+	dir := MustCast[string](fs.TempDir("core-data-example"))
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "prompts", "hello.txt"), "hello")
 
@@ -28,7 +28,7 @@ func ExampleData_New() {
 // data. Mounted data can be read, listed, and extracted through Result-returning helpers.
 func ExampleData_ReadFile() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-data-example")
+	dir := MustCast[string](fs.TempDir("core-data-example"))
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "prompts", "hello.txt"), "hello")
 
@@ -48,7 +48,7 @@ func ExampleData_ReadFile() {
 // data. Mounted data can be read, listed, and extracted through Result-returning helpers.
 func ExampleData_ReadString() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-data-example")
+	dir := MustCast[string](fs.TempDir("core-data-example"))
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "prompts", "hello.txt"), "hello")
 
@@ -68,7 +68,7 @@ func ExampleData_ReadString() {
 // data can be read, listed, and extracted through Result-returning helpers.
 func ExampleData_List() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-data-example")
+	dir := MustCast[string](fs.TempDir("core-data-example"))
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "prompts", "hello.txt"), "hello")
 
@@ -88,7 +88,7 @@ func ExampleData_List() {
 // data. Mounted data can be read, listed, and extracted through Result-returning helpers.
 func ExampleData_ListNames() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-data-example")
+	dir := MustCast[string](fs.TempDir("core-data-example"))
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "prompts", "hello.txt"), "hello")
 
@@ -108,8 +108,8 @@ func ExampleData_ListNames() {
 // data. Mounted data can be read, listed, and extracted through Result-returning helpers.
 func ExampleData_Extract() {
 	fs := (&Fs{}).New("/")
-	source := fs.TempDir("core-data-source")
-	target := fs.TempDir("core-data-target")
+	source := MustCast[string](fs.TempDir("core-data-source"))
+	target := MustCast[string](fs.TempDir("core-data-target"))
 	defer fs.DeleteAll(source)
 	defer fs.DeleteAll(target)
 

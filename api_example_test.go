@@ -91,12 +91,12 @@ func ExampleAPI_Protocols() {
 func ExampleCore_RemoteAction() {
 	c := New()
 	// Local action
-	c.Action("status", func(_ Context, _ Options) Result {
+	c.Action("agent.status", func(_ Context, _ Options) Result {
 		return Result{Value: "running", OK: true}
 	})
 
 	// No colon — resolves locally
-	r := c.RemoteAction("status", Background(), NewOptions())
+	r := c.RemoteAction("agent.status", Background(), NewOptions())
 	Println(r.Value)
 	// Output: running
 }

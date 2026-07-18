@@ -62,23 +62,23 @@ func ExampleResult() {
 
 func ExampleCore_Action_register() {
 	c := New()
-	c.Action("greet", func(_ Context, opts Options) Result {
+	c.Action("agent.greet", func(_ Context, opts Options) Result {
 		name := opts.String("name")
 		return Result{Value: Concat("hello ", name), OK: true}
 	})
-	Println(c.Action("greet").Exists())
+	Println(c.Action("agent.greet").Exists())
 	// Output: true
 }
 
 func ExampleCore_Action_invoke() {
 	c := New()
-	c.Action("add", func(_ Context, opts Options) Result {
+	c.Action("math.add", func(_ Context, opts Options) Result {
 		a := opts.Int("a")
 		b := opts.Int("b")
 		return Result{Value: a + b, OK: true}
 	})
 
-	r := c.Action("add").Run(Background(), NewOptions(
+	r := c.Action("math.add").Run(Background(), NewOptions(
 		Option{Key: "a", Value: 3},
 		Option{Key: "b", Value: 4},
 	))
@@ -278,7 +278,7 @@ func ExampleSanitisePath() {
 // --- Command ---
 
 func ExampleCore_Command() {
-	c := New()
+	c := New(WithCli())
 	c.Command("deploy/to/homelab", Command{
 		Action: func(opts Options) Result {
 			return Result{Value: Concat("deployed to ", opts.String("_arg")), OK: true}

@@ -45,10 +45,10 @@ func TestAction_NamedAction_Good_Exists(t *T) {
 
 func TestAction_NamedAction_Ugly_PanicRecovery(t *T) {
 	c := New()
-	c.Action("explode", func(_ Context, _ Options) Result {
+	c.Action("agent.explode", func(_ Context, _ Options) Result {
 		panic("boom")
 	})
-	r := c.Action("explode").Run(Background(), NewOptions())
+	r := c.Action("agent.explode").Run(Background(), NewOptions())
 	AssertFalse(t, r.OK, "panicking action must return !OK, not crash")
 	err, ok := r.Value.(error)
 	AssertTrue(t, ok)
@@ -202,10 +202,10 @@ func TestAction_Task_Bad_MissingAction(t *T) {
 
 func TestAction_Task_Good_PreviousInput(t *T) {
 	c := New()
-	c.Action("produce", func(_ Context, _ Options) Result {
+	c.Action("pipeline.produce", func(_ Context, _ Options) Result {
 		return Result{Value: "data-from-step-1", OK: true}
 	})
-	c.Action("consume", func(_ Context, opts Options) Result {
+	c.Action("pipeline.consume", func(_ Context, opts Options) Result {
 		input := opts.Get("_input")
 		if !input.OK {
 			return Result{Value: "no input", OK: true}
@@ -215,8 +215,8 @@ func TestAction_Task_Good_PreviousInput(t *T) {
 
 	c.Task("pipe", Task{
 		Steps: []Step{
-			{Action: "produce"},
-			{Action: "consume", Input: "previous"},
+			{Action: "pipeline.produce"},
+			{Action: "pipeline.consume", Input: "previous"},
 		},
 	})
 
@@ -412,14 +412,14 @@ func TestAction_PerformAsync_Good(t *T) {
 	var mu Mutex
 	var result string
 
-	c.Action("work", func(_ Context, _ Options) Result {
+	c.Action("async.work", func(_ Context, _ Options) Result {
 		mu.Lock()
 		result = "done"
 		mu.Unlock()
 		return Result{Value: "done", OK: true}
 	})
 
-	r := c.PerformAsync("work", NewOptions())
+	r := c.PerformAsync("async.work", NewOptions())
 	AssertTrue(t, r.OK)
 	AssertTrue(t, HasPrefix(r.Value.(string), "id-"), "should return task ID")
 
@@ -432,20 +432,20 @@ func TestAction_PerformAsync_Good(t *T) {
 
 func TestAction_PerformAsync_Good_Progress(t *T) {
 	c := New()
-	c.Action("tracked", func(_ Context, _ Options) Result {
+	c.Action("async.tracked", func(_ Context, _ Options) Result {
 		return Result{OK: true}
 	})
 
-	r := c.PerformAsync("tracked", NewOptions())
+	r := c.PerformAsync("async.tracked", NewOptions())
 	taskID := r.Value.(string)
-	c.Progress(taskID, 0.5, "halfway", "tracked")
+	c.Progress(taskID, 0.5, "halfway", "async.tracked")
 }
 
 func TestAction_PerformAsync_Good_Completion(t *T) {
 	c := New()
 	completed := make(chan ActionTaskCompleted, 1)
 
-	c.Action("completable", func(_ Context, _ Options) Result {
+	c.Action("async.completable", func(_ Context, _ Options) Result {
 		return Result{Value: "output", OK: true}
 	})
 
@@ -456,7 +456,7 @@ func TestAction_PerformAsync_Good_Completion(t *T) {
 		return Result{OK: true}
 	})
 
-	c.PerformAsync("completable", NewOptions())
+	c.PerformAsync("async.completable", NewOptions())
 
 	timeout, cancel := WithTimeout(Background(), 2*Second)
 	defer cancel()
@@ -494,12 +494,12 @@ func TestAction_PerformAsync_Bad_ActionNotRegistered(t *T) {
 
 func TestAction_PerformAsync_Bad_AfterShutdown(t *T) {
 	c := New()
-	c.Action("work", func(_ Context, _ Options) Result { return Result{OK: true} })
+	c.Action("async.work", func(_ Context, _ Options) Result { return Result{OK: true} })
 
 	c.ServiceStartup(Background(), nil)
 	c.ServiceShutdown(Background())
 
-	r := c.PerformAsync("work", NewOptions())
+	r := c.PerformAsync("async.work", NewOptions())
 	AssertFalse(t, r.OK)
 }
 
