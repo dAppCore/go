@@ -617,13 +617,17 @@ func TestTest_AssertSame_Good(t *T) {
 	AssertSame(t, c.Options(), c.Options())
 	x := "agent"
 	p := &x
-	AssertSame(t, p, p)
+	q := &x
+	// Two independently taken addresses of the same variable are the
+	// same pointer — a real identity check, not a self-comparison.
+	AssertSame(t, p, q)
 }
 
 func TestTest_AssertSame_Bad(t *T) {
 	log := Default()
-	AssertSame(t, log, log)
+	// A previously obtained reference matches a freshly obtained one —
 	// Default() hands back the same stored logger each call.
+	AssertSame(t, log, Default())
 	AssertSame(t, Default(), Default())
 	c := New()
 	opts := c.Options()

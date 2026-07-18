@@ -39,6 +39,8 @@ func TestContext_WithCancel_Good(t *T) {
 	cancel()
 
 	assertContextDone(t, ctx)
+	// Cancellation yields the cancel error specifically, not a deadline error.
+	AssertEqual(t, "context canceled", ctx.Err().Error())
 }
 
 func TestContext_WithCancel_Bad(t *T) {
@@ -73,6 +75,9 @@ func TestContext_WithDeadline_Ugly(t *T) {
 	defer cancel()
 
 	assertContextDone(t, ctx)
+	// A deadline already in the past expires immediately with the
+	// deadline error, not a cancellation error.
+	AssertEqual(t, "context deadline exceeded", ctx.Err().Error())
 }
 
 func TestContext_WithTimeout_Good(t *T) {
@@ -81,6 +86,8 @@ func TestContext_WithTimeout_Good(t *T) {
 	Sleep(2 * Millisecond)
 
 	assertContextDone(t, ctx)
+	// Expiry via elapsed timeout reports the deadline error.
+	AssertEqual(t, "context deadline exceeded", ctx.Err().Error())
 }
 
 func TestContext_WithTimeout_Bad(t *T) {
@@ -92,6 +99,8 @@ func TestContext_WithTimeout_Ugly(t *T) {
 	defer cancel()
 
 	assertContextDone(t, ctx)
+	// A zero timeout is already expired at creation — deadline error.
+	AssertEqual(t, "context deadline exceeded", ctx.Err().Error())
 }
 
 func TestContext_WithValue_Good(t *T) {

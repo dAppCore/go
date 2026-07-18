@@ -436,9 +436,29 @@ func TestAction_PerformAsync_Good_Progress(t *T) {
 		return Result{OK: true}
 	})
 
+	progress := make(chan ActionTaskProgress, 1)
+	c.RegisterAction(func(_ *Core, msg Message) Result {
+		if evt, ok := msg.(ActionTaskProgress); ok {
+			progress <- evt
+		}
+		return Result{OK: true}
+	})
+
 	r := c.PerformAsync("async.tracked", NewOptions())
 	taskID := r.Value.(string)
 	c.Progress(taskID, 0.5, "halfway", "async.tracked")
+
+	timeout, cancel := WithTimeout(Background(), 2*Second)
+	defer cancel()
+	select {
+	case evt := <-progress:
+		AssertEqual(t, taskID, evt.TaskIdentifier)
+		AssertEqual(t, 0.5, evt.Progress)
+		AssertEqual(t, "halfway", evt.Message)
+		AssertEqual(t, "async.tracked", evt.Action)
+	case <-timeout.Done():
+		t.Fatal("timed out waiting for progress event")
+	}
 }
 
 func TestAction_PerformAsync_Good_Completion(t *T) {

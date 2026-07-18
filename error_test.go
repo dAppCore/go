@@ -190,7 +190,7 @@ func TestError_ErrorPanic_SafeGo_Panic_Good(t *T) {
 		panic("caught by SafeGo")
 	})
 	// SafeGo recovers — goroutine completes without crashing the process
-	<-done
+	AssertTrue(t, <-done)
 }
 
 // --- Standard Library Wrappers ---

@@ -29,7 +29,7 @@ import . "dappco.re/go"
 // tests. Passing assertions are silent while failures stay one-line and AI-readable.
 func ExampleAssertEqual_numeric() {
 	var t *T
-	AssertEqual(t, 42, 42)
+	AssertEqual(t, 4, len("core"))
 }
 
 // ExampleAssertNotEqual_numeric asserts different integers through `AssertNotEqual` for
@@ -206,7 +206,9 @@ func ExampleAssertInDelta_exact() {
 func ExampleAssertSame_core() {
 	var t *T
 	c := New()
-	AssertSame(t, c, c)
+	// Core() returns the receiver itself, so this is genuine identity
+	// between two independently obtained references, not a self-compare.
+	AssertSame(t, c, c.Core())
 }
 
 // ExampleAssertElementsMatch_ints asserts unordered int-slice equality through

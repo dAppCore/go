@@ -254,6 +254,10 @@ func TestLock_Lock_Lock_Good(t *T) {
 
 	lock.Lock()
 	lock.Unlock()
+
+	r := lock.TryLock()
+	AssertTrue(t, r.OK)
+	lock.Unlock()
 }
 
 func TestLock_Lock_Lock_Bad(t *T) {
@@ -325,6 +329,10 @@ func TestLock_Lock_RLock_Good(t *T) {
 
 	lock.RLock()
 	lock.RUnlock()
+
+	r := lock.TryLock()
+	AssertTrue(t, r.OK)
+	lock.Unlock()
 }
 
 func TestLock_Lock_RLock_Bad(t *T) {

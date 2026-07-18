@@ -49,14 +49,14 @@ func ExampleAssertNotEqual() {
 // Passing assertions are silent while failures stay one-line and AI-readable.
 func ExampleAssertTrue() {
 	var t *T
-	AssertTrue(t, true)
+	AssertTrue(t, len("core") > 0)
 }
 
 // ExampleAssertFalse asserts a false condition through `AssertFalse` for AX-native tests.
 // Passing assertions are silent while failures stay one-line and AI-readable.
 func ExampleAssertFalse() {
 	var t *T
-	AssertFalse(t, false)
+	AssertFalse(t, len("") > 0)
 }
 
 // ExampleAssertNil asserts nil through `AssertNil` for AX-native tests. Passing assertions

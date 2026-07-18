@@ -8,6 +8,11 @@ func TestSync_Mutex_Good(t *T) {
 	var m Mutex
 	m.Lock()
 	m.Unlock()
+
+	// Unlock actually released it — a fresh acquisition succeeds.
+	r := m.TryLock()
+	AssertTrue(t, r.OK)
+	m.Unlock()
 }
 
 func TestSync_Mutex_Bad(t *T) {
@@ -48,6 +53,12 @@ func TestSync_RWMutex_Good(t *T) {
 	m.Unlock()
 	m.RLock()
 	m.RUnlock()
+
+	// Both the write and read lock cycles fully released — a fresh
+	// write acquisition succeeds.
+	r := m.TryLock()
+	AssertTrue(t, r.OK)
+	m.Unlock()
 }
 
 func TestSync_RWMutex_Bad(t *T) {
@@ -182,6 +193,10 @@ func TestSync_Mutex_Lock_Good(t *T) {
 
 	mu.Lock()
 	mu.Unlock()
+
+	r := mu.TryLock()
+	AssertTrue(t, r.OK)
+	mu.Unlock()
 }
 
 func TestSync_Mutex_Lock_Bad(t *T) {
@@ -283,6 +298,10 @@ func TestSync_RWMutex_Lock_Good(t *T) {
 
 	mu.Lock()
 	mu.Unlock()
+
+	r := mu.TryLock()
+	AssertTrue(t, r.OK)
+	mu.Unlock()
 }
 
 func TestSync_RWMutex_Lock_Bad(t *T) {
@@ -354,6 +373,11 @@ func TestSync_RWMutex_RLock_Good(t *T) {
 
 	mu.RLock()
 	mu.RUnlock()
+
+	// RUnlock actually released the read lock — a writer can proceed.
+	r := mu.TryLock()
+	AssertTrue(t, r.OK)
+	mu.Unlock()
 }
 
 func TestSync_RWMutex_RLock_Bad(t *T) {
