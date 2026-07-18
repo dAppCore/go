@@ -739,3 +739,13 @@ func TestCore_WithContext_Ugly(t *T) {
 
 	AssertNotNil(t, rc.Context().Err()) // propagated to the derived ctx
 }
+
+// --- W2-1: RunResult converts only the cli.noop sentinel ---
+
+func TestCore_RunResult_Good_NoopCLI(t *T) {
+	// Full pipeline: startup → CLI with nothing to run (test-binary args
+	// filtered away) → cli.noop → success.
+	c := New(WithCli())
+	r := c.RunResult()
+	AssertTrue(t, r.OK)
+}

@@ -6,7 +6,6 @@
 package core
 
 import (
-	"bytes"
 	goio "io"
 	"strconv"
 )
@@ -226,7 +225,7 @@ func (l *Log) log(level Level, prefix, msg string, keyvals ...any) {
 	// intermediate Sprintf allocations the old path went through.
 	// bytes.Buffer over strings.Builder so we can hand its backing slice
 	// to output.Write without a second copy.
-	var line bytes.Buffer
+	var line Buffer
 	line.Grow(len(timestamp) + len(prefix) + len(msg) + 8 + 24*len(keyvals)/2)
 	line.WriteString(timestamp)
 	line.WriteByte(' ')

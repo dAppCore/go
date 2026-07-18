@@ -60,7 +60,9 @@ func (c *Core) ExitWith(opts ExitOptions) {
 	}
 	done := make(chan struct{})
 	go func() {
-		_ = c.ServiceShutdown(ctx)
+		if r := c.ServiceShutdown(ctx); !r.OK {
+			Warn("core.Exit: shutdown incomplete", "err", r.Error())
+		}
 		close(done)
 	}()
 	select {

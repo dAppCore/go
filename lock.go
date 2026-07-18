@@ -88,6 +88,33 @@ func (c *Core) LockApply() {
 	}
 }
 
+// sealConclave freezes the bundle's capability registries once startup
+// completes — the WithServiceLock enclave contract (PLAN-v0.12.0 W2-3).
+// Runs at the end of ServiceStartup so services can still register
+// actions/protocols/drive handles in their OnStartup hooks; after it, the
+// capability surface is immutable and the Core is safe to export as a
+// package-var toolkit.
+//
+// Locked (frozen): actions, tasks, commands, protocols, drive, data.
+// Sealed (no new keys, existing togglable): feature flags.
+// Deliberately open: c.locks (runtime workspace, not capability surface)
+// and Config settings (runtime state).
+//
+//	c := core.New(core.WithService(auth.Register), core.WithServiceLock())
+//	c.ServiceStartup(core.Background(), nil) // hooks register, then freeze
+func (c *Core) sealConclave() {
+	if !c.services.lockEnabled {
+		return
+	}
+	c.ipc.actions.Lock()
+	c.ipc.tasks.Lock()
+	c.commands.Registry.Lock()
+	c.api.protocols.Lock()
+	c.drive.Registry.Lock()
+	c.data.Registry.Lock()
+	c.config.featureFlags().Seal()
+}
+
 // Startables returns services that have an OnStart function, in registration order.
 //
 //	c := core.New()

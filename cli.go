@@ -64,14 +64,14 @@ func (cl *Cli) Run(args ...string) Result {
 		if cl.banner != nil {
 			cl.Print(cl.banner(cl))
 		}
-		return Result{}
+		return Result{Value: NewCode("cli.noop", "no command tree — banner shown"), OK: false}
 	}
 
 	if c.commands.Len() == 0 {
 		if cl.banner != nil {
 			cl.Print(cl.banner(cl))
 		}
-		return Result{}
+		return Result{Value: NewCode("cli.noop", "no commands registered — banner shown"), OK: false}
 	}
 
 	// Resolve command path from args
@@ -92,7 +92,12 @@ func (cl *Cli) Run(args ...string) Result {
 			cl.Print(cl.banner(cl))
 		}
 		cl.PrintHelp()
-		return Result{}
+		// Bare invocation (no args) is the benign no-op; args that match
+		// nothing are a real failure — a typo must not exit 0 (W2-1).
+		if len(clean) == 0 {
+			return Result{Value: NewCode("cli.noop", "no command given — help shown"), OK: false}
+		}
+		return Result{Value: NewCode("cli.unknown", Concat("unknown command: ", Join(" ", clean...))), OK: false}
 	}
 
 	// Build options from remaining args

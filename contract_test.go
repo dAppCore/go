@@ -294,3 +294,14 @@ func TestContract_MustNew_Ugly(t *T) {
 		MustNew(func(*Core) Result { return Result{Value: NewError("cascade"), OK: false} })
 	})
 }
+
+// --- W2-4: WithOptions merges instead of clobbering ---
+
+func TestContract_WithOptions_Good_MergesNotClobbers(t *T) {
+	c := New(
+		WithOption("keep", "earlier"),
+		WithOptions(NewOptions(Option{Key: "name", Value: "merged"})),
+	)
+	AssertEqual(t, "earlier", c.Options().String("keep"))
+	AssertEqual(t, "merged", c.Options().String("name"))
+}

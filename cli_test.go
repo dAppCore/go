@@ -297,3 +297,31 @@ func TestCli_Cli_Banner_Ugly(t *T) {
 	c := New(WithCli())
 	AssertEqual(t, "", c.Cli().Banner())
 }
+
+// --- W2-1: cli.noop / cli.unknown sentinels ---
+
+func TestCLI_Run_Good_NoopWhenNoCommands(t *T) {
+	c := New(WithCli())
+	r := c.Cli().Run("anything")
+	AssertFalse(t, r.OK)
+	AssertEqual(t, "cli.noop", r.Code())
+}
+
+func TestCLI_Run_Bad_UnknownCommand(t *T) {
+	c := New(WithCli())
+	c.Command("deploy", Command{Action: func(Options) Result { return Ok("done") }})
+	r := c.Cli().Run("tpyo")
+	AssertFalse(t, r.OK)
+	AssertEqual(t, "cli.unknown", r.Code())
+	AssertContains(t, r.Error(), "tpyo")
+}
+
+func TestCLI_Run_Ugly_BareHandlerFailurePropagates(t *T) {
+	// A handler failing with a VALUELESS Result must surface as failure,
+	// uncoded — never converted to success anywhere in the chain (W2-1).
+	c := New(WithCli())
+	c.Command("boom", Command{Action: func(Options) Result { return Result{} }})
+	r := c.Cli().Run("boom")
+	AssertFalse(t, r.OK)
+	AssertEqual(t, "", r.Code())
+}

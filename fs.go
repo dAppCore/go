@@ -695,7 +695,7 @@ func (m *Fs) walkSeq(root string, skip map[string]struct{}) Seq2[FsEntry, error]
 			return
 		}
 		stop := false
-		_ = PathWalkDir(fullRoot, func(path string, d FsDirEntry, walkErr error) error {
+		werr := PathWalkDir(fullRoot, func(path string, d FsDirEntry, walkErr error) error {
 			if stop {
 				return PathSkipAll
 			}
@@ -735,5 +735,10 @@ func (m *Fs) walkSeq(root string, skip map[string]struct{}) Seq2[FsEntry, error]
 			}
 			return nil
 		})
+		// Per-entry errors already flowed through the yield above; a
+		// failed Result here is the walker itself breaking.
+		if !werr.OK {
+			Debug("fs.WalkSeq: walk aborted", "err", werr.Error())
+		}
 	}
 }

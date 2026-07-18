@@ -25,6 +25,19 @@ cga baseline 496 findings pre-fleet, adjudication verdict 446 stub flags → 6 g
 
 ## Wave 2 — the breaking window (the release's reason to be v0.12.0)
 
+**Status 2026-07-18 (same session):** W2-1 LANDED (cli.noop/cli.unknown sentinels; a
+typo'd command now exits non-zero; RunResult converts only the sentinel). W2-2 LANDED
+for Service (coded miss `core.Service: service not found`); Cli()/full one-miss-law
+table remains open. W2-3 LANDED (sealConclave at ServiceStartup tail — Locked:
+actions/tasks/commands/protocols/drive/data; Sealed: features; open: locks/config).
+W2-4 LANDED (merge). W2-5 was ALREADY DONE — Setenv/Unsetenv have returned Result
+since v0.9; the audit's 2 hits were its own doc comments (instrument fixed). W2-6
+instrument-resolved: the return-position regex fix + wrapper-mode exemptions leave 0
+genuine unconverted funcs. W2-7 LANDED (all 6 discards now handled explicitly; the
+embed close-after-failed-write discard was CORRECT and is now a commented branch).
+W2-8 decided: keep `Call(endpoint, action)` as the primitive and `Invoke(action)` as
+the bound verb — no collapse.
+
 | # | Item | Fix |
 |---|---|---|
 | W2-1 | **RunResult nil-failure conflation** (core.go ~205): `!r.OK && r.Value == nil → OK:true` silently converts any valueless failure into success | CLI's "no commands, banner shown" no-op returns a sentinel code (`cli.noop`); RunResult checks `r.Code() == "cli.noop"`, never infers from nil. breaking: handlers relying on the swallow (none should) surface. |

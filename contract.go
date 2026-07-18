@@ -189,7 +189,15 @@ func newCore() *Core {
 //	core.WithOptions(core.NewOptions(core.Option{Key: "name", Value: "myapp"}))
 func WithOptions(opts Options) CoreOption {
 	return func(c *Core) Result {
-		c.options = &opts
+		// Merge, never clobber (W2-4): WithOption keys set earlier in the
+		// option list survive a later WithOptions.
+		if c.options == nil {
+			c.options = &opts
+		} else {
+			for _, opt := range opts.Items() {
+				c.options.Set(opt.Key, opt.Value)
+			}
+		}
 		if name := opts.String("name"); name != "" {
 			c.app.Name = name
 		}

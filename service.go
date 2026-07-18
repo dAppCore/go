@@ -50,7 +50,9 @@ func (c *Core) Service(name string, service ...Service) Result {
 	if len(service) == 0 {
 		r := c.services.Get(name)
 		if !r.OK {
-			return Result{}
+			// Coded miss (W2-2) — a query accessor answers "not found"
+			// with a greppable code, never a bare zero Result.
+			return Result{E("core.Service", Concat("service not found: ", name), nil), false}
 		}
 		svc := r.Value.(*Service)
 		// Return the instance if available, otherwise the Service DTO

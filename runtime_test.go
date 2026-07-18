@@ -382,3 +382,33 @@ func TestRuntime_Runtime_ServiceStartup_Ugly(t *T) {
 		_ = rt.ServiceStartup(Background(), nil)
 	})
 }
+
+// --- W2-3: ServiceStartup seals the conclave under WithServiceLock ---
+
+func TestRuntime_ServiceStartup_Good_SealsConclave(t *T) {
+	c := New(WithServiceLock())
+	AssertTrue(t, c.ServiceStartup(Background(), nil).OK)
+	// Post-startup the capability surface is frozen: late registration
+	// does not land in the registry.
+	c.Action("late.register", func(Context, Options) Result { return Ok(nil) })
+	AssertFalse(t, c.Action("late.register").Exists())
+}
+
+func TestRuntime_ServiceStartup_Bad_NoLockNoSeal(t *T) {
+	c := New()
+	AssertTrue(t, c.ServiceStartup(Background(), nil).OK)
+	// Without WithServiceLock, the surface stays open.
+	c.Action("late.register", func(Context, Options) Result { return Ok(nil) })
+	AssertTrue(t, c.Action("late.register").Exists())
+}
+
+func TestRuntime_ServiceStartup_Ugly_FeaturesSealedNotFrozen(t *T) {
+	c := New(WithServiceLock())
+	c.Feature("dark-mode").Enable()
+	AssertTrue(t, c.ServiceStartup(Background(), nil).OK)
+	// Existing flags stay toggleable (Sealed), new flags cannot appear.
+	c.Feature("dark-mode").Disable()
+	AssertFalse(t, c.Feature("dark-mode").Enabled())
+	c.Feature("brand-new").Enable()
+	AssertFalse(t, c.Feature("brand-new").Enabled())
+}

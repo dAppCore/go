@@ -65,6 +65,9 @@ func (c *Core) ServiceStartup(ctx Context, options any) Result {
 		}
 	}
 	c.ACTION(ActionServiceStartup{})
+	// With the service lock enabled, startup completion freezes the
+	// capability surface — see sealConclave (W2-3).
+	c.sealConclave()
 	return Result{OK: true}
 }
 

@@ -201,9 +201,12 @@ func (c *Core) RunResult() Result {
 		r = cli.Run()
 	}
 
-	// CLI's empty-result "no commands registered, banner shown" is the
-	// no-op success case; treat as OK.
-	if !r.OK && r.Value == nil {
+	// "cli.noop" is the CLI's benign no-op sentinel (banner/help shown,
+	// nothing to run) — success. Everything else propagates: a valueless
+	// Result{OK: false} is a real failure, no longer inferred benign
+	// from its nil Value (W2-1; the old inference silently converted any
+	// bare failure into success).
+	if !r.OK && r.Code() == "cli.noop" {
 		return Result{OK: true}
 	}
 	return r
