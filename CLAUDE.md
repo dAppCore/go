@@ -11,7 +11,7 @@ Source files and tests live at the module root. No `pkg/` nesting.
 ## Build & Test
 
 ```bash
-go test ./... -count=1       # run all tests (3785 tests, 94.5% coverage)
+go test ./... -count=1       # run all tests (3883 tests, 94.5% coverage)
 go build ./...               # verify compilation
 ```
 
@@ -31,6 +31,9 @@ c := core.New(
     core.WithServiceLock(),
 )
 c.Run()    // or: if r := c.RunResult(); !r.OK { ... }
+
+// Package-var bundles use MustNew — panics at import on a failed option:
+// var Widgets = core.MustNew(core.WithService(widgets.Register), core.WithServiceLock())
 ```
 
 Service factory:
@@ -56,7 +59,7 @@ func Register(c *core.Core) core.Result {
 | `c.Cli()` | `*Cli` | CLI command framework |
 | `c.IPC()` | `*Ipc` | Message bus internals |
 | `c.Process()` | `*Process` | Managed execution (Action sugar) |
-| `c.API()` | `*API` | Remote streams (protocol handlers) |
+| `c.API(name...)` | `*API` | Remote streams; named form binds a Drive endpoint (`Invoke`/`Stream`/`Exists`) |
 | `c.Action(name)` | `*Action` | Named callable (register/invoke) |
 | `c.Task(name)` | `*Task` | Composed Action sequence |
 | `c.Entitled(name)` | `Entitlement` | Permission check |

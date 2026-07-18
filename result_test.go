@@ -190,3 +190,100 @@ func TestResult_MustCast_Ugly(t *T) {
 		_ = MustCast[*int](Ok("string-not-pointer"))
 	})
 }
+
+// --- Typed getters (the Options accessor dialect, output side) ---
+
+func TestResult_Result_String_Good(t *T) {
+	AssertEqual(t, "brain", Ok("brain").String())
+}
+
+func TestResult_Result_String_Bad(t *T) {
+	AssertEqual(t, "agent offline", Fail(NewError("agent offline")).String())
+}
+
+func TestResult_Result_String_Ugly(t *T) {
+	// The documented Stringer divergence: non-string OK values render.
+	AssertEqual(t, "42", Ok(42).String())
+}
+
+func TestResult_Result_Int_Good(t *T) {
+	AssertEqual(t, 8080, Ok(8080).Int())
+}
+
+func TestResult_Result_Int_Bad(t *T) {
+	AssertEqual(t, 0, Fail(NewError("no port")).Int())
+}
+
+func TestResult_Result_Int_Ugly(t *T) {
+	// Strict — an int64 does not promote to int.
+	AssertEqual(t, 0, Ok(int64(9)).Int())
+}
+
+func TestResult_Result_Bool_Good(t *T) {
+	AssertTrue(t, Ok(true).Bool())
+}
+
+func TestResult_Result_Bool_Bad(t *T) {
+	AssertFalse(t, Fail(NewError("no flag")).Bool())
+}
+
+func TestResult_Result_Bool_Ugly(t *T) {
+	// Strict — a "true" string never coerces.
+	AssertFalse(t, Ok("true").Bool())
+}
+
+func TestResult_Result_Float64_Good(t *T) {
+	AssertEqual(t, 1.5, Ok(1.5).Float64())
+}
+
+func TestResult_Result_Float64_Bad(t *T) {
+	AssertEqual(t, 0.0, Fail(NewError("no weight")).Float64())
+}
+
+func TestResult_Result_Float64_Ugly(t *T) {
+	// Promotes int/int64/float32 — the Options.Float64 contract.
+	AssertEqual(t, 3.0, Ok(3).Float64())
+	AssertEqual(t, float64(float32(2.5)), Ok(float32(2.5)).Float64())
+}
+
+func TestResult_Result_Duration_Good(t *T) {
+	AssertEqual(t, 5*Second, Ok(5*Second).Duration())
+}
+
+func TestResult_Result_Duration_Bad(t *T) {
+	AssertEqual(t, Duration(0), Fail(NewError("no timeout")).Duration())
+}
+
+func TestResult_Result_Duration_Ugly(t *T) {
+	// A string Value parses via ParseDuration — the Options contract.
+	AssertEqual(t, 30*Second, Ok("30s").Duration())
+}
+
+func TestResult_Result_Bytes_Good(t *T) {
+	AssertEqual(t, "payload", string(Ok([]byte("payload")).Bytes()))
+}
+
+func TestResult_Result_Bytes_Bad(t *T) {
+	AssertNil(t, Fail(NewError("no body")).Bytes())
+}
+
+func TestResult_Result_Bytes_Ugly(t *T) {
+	// Strict — a string is not []byte.
+	AssertNil(t, Ok("text").Bytes())
+}
+
+func TestResult_Result_Err_Good(t *T) {
+	AssertNil(t, Ok("fine").Err())
+}
+
+func TestResult_Result_Err_Bad(t *T) {
+	cause := NewError("agent offline")
+	AssertEqual(t, cause, Fail(cause).Err())
+}
+
+func TestResult_Result_Err_Ugly(t *T) {
+	// A failed Result with a non-error Value still yields a non-nil error.
+	r := Result{Value: "plain diagnostic", OK: false}
+	AssertError(t, r.Err())
+	AssertEqual(t, "plain diagnostic", r.Err().Error())
+}

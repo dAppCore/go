@@ -182,3 +182,14 @@ func ExampleWithServiceLock_contract() {
 	Println(r.OK)
 	// Output: false
 }
+
+// ExampleMustNew builds a package-var bundle that fails at import time
+// instead of half-constructing — the sealed-toolkit constructor.
+func ExampleMustNew() {
+	bundle := MustNew(
+		WithOption("name", "widgets"),
+		WithServiceLock(),
+	)
+	Println(bundle.App().Name)
+	// Output: widgets
+}

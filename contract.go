@@ -121,6 +121,47 @@ type CoreOption func(*Core) Result
 //	)
 //	c.Run()
 func New(opts ...CoreOption) *Core {
+	c := newCore()
+
+	for _, opt := range opts {
+		if r := opt(c); !r.OK {
+			Error("core.New failed", "err", r.Value)
+			break
+		}
+	}
+
+	// Apply service lock after all opts — v0.3.3 parity
+	c.LockApply()
+
+	return c
+}
+
+// MustNew is New for package-var bundles: the first failed option
+// panics, so a broken bundle fails at import time instead of
+// half-constructing silently (New logs and continues — fine in main(),
+// fatal in a package var nobody inspects).
+//
+//	var Widgets = core.MustNew(
+//	    core.WithService(widgets.Register),
+//	    core.WithServiceLock(),
+//	)
+func MustNew(opts ...CoreOption) *Core {
+	c := newCore()
+
+	for _, opt := range opts {
+		if r := opt(c); !r.OK {
+			panic(E("core.MustNew", Sprint("option failed: ", r.Value), nil))
+		}
+	}
+
+	c.LockApply()
+
+	return c
+}
+
+// newCore builds the bare Core all constructors share — subsystems
+// wired, no options applied.
+func newCore() *Core {
 	c := &Core{
 		app:                &App{},
 		data:               &Data{Registry: NewRegistry[*Embed]()},
@@ -140,17 +181,6 @@ func New(opts ...CoreOption) *Core {
 	}
 	c.context, c.cancel = WithCancel(Background())
 	c.api.core = c
-
-	for _, opt := range opts {
-		if r := opt(c); !r.OK {
-			Error("core.New failed", "err", r.Value)
-			break
-		}
-	}
-
-	// Apply service lock after all opts — v0.3.3 parity
-	c.LockApply()
-
 	return c
 }
 

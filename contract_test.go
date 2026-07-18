@@ -274,3 +274,23 @@ func TestContract_WithCli_Ugly(t *T) {
 	AssertTrue(t, c.Service("cli").OK)
 	AssertContains(t, c.Services(), "cli")
 }
+
+// --- MustNew ---
+
+func TestContract_MustNew_Good(t *T) {
+	c := MustNew(WithOption("name", "bundle"))
+	AssertEqual(t, "bundle", c.App().Name)
+}
+
+func TestContract_MustNew_Bad(t *T) {
+	AssertPanics(t, func() {
+		MustNew(func(*Core) Result { return Result{Value: NewError("boom"), OK: false} })
+	})
+}
+
+func TestContract_MustNew_Ugly(t *T) {
+	// The panic carries the failing option's diagnostic.
+	AssertPanicsWithError(t, "option failed", func() {
+		MustNew(func(*Core) Result { return Result{Value: NewError("cascade"), OK: false} })
+	})
+}
