@@ -297,7 +297,11 @@ func compress(input string) Result {
 		return Result{Value: WrapCode(err, "embed.compress.failed", "compress", "gzip writer init failed"), OK: false}
 	}
 	if _, err := gz.Write(AsBytes(input)); err != nil {
-		_ = gz.Close()
+		// Best-effort cleanup — the write error is the failure being
+		// returned; a close error here must not mask it.
+		if cerr := gz.Close(); cerr != nil {
+			Debug("embed.compress: close after failed write", "err", cerr)
+		}
 		return Result{Value: WrapCode(err, "embed.compress.failed", "compress", "gzip write failed"), OK: false}
 	}
 	if err := gz.Close(); err != nil {

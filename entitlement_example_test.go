@@ -104,3 +104,31 @@ func ExampleCore_RecordUsage() {
 	Println(recorded)
 	// Output: ai.credits:10
 }
+
+// ExampleNewPolicy declares entitlements as data: allow, deny, quota.
+func ExampleNewPolicy() {
+	p := NewPolicy(NewOptions(
+		Option{Key: "agentic.*", Value: "allow"},
+		Option{Key: "admin.purge", Value: "deny"},
+		Option{Key: "ai.credits", Value: 100},
+	))
+	Println(p.Checker()("admin.purge", 1, Background()).Allowed)
+	// Output: false
+}
+
+// ExamplePolicy_Checker gates actions; quota rules carry live telemetry.
+func ExamplePolicy_Checker() {
+	p := NewPolicy(NewOptions(Option{Key: "ai.credits", Value: 100}))
+	e := p.Checker()("ai.credits", 1, Background())
+	Println(e.Allowed, e.Remaining)
+	// Output: true 100
+}
+
+// ExamplePolicy_Recorder pairs with Checker so successful gated actions
+// consume quota through the metering loop.
+func ExamplePolicy_Recorder() {
+	p := NewPolicy(NewOptions(Option{Key: "ai.credits", Value: 100}))
+	p.Recorder()("ai.credits", 25, Background())
+	Println(p.Checker()("ai.credits", 1, Background()).Remaining)
+	// Output: 75
+}

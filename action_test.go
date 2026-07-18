@@ -45,10 +45,10 @@ func TestAction_NamedAction_Good_Exists(t *T) {
 
 func TestAction_NamedAction_Ugly_PanicRecovery(t *T) {
 	c := New()
-	c.Action("explode", func(_ Context, _ Options) Result {
+	c.Action("agent.explode", func(_ Context, _ Options) Result {
 		panic("boom")
 	})
-	r := c.Action("explode").Run(Background(), NewOptions())
+	r := c.Action("agent.explode").Run(Background(), NewOptions())
 	AssertFalse(t, r.OK, "panicking action must return !OK, not crash")
 	err, ok := r.Value.(error)
 	AssertTrue(t, ok)
@@ -71,13 +71,16 @@ func TestAction_Actions_Good(t *T) {
 	c.Action("agentic.dispatch", func(_ Context, _ Options) Result { return Result{OK: true} })
 
 	names := c.Actions()
-	AssertLen(t, names, 3)
-	AssertEqual(t, []string{"process.run", "process.kill", "agentic.dispatch"}, names)
+	// The three core.* discovery built-ins ride every Core (W4-1).
+	AssertLen(t, names, 6)
+	AssertEqual(t, []string{"core.actions", "core.info", "core.health", "process.run", "process.kill", "agentic.dispatch"}, names)
 }
 
 func TestAction_Actions_Bad_Empty(t *T) {
+	// A bare Core is never action-empty: the discovery built-ins are
+	// always answerable. Nothing ELSE is registered.
 	c := New()
-	AssertEmpty(t, c.Actions())
+	AssertEqual(t, []string{"core.actions", "core.info", "core.health"}, c.Actions())
 }
 
 // --- Action fields ---
@@ -202,10 +205,10 @@ func TestAction_Task_Bad_MissingAction(t *T) {
 
 func TestAction_Task_Good_PreviousInput(t *T) {
 	c := New()
-	c.Action("produce", func(_ Context, _ Options) Result {
+	c.Action("pipeline.produce", func(_ Context, _ Options) Result {
 		return Result{Value: "data-from-step-1", OK: true}
 	})
-	c.Action("consume", func(_ Context, opts Options) Result {
+	c.Action("pipeline.consume", func(_ Context, opts Options) Result {
 		input := opts.Get("_input")
 		if !input.OK {
 			return Result{Value: "no input", OK: true}
@@ -215,8 +218,8 @@ func TestAction_Task_Good_PreviousInput(t *T) {
 
 	c.Task("pipe", Task{
 		Steps: []Step{
-			{Action: "produce"},
-			{Action: "consume", Input: "previous"},
+			{Action: "pipeline.produce"},
+			{Action: "pipeline.consume", Input: "previous"},
 		},
 	})
 
@@ -312,12 +315,12 @@ func TestAction_Core_Actions_Good(t *T) {
 	c := New()
 	c.Action("agent.prepare", func(_ Context, _ Options) Result { return Result{OK: true} })
 	c.Action("agent.dispatch", func(_ Context, _ Options) Result { return Result{OK: true} })
-	AssertEqual(t, []string{"agent.prepare", "agent.dispatch"}, c.Actions())
+	AssertEqual(t, []string{"core.actions", "core.info", "core.health", "agent.prepare", "agent.dispatch"}, c.Actions())
 }
 
 func TestAction_Core_Actions_Bad(t *T) {
 	c := New()
-	AssertEmpty(t, c.Actions())
+	AssertLen(t, c.Actions(), 3) // only the built-ins
 }
 
 func TestAction_Core_Actions_Ugly(t *T) {
@@ -325,7 +328,7 @@ func TestAction_Core_Actions_Ugly(t *T) {
 	c.Action("agent.prepare", func(_ Context, _ Options) Result { return Result{OK: true} })
 	names := c.Actions()
 	names[0] = "mutated"
-	AssertEqual(t, []string{"agent.prepare"}, c.Actions())
+	AssertEqual(t, []string{"core.actions", "core.info", "core.health", "agent.prepare"}, c.Actions())
 }
 
 func TestAction_Task_Run_Good(t *T) {
@@ -412,14 +415,14 @@ func TestAction_PerformAsync_Good(t *T) {
 	var mu Mutex
 	var result string
 
-	c.Action("work", func(_ Context, _ Options) Result {
+	c.Action("async.work", func(_ Context, _ Options) Result {
 		mu.Lock()
 		result = "done"
 		mu.Unlock()
 		return Result{Value: "done", OK: true}
 	})
 
-	r := c.PerformAsync("work", NewOptions())
+	r := c.PerformAsync("async.work", NewOptions())
 	AssertTrue(t, r.OK)
 	AssertTrue(t, HasPrefix(r.Value.(string), "id-"), "should return task ID")
 
@@ -432,20 +435,40 @@ func TestAction_PerformAsync_Good(t *T) {
 
 func TestAction_PerformAsync_Good_Progress(t *T) {
 	c := New()
-	c.Action("tracked", func(_ Context, _ Options) Result {
+	c.Action("async.tracked", func(_ Context, _ Options) Result {
 		return Result{OK: true}
 	})
 
-	r := c.PerformAsync("tracked", NewOptions())
+	progress := make(chan ActionTaskProgress, 1)
+	c.RegisterAction(func(_ *Core, msg Message) Result {
+		if evt, ok := msg.(ActionTaskProgress); ok {
+			progress <- evt
+		}
+		return Result{OK: true}
+	})
+
+	r := c.PerformAsync("async.tracked", NewOptions())
 	taskID := r.Value.(string)
-	c.Progress(taskID, 0.5, "halfway", "tracked")
+	c.Progress(taskID, 0.5, "halfway", "async.tracked")
+
+	timeout, cancel := WithTimeout(Background(), 2*Second)
+	defer cancel()
+	select {
+	case evt := <-progress:
+		AssertEqual(t, taskID, evt.TaskIdentifier)
+		AssertEqual(t, 0.5, evt.Progress)
+		AssertEqual(t, "halfway", evt.Message)
+		AssertEqual(t, "async.tracked", evt.Action)
+	case <-timeout.Done():
+		t.Fatal("timed out waiting for progress event")
+	}
 }
 
 func TestAction_PerformAsync_Good_Completion(t *T) {
 	c := New()
 	completed := make(chan ActionTaskCompleted, 1)
 
-	c.Action("completable", func(_ Context, _ Options) Result {
+	c.Action("async.completable", func(_ Context, _ Options) Result {
 		return Result{Value: "output", OK: true}
 	})
 
@@ -456,7 +479,7 @@ func TestAction_PerformAsync_Good_Completion(t *T) {
 		return Result{OK: true}
 	})
 
-	c.PerformAsync("completable", NewOptions())
+	c.PerformAsync("async.completable", NewOptions())
 
 	timeout, cancel := WithTimeout(Background(), 2*Second)
 	defer cancel()
@@ -494,12 +517,12 @@ func TestAction_PerformAsync_Bad_ActionNotRegistered(t *T) {
 
 func TestAction_PerformAsync_Bad_AfterShutdown(t *T) {
 	c := New()
-	c.Action("work", func(_ Context, _ Options) Result { return Result{OK: true} })
+	c.Action("async.work", func(_ Context, _ Options) Result { return Result{OK: true} })
 
 	c.ServiceStartup(Background(), nil)
 	c.ServiceShutdown(Background())
 
-	r := c.PerformAsync("work", NewOptions())
+	r := c.PerformAsync("async.work", NewOptions())
 	AssertFalse(t, r.OK)
 }
 
@@ -736,4 +759,75 @@ func TestAction_Action_Enabled_Ugly(t *T) {
 	// Action with no handler is not enabled.
 	a := &Action{Name: "x"}
 	AssertFalse(t, a.Enabled())
+}
+
+// --- W3: schema validation, remote colon dispatch, task ID injection ---
+
+func TestAction_Run_Good_SchemaSatisfied(t *T) {
+	c := New()
+	a := c.Action("schema.check", func(_ Context, opts Options) Result { return Ok(opts.String("dir")) })
+	a.Schema = NewOptions(Option{Key: "dir", Value: "required"})
+	r := c.Action("schema.check").Run(Background(), NewOptions(Option{Key: "dir", Value: "/tmp"}))
+	AssertTrue(t, r.OK)
+	AssertEqual(t, "/tmp", r.Value.(string))
+}
+
+func TestAction_Run_Bad_SchemaMissingKey(t *T) {
+	c := New()
+	a := c.Action("schema.check", func(Context, Options) Result { return Ok(nil) })
+	a.Schema = NewOptions(Option{Key: "dir", Value: "required"})
+	r := c.Action("schema.check").Run(Background(), NewOptions())
+	AssertFalse(t, r.OK)
+	AssertEqual(t, "action.schema", r.Code())
+}
+
+func TestAction_Action_Good_RemoteColon(t *T) {
+	c := New()
+	c.API().RegisterProtocol("http", mockFactory(`{"ok":true}`))
+	c.Drive().New(NewOptions(
+		Option{Key: "name", Value: "charon"},
+		Option{Key: "transport", Value: "http://10.69.69.165:9101/mcp"},
+	))
+	a := c.Action("charon:agentic.status")
+	AssertTrue(t, a.Exists())
+	r := a.Run(Background(), NewOptions())
+	AssertTrue(t, r.OK)
+}
+
+func TestAction_Action_Bad_RemoteColonNoHandle(t *T) {
+	// No Drive handle for the host — the colon name stays a zombie.
+	AssertFalse(t, New().Action("ghost:x.y").Exists())
+}
+
+func TestAction_Action_Ugly_LocalBeatsColon(t *T) {
+	c := New()
+	c.Drive().New(NewOptions(
+		Option{Key: "name", Value: "charon"},
+		Option{Key: "transport", Value: "http://10.69.69.165:9101/mcp"},
+	))
+	// A local registration under a colon name wins over remote synthesis.
+	c.Action("charon:agentic.status", func(Context, Options) Result { return Ok("local") })
+	r := c.Action("charon:agentic.status").Run(Background(), NewOptions())
+	AssertEqual(t, "local", r.Value.(string))
+}
+
+func TestAction_PerformAsync_Good_TaskIDInjected(t *T) {
+	c := New()
+	got := make(chan string, 1)
+	c.Action("task.echo", func(_ Context, opts Options) Result {
+		got <- opts.String("_task")
+		return Ok(nil)
+	})
+	r := c.PerformAsync("task.echo", NewOptions())
+	AssertEqual(t, r.Value.(string), <-got)
+}
+
+func TestAction_PerformAsync_Ugly_CallerOptionsUntouched(t *T) {
+	c := New()
+	done := make(chan struct{})
+	c.Action("task.noop", func(Context, Options) Result { close(done); return Ok(nil) })
+	opts := NewOptions(Option{Key: "k", Value: "v"})
+	c.PerformAsync("task.noop", opts)
+	<-done
+	AssertFalse(t, opts.Has("_task"))
 }

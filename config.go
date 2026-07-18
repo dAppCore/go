@@ -282,3 +282,65 @@ func (e *Config) EnabledFeatures() []string {
 	}
 	return result
 }
+
+// Load merges a JSON object file into the store. Top-level values land
+// under their keys; nested objects flatten with dotted keys
+// ({"database":{"host":"x"}} → "database.host"). File values overwrite
+// existing keys — call order is precedence order.
+//
+//	r := c.Config().Load("/etc/myapp/config.json")
+//	if !r.OK { return r }
+func (e *Config) Load(path string) Result {
+	r := ReadFile(path)
+	if !r.OK {
+		return r
+	}
+	var raw map[string]any
+	if jr := JSONUnmarshal(r.Value.([]byte), &raw); !jr.OK {
+		return jr
+	}
+	e.mergeMap("", raw)
+	return Result{OK: true}
+}
+
+// mergeMap flattens nested JSON objects into dotted keys via Set.
+func (e *Config) mergeMap(prefix string, m map[string]any) {
+	for k, v := range m {
+		key := k
+		if prefix != "" {
+			key = Concat(prefix, ".", k)
+		}
+		if nested, ok := v.(map[string]any); ok {
+			e.mergeMap(key, nested)
+			continue
+		}
+		e.Set(key, v)
+	}
+}
+
+// FromEnv imports environment variables carrying the prefix into the
+// store: MYAPP_DATABASE_HOST → "database.host" (prefix stripped,
+// lowercased, underscores become dots). Returns the import count.
+//
+//	r := c.Config().FromEnv("MYAPP_")
+//	core.Println(r.Int(), "keys imported")
+func (e *Config) FromEnv(prefix string) Result {
+	count := 0
+	for _, kv := range Environ() {
+		i := Index(kv, "=")
+		if i <= 0 {
+			continue
+		}
+		k, v := kv[:i], kv[i+1:]
+		if prefix != "" && !HasPrefix(k, prefix) {
+			continue
+		}
+		key := Lower(Replace(TrimPrefix(k, prefix), "_", "."))
+		if key == "" {
+			continue
+		}
+		e.Set(key, v)
+		count++
+	}
+	return Result{count, true}
+}

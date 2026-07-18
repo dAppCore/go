@@ -81,3 +81,28 @@ func ExampleIpc() {
 	Println(c.IPC() != nil)
 	// Output: true
 }
+
+// ExampleOn subscribes with a typed handler — no hand-written switch.
+func ExampleOn() {
+	c := New()
+	On(c, func(ev ActionTaskProgress) Result {
+		Println(ev.Message)
+		return Ok(nil)
+	})
+	c.ACTION(ActionTaskProgress{Message: "halfway"})
+	// Output: halfway
+}
+
+// ExampleQueryFor lifts a QUERY answer into a typed Return.
+func ExampleQueryFor() {
+	c := New()
+	type portQuery struct{}
+	c.RegisterQuery(func(_ *Core, q Query) Result {
+		if _, ok := q.(portQuery); ok {
+			return Ok(8080)
+		}
+		return Result{}
+	})
+	Println(QueryFor[int](c, portQuery{}).Or(0))
+	// Output: 8080
+}

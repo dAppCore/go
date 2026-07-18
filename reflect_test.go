@@ -187,8 +187,8 @@ func TestReflect_StructField_Bad(t *T) {
 	// A valid index yields a StructField; out-of-range / non-struct panic.
 	var _ StructField = typ.Field(0)
 	AssertEqual(t, 1, typ.NumField())
-	AssertPanics(t, func() { _ = typ.Field(5) })       // past the field count
-	AssertPanics(t, func() { _ = typ.Field(-1) })      // negative index
+	AssertPanics(t, func() { _ = typ.Field(5) })            // past the field count
+	AssertPanics(t, func() { _ = typ.Field(-1) })           // negative index
 	AssertPanics(t, func() { _ = TypeFor[int]().Field(0) }) // non-struct type
 }
 

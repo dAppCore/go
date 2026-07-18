@@ -2,6 +2,8 @@
 
 package core
 
+// baseline: real os/os-exec behaviour — the ForTest wrappers below let
+// other internal tests verify core's own wrappers against genuine stdlib truth.
 import (
 	"os"
 	"os/exec"
@@ -25,7 +27,7 @@ func (ax7FailingWriter) Write(_ []byte) (int, error) {
 	return 0, E("ax7.failingWriter", "write failed", nil)
 }
 
-func ax7CrashReport(message string) CrashReport {
+func newCrashReportFixture(message string) CrashReport {
 	return CrashReport{
 		Timestamp: Now(),
 		Error:     message,

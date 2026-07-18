@@ -2,7 +2,7 @@
 
 // Process termination with graceful shutdown.
 //
-// Always prefer returning errors from RunE() over calling Exit. Use Exit only
+// Always prefer returning a failed Result up to RunResult() over calling Exit. Use Exit only
 // when you cannot return: signal handlers, panic recovery, or fatal errors deep
 // in callbacks where the caller chain has no place for an error.
 //
@@ -60,7 +60,9 @@ func (c *Core) ExitWith(opts ExitOptions) {
 	}
 	done := make(chan struct{})
 	go func() {
-		_ = c.ServiceShutdown(ctx)
+		if r := c.ServiceShutdown(ctx); !r.OK {
+			Warn("core.Exit: shutdown incomplete", "err", r.Error())
+		}
 		close(done)
 	}()
 	select {

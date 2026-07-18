@@ -153,3 +153,30 @@ func (c *Core) RegisterActions(handlers ...func(*Core, Message) Result) {
 	}
 	c.ipc.ipcActions.Store(&next)
 }
+
+// On registers a type-filtered broadcast subscriber — typed sugar over
+// RegisterAction that removes the hand-written message type switch.
+// Non-matching messages pass with OK (broadcast semantics: not mine).
+// The bus itself stays untyped (the three-line law); typing happens at
+// the subscription boundary.
+//
+//	core.On(c, func(ev core.ActionTaskCompleted) core.Result {
+//	    core.Info("task done", "id", ev.TaskIdentifier)
+//	    return core.Ok(nil)
+//	})
+func On[T Message](c *Core, fn func(T) Result) {
+	c.RegisterAction(func(_ *Core, msg Message) Result {
+		if m, ok := msg.(T); ok {
+			return fn(m)
+		}
+		return Result{OK: true}
+	})
+}
+
+// QueryFor sends a QUERY and lifts the first responder's answer into a
+// typed Return — no assertion at the call site.
+//
+//	user := core.QueryFor[*User](c, userQuery{ID: id}).Or(guest)
+func QueryFor[T any](c *Core, q Query) Return[T] {
+	return ReturnOf[T](c.Query(q))
+}

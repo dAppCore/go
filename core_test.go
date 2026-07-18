@@ -141,7 +141,8 @@ func TestCore_RegistryOf_Good_Actions(t *T) {
 	reg := c.RegistryOf("actions").Value.(*Registry[any])
 	AssertTrue(t, reg.Has("process.run"))
 	AssertTrue(t, reg.Has("brain.recall"))
-	AssertEqual(t, 2, reg.Len())
+	AssertTrue(t, reg.Has("core.actions")) // discovery built-ins included
+	AssertEqual(t, 5, reg.Len())
 }
 
 func TestCore_RegistryOf_Bad_Unknown(t *T) {
@@ -738,4 +739,14 @@ func TestCore_WithContext_Ugly(t *T) {
 	c.ServiceShutdown(Background()) // cancels the parent's context
 
 	AssertNotNil(t, rc.Context().Err()) // propagated to the derived ctx
+}
+
+// --- W2-1: RunResult converts only the cli.noop sentinel ---
+
+func TestCore_RunResult_Good_NoopCLI(t *T) {
+	// Full pipeline: startup → CLI with nothing to run (test-binary args
+	// filtered away) → cli.noop → success.
+	c := New(WithCli())
+	r := c.RunResult()
+	AssertTrue(t, r.OK)
 }

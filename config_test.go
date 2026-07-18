@@ -528,3 +528,49 @@ func TestConfig_ConfigVar_Unset_Ugly(t *T) {
 	AssertFalse(t, v.IsSet())
 	AssertNil(t, v.Get())
 }
+
+// --- W4-3: config sources ---
+
+func TestConfig_Load_Good(t *T) {
+	path := Path(t.TempDir(), "config.json")
+	AssertTrue(t, WriteFile(path, []byte(`{"port": 8080, "database": {"host": "homelab"}}`), 0600).OK)
+	c := New()
+	AssertTrue(t, c.Config().Load(path).OK)
+	AssertEqual(t, "homelab", c.Config().String("database.host"))
+	AssertEqual(t, 8080.0, c.Config().Get("port").Float64()) // JSON numbers decode float64; W1 getter lifts it
+}
+
+func TestConfig_Load_Bad(t *T) {
+	AssertFalse(t, New().Config().Load("/nonexistent/config.json").OK)
+}
+
+func TestConfig_Load_Ugly(t *T) {
+	path := Path(t.TempDir(), "bad.json")
+	AssertTrue(t, WriteFile(path, []byte(`{not json`), 0600).OK)
+	AssertFalse(t, New().Config().Load(path).OK)
+}
+
+func TestConfig_FromEnv_Good(t *T) {
+	AssertTrue(t, Setenv("CORETESTW4_DATABASE_HOST", "homelab").OK)
+	defer Unsetenv("CORETESTW4_DATABASE_HOST")
+	c := New()
+	r := c.Config().FromEnv("CORETESTW4_")
+	AssertTrue(t, r.OK)
+	AssertEqual(t, 1, r.Int())
+	AssertEqual(t, "homelab", c.Config().String("database.host"))
+}
+
+func TestConfig_FromEnv_Bad(t *T) {
+	c := New()
+	r := c.Config().FromEnv("CORETESTW4_NOMATCH_PREFIX_")
+	AssertTrue(t, r.OK)
+	AssertEqual(t, 0, r.Int())
+}
+
+func TestConfig_FromEnv_Ugly(t *T) {
+	// Empty prefix imports the whole environment — count is positive.
+	c := New()
+	r := c.Config().FromEnv("")
+	AssertTrue(t, r.OK)
+	AssertTrue(t, r.Int() > 0)
+}

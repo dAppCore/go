@@ -62,23 +62,23 @@ func ExampleResult() {
 
 func ExampleCore_Action_register() {
 	c := New()
-	c.Action("greet", func(_ Context, opts Options) Result {
+	c.Action("agent.greet", func(_ Context, opts Options) Result {
 		name := opts.String("name")
 		return Result{Value: Concat("hello ", name), OK: true}
 	})
-	Println(c.Action("greet").Exists())
+	Println(c.Action("agent.greet").Exists())
 	// Output: true
 }
 
 func ExampleCore_Action_invoke() {
 	c := New()
-	c.Action("add", func(_ Context, opts Options) Result {
+	c.Action("math.add", func(_ Context, opts Options) Result {
 		a := opts.Int("a")
 		b := opts.Int("b")
 		return Result{Value: a + b, OK: true}
 	})
 
-	r := c.Action("add").Run(Background(), NewOptions(
+	r := c.Action("math.add").Run(Background(), NewOptions(
 		Option{Key: "a", Value: 3},
 		Option{Key: "b", Value: 4},
 	))
@@ -91,8 +91,9 @@ func ExampleCore_Actions() {
 	c.Action("process.run", func(_ Context, _ Options) Result { return Result{OK: true} })
 	c.Action("brain.recall", func(_ Context, _ Options) Result { return Result{OK: true} })
 
+	// The discovery built-ins lead every listing (W4-1).
 	Println(c.Actions())
-	// Output: [process.run brain.recall]
+	// Output: [core.actions core.info core.health process.run brain.recall]
 }
 
 // --- Task ---

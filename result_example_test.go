@@ -94,3 +94,53 @@ func ExampleMustCast() {
 	Println(n)
 	// Output: 42
 }
+
+// ExampleResult_String shows the Stringer-first contract: the value when
+// OK, the error text when failed — %v of any Result reads well in logs.
+func ExampleResult_String() {
+	Println(Ok("brain").String())
+	Println(Fail(NewError("agent offline")).String())
+	// Output:
+	// brain
+	// agent offline
+}
+
+// ExampleResult_Int reads a typed int with the Options accessor contract.
+func ExampleResult_Int() {
+	Println(Ok(8080).Int())
+	// Output: 8080
+}
+
+// ExampleResult_Bool reads a typed bool, false on failure or wrong type.
+func ExampleResult_Bool() {
+	Println(Ok(true).Bool())
+	// Output: true
+}
+
+// ExampleResult_Float64 promotes int/int64/float32, as Options.Float64 does.
+func ExampleResult_Float64() {
+	Println(Ok(3).Float64())
+	// Output: 3
+}
+
+// ExampleResult_Duration accepts a Duration or a ParseDuration string.
+func ExampleResult_Duration() {
+	Println(Ok("30s").Duration())
+	// Output: 30s
+}
+
+// ExampleResult_Bytes reads a []byte Value directly — no copy, no assert.
+func ExampleResult_Bytes() {
+	Println(string(Ok([]byte("payload")).Bytes()))
+	// Output: payload
+}
+
+// ExampleResult_Err returns the failure as an error — nil when OK, and
+// never nil when failed.
+func ExampleResult_Err() {
+	Println(Ok("fine").Err() == nil)
+	Println(Fail(NewError("agent offline")).Err() != nil)
+	// Output:
+	// true
+	// true
+}

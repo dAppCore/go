@@ -156,10 +156,12 @@ func TestService_Core_Service_Good(t *T) {
 
 func TestService_Core_Service_Bad(t *T) {
 	c := New()
-	// Retrieving a missing service misses.
+	// Retrieving a missing service misses with a coded error (W2-2) —
+	// a query accessor never answers with a bare zero Result.
 	r := c.Service("missing")
 	AssertFalse(t, r.OK)
-	AssertNil(t, r.Value)
+	AssertError(t, r.Err())
+	AssertContains(t, r.Error(), "service not found")
 	// An empty service name is rejected.
 	AssertFalse(t, c.Service("", Service{}).OK)
 	// Duplicate registration of the same name is rejected.

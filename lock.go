@@ -88,6 +88,33 @@ func (c *Core) LockApply() {
 	}
 }
 
+// sealConclave freezes the bundle's capability registries once startup
+// completes — the WithServiceLock enclave contract (PLAN-v0.12.0 W2-3).
+// Runs at the end of ServiceStartup so services can still register
+// actions/protocols/drive handles in their OnStartup hooks; after it, the
+// capability surface is immutable and the Core is safe to export as a
+// package-var toolkit.
+//
+// Locked (frozen): actions, tasks, commands, protocols, drive, data.
+// Sealed (no new keys, existing togglable): feature flags.
+// Deliberately open: c.locks (runtime workspace, not capability surface)
+// and Config settings (runtime state).
+//
+//	c := core.New(core.WithService(auth.Register), core.WithServiceLock())
+//	c.ServiceStartup(core.Background(), nil) // hooks register, then freeze
+func (c *Core) sealConclave() {
+	if !c.services.lockEnabled {
+		return
+	}
+	c.ipc.actions.Lock()
+	c.ipc.tasks.Lock()
+	c.commands.Registry.Lock()
+	c.api.protocols.Lock()
+	c.drive.Registry.Lock()
+	c.data.Registry.Lock()
+	c.config.featureFlags().Seal()
+}
+
 // Startables returns services that have an OnStart function, in registration order.
 //
 //	c := core.New()
@@ -126,6 +153,27 @@ func (c *Core) Stoppables() Result {
 	})
 	if len(out) == 0 {
 		out = nil // byte-identical to the old var-nil behaviour
+	}
+	return Result{out, true}
+}
+
+// Reloadables returns services that have an OnReload function, in registration order.
+//
+//	c := core.New()
+//	r := c.Reloadables()
+//	if r.OK { services := r.Value.([]*core.Service); _ = services }
+func (c *Core) Reloadables() Result {
+	if c.services == nil {
+		return Result{}
+	}
+	out := make([]*Service, 0, c.services.Len())
+	c.services.Each(func(_ string, svc *Service) {
+		if svc.OnReload != nil {
+			out = append(out, svc)
+		}
+	})
+	if len(out) == 0 {
+		out = nil
 	}
 	return Result{out, true}
 }

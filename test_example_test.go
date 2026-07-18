@@ -49,14 +49,14 @@ func ExampleAssertNotEqual() {
 // Passing assertions are silent while failures stay one-line and AI-readable.
 func ExampleAssertTrue() {
 	var t *T
-	AssertTrue(t, true)
+	AssertTrue(t, len("core") > 0)
 }
 
 // ExampleAssertFalse asserts a false condition through `AssertFalse` for AX-native tests.
 // Passing assertions are silent while failures stay one-line and AI-readable.
 func ExampleAssertFalse() {
 	var t *T
-	AssertFalse(t, false)
+	AssertFalse(t, len("") > 0)
 }
 
 // ExampleAssertNil asserts nil through `AssertNil` for AX-native tests. Passing assertions
@@ -196,7 +196,8 @@ func ExampleAssertInDelta() {
 func ExampleAssertSame() {
 	var t *T
 	a := &struct{}{}
-	AssertSame(t, a, a)
+	b := a // a second reference to the same pointer
+	AssertSame(t, a, b)
 }
 
 // ExampleRequireNoError requires no error through `RequireNoError` for AX-native tests.
@@ -226,4 +227,11 @@ func ExampleRequireNotEmpty() {
 func ExampleAssertElementsMatch() {
 	var t *T
 	AssertElementsMatch(t, []string{"alpha", "bravo"}, []string{"bravo", "alpha"})
+}
+
+// ExampleAllocsPerRun measures a function's allocation rate — the SPOR
+// seam AssertAllocs gates through.
+func ExampleAllocsPerRun() {
+	Println(AllocsPerRun(100, func() {}))
+	// Output: 0
 }

@@ -141,3 +141,114 @@ func (c *Core) RecordUsage(action string, quantity ...int) {
 func (c *Core) SetUsageRecorder(recorder UsageRecorder) {
 	c.usageRecorder = recorder
 }
+
+// --- Policy: declarative entitlements + quotas ---
+
+// Policy is a declarative entitlement rulebook: exact action names or
+// "prefix.*" globs mapping to "allow", "deny", or an integer quota.
+// Checker gates at Action.Run; Recorder decrements consumption through
+// the metering loop — wire both and quotas enforce themselves. Unruled
+// actions default to allowed (rules restrict, absence permits).
+//
+//	p := core.NewPolicy(core.NewOptions(
+//	    core.Option{Key: "agentic.*", Value: "allow"},
+//	    core.Option{Key: "admin.purge", Value: "deny"},
+//	    core.Option{Key: "ai.credits", Value: 100},
+//	))
+//	c.SetEntitlementChecker(p.Checker())
+//	c.SetUsageRecorder(p.Recorder())
+type Policy struct {
+	rules Options
+	mu    Mutex
+	used  map[string]int // consumption per quota rule key
+}
+
+// NewPolicy builds a Policy from a rule set. Rule values: "allow",
+// "deny", or an int quota. Exact keys beat globs; longer globs beat
+// shorter ones.
+//
+//	p := core.NewPolicy(core.NewOptions(core.Option{Key: "admin.*", Value: "deny"}))
+func NewPolicy(rules Options) *Policy {
+	return &Policy{rules: rules, used: map[string]int{}}
+}
+
+// match finds the most specific rule for an action: exact match first,
+// then the longest matching "prefix.*" glob.
+func (p *Policy) match(action string) (string, any, bool) {
+	if r := p.rules.Get(action); r.OK {
+		return action, r.Value, true
+	}
+	bestKey := ""
+	var bestVal any
+	for _, opt := range p.rules.Items() {
+		if !HasSuffix(opt.Key, ".*") {
+			continue
+		}
+		if HasPrefix(action, TrimSuffix(opt.Key, "*")) && len(opt.Key) > len(bestKey) {
+			bestKey, bestVal = opt.Key, opt.Value
+		}
+	}
+	if bestKey == "" {
+		return "", nil, false
+	}
+	return bestKey, bestVal, true
+}
+
+// Checker returns the EntitlementChecker enforcing this policy.
+//
+//	c.SetEntitlementChecker(p.Checker())
+func (p *Policy) Checker() EntitlementChecker {
+	return func(action string, quantity int, _ Context) Entitlement {
+		key, val, ok := p.match(action)
+		if !ok {
+			return Entitlement{Allowed: true, Unlimited: true}
+		}
+		switch v := val.(type) {
+		case string:
+			if v == "deny" {
+				return Entitlement{Allowed: false, Reason: Concat("policy: ", key, " denied")}
+			}
+			return Entitlement{Allowed: true, Unlimited: true}
+		case int:
+			if quantity <= 0 {
+				quantity = 1
+			}
+			p.mu.Lock()
+			used := p.used[key]
+			p.mu.Unlock()
+			e := Entitlement{
+				Allowed:   v-used >= quantity,
+				Limit:     v,
+				Used:      used,
+				Remaining: v - used,
+			}
+			if !e.Allowed {
+				e.Reason = Concat("policy: quota exhausted for ", key)
+			}
+			return e
+		}
+		return Entitlement{Allowed: true, Unlimited: true}
+	}
+}
+
+// Recorder returns the UsageRecorder that decrements quotas — pair it
+// with Checker via SetUsageRecorder so successful gated actions consume.
+//
+//	c.SetUsageRecorder(p.Recorder())
+func (p *Policy) Recorder() UsageRecorder {
+	return func(action string, quantity int, _ Context) {
+		key, val, ok := p.match(action)
+		if !ok {
+			return
+		}
+		if _, isQuota := val.(int); !isQuota {
+			return
+		}
+		if quantity <= 0 {
+			quantity = 1
+		}
+		p.mu.Lock()
+		p.used[key] += quantity
+		p.mu.Unlock()
+	}
+}

@@ -126,6 +126,112 @@ func (r Result) Or(fallback any) any {
 	return fallback
 }
 
+// --- Typed getters (the Options accessor dialect, output side) ---
+//
+// Each getter returns the type's zero value when the Result is failed
+// or Value isn't that type — the same contract as the Options accessors
+// (options.go), so the universal input and universal output speak one
+// dialect. String is the single documented divergence (Stringer-first).
+
+// String renders the Result for humans and logs — Result implements
+// Stringer through it. Returns the string Value verbatim when OK holds
+// a string, Sprint(Value) for any other OK value, and the Error() text
+// when failed. This is the ONE deliberate divergence from the strict
+// getter contract, so `%v` of any Result reads well in logs. For a
+// strict typed read use Cast[string](r).
+//
+//	name := core.EnvGet("USER").String()
+//	core.Println(c.Fs().Read("/missing").String())  // error text, not ""
+func (r Result) String() string {
+	if !r.OK {
+		return r.Error()
+	}
+	if s, ok := r.Value.(string); ok {
+		return s
+	}
+	return Sprint(r.Value)
+}
+
+// Int retrieves an int Value, 0 when failed or not an int.
+// Strict — no numeric promotion, mirroring Options.Int.
+//
+//	port := c.QUERY(portQuery{}).Int()
+func (r Result) Int() int {
+	if !r.OK {
+		return 0
+	}
+	i, _ := r.Value.(int)
+	return i
+}
+
+// Bool retrieves a bool Value, false when failed or not a bool.
+//
+//	enabled := c.QUERY(flagQuery{}).Bool()
+func (r Result) Bool() bool {
+	if !r.OK {
+		return false
+	}
+	b, _ := r.Value.(bool)
+	return b
+}
+
+// Float64 retrieves a float64 Value, 0 when failed or wrong type.
+// Promotes int/int64/float32 so JSON-decoded numbers work uniformly —
+// the same promotion set as Options.Float64.
+//
+//	weight := c.QUERY(weightQuery{}).Float64()
+func (r Result) Float64() float64 {
+	if !r.OK {
+		return 0
+	}
+	switch v := r.Value.(type) {
+	case float64:
+		return v
+	case float32:
+		return float64(v)
+	case int:
+		return float64(v)
+	case int64:
+		return float64(v)
+	}
+	return 0
+}
+
+// Duration retrieves a Duration Value, 0 when failed or wrong type.
+// Accepts a Duration directly or a string parsed via ParseDuration —
+// the same contract as Options.Duration.
+//
+//	timeout := core.ParseDuration("30s").Duration()
+func (r Result) Duration() Duration {
+	if !r.OK {
+		return 0
+	}
+	switch v := r.Value.(type) {
+	case Duration:
+		return v
+	case string:
+		if d := ParseDuration(v); d.OK {
+			if dur, ok := d.Value.(Duration); ok {
+				return dur
+			}
+		}
+	}
+	return 0
+}
+
+// Bytes retrieves a []byte Value, nil when failed or not []byte.
+// Returns the backing slice directly — no defensive copy (hot I/O
+// path; callers that mutate must copy).
+//
+//	body := core.HTTPGet(url).Bytes()
+func (r Result) Bytes() []byte {
+	if !r.OK {
+		return nil
+	}
+	b, _ := r.Value.([]byte)
+	return b
+}
+
 // Cast extracts a typed value from a Result. Returns (zero, false) when
 // the Result is not OK or Value isn't assignable to T. Single
 // expression replacing the (Result.OK check + type assertion) pair.

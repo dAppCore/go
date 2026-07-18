@@ -4,14 +4,14 @@ Guidance for Claude Code and Codex when working with this repository.
 
 ## Module
 
-`dappco.re/go/core` — dependency injection, service lifecycle, permission, and message-passing for Go.
+`dappco.re/go` — dependency injection, service lifecycle, permission, and message-passing for Go.
 
 Source files and tests live at the module root. No `pkg/` nesting.
 
 ## Build & Test
 
 ```bash
-go test ./... -count=1       # run all tests (483 tests, 84.7% coverage)
+go test ./... -count=1       # run all tests (3883 tests, 94.5% coverage)
 go build ./...               # verify compilation
 ```
 
@@ -30,7 +30,10 @@ c := core.New(
     core.WithService(mypackage.Register),
     core.WithServiceLock(),
 )
-c.Run()    // or: if err := c.RunE(); err != nil { ... }
+c.Run()    // or: if r := c.RunResult(); !r.OK { ... }
+
+// Package-var bundles use MustNew — panics at import on a failed option:
+// var Widgets = core.MustNew(core.WithService(widgets.Register), core.WithServiceLock())
 ```
 
 Service factory:
@@ -48,19 +51,21 @@ func Register(c *core.Core) core.Result {
 |----------|---------|---------|
 | `c.Options()` | `*Options` | Input configuration |
 | `c.App()` | `*App` | Application identity |
-| `c.Config()` | `*Config` | Runtime settings, feature flags |
-| `c.Data()` | `*Data` | Embedded assets (Registry[*Embed]) |
-| `c.Drive()` | `*Drive` | Transport handles (Registry[*DriveHandle]) |
+| `c.Config(group...)` | `*Config` | Runtime settings, feature flags; pass a group for a key-prefixed view |
+| `c.Feature(name)` | `Feature` | Keyed feature-flag handle (Enable/Disable/Enabled) |
+| `c.Data(name...)` | `*Data` | Embedded assets (Registry[*Embed]); named form binds a mount — paths relative to it |
+| `c.Drive(name...)` | `*Drive` | Transport handles (Registry[*DriveHandle]); named form binds a handle (`Exists`/`Handle`/`Transport`) |
 | `c.Fs()` | `*Fs` | Filesystem I/O (sandboxable) |
 | `c.Cli()` | `*Cli` | CLI command framework |
 | `c.IPC()` | `*Ipc` | Message bus internals |
 | `c.Process()` | `*Process` | Managed execution (Action sugar) |
-| `c.API()` | `*API` | Remote streams (protocol handlers) |
+| `c.API(name...)` | `*API` | Remote streams; named form binds a Drive endpoint (`Invoke`/`Stream`/`Exists`) |
 | `c.Action(name)` | `*Action` | Named callable (register/invoke) |
 | `c.Task(name)` | `*Task` | Composed Action sequence |
 | `c.Entitled(name)` | `Entitlement` | Permission check |
-| `c.RegistryOf(n)` | `*Registry` | Cross-cutting queries |
+| `c.RegistryOf(n)` | `Result` (snapshot `*Registry[any]`) | Cross-cutting queries; OK=false on unknown name |
 | `c.I18n()` | `*I18n` | Internationalisation |
+| — (`LSPServe(ctx)`) | package-level | AX lint server (SPOR diagnostics for editors) — standalone by design, zero Core coupling; sources via `LSPRegisterDiagnostic` |
 
 ## Messaging
 
@@ -78,7 +83,7 @@ type Startable interface { OnStartup(ctx context.Context) Result }
 type Stoppable interface { OnShutdown(ctx context.Context) Result }
 ```
 
-`RunE()` always calls `defer ServiceShutdown` — even on startup failure or panic.
+`RunResult()` always calls `defer ServiceShutdown` — even on startup failure or panic.
 
 ## Error Handling
 
@@ -96,7 +101,7 @@ return core.E("service.Method", "what failed", underlyingErr)
 
 ## Docs
 
-Full API contract: `docs/RFC.md` (1476 lines, 21 sections).
+Full API contract: `docs/RFC.md` (1282 lines, 25 sections).
 
 ## Go Workspace
 

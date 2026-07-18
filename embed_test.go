@@ -241,8 +241,9 @@ func TestEmbed_Extract_BadTargetDir_Ugly(t *T) {
 	srcDir := t.TempDir()
 	(&Fs{}).New("/").Write(Path(srcDir, "f.txt"), "x")
 	r := Extract(DirFS(srcDir), "/nonexistent/deeply/nested/impossible", nil)
-	// Should fail gracefully, not panic
-	_ = r
+	// Should fail gracefully, not panic: an unwritable root-anchored path
+	// fails Extract's upfront MkdirAll rather than crashing.
+	AssertFalse(t, r.OK)
 }
 
 func TestEmbed_Sub_BaseDir_Good(t *T) {

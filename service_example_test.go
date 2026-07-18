@@ -76,11 +76,11 @@ func ExampleMustServiceFor() {
 // ExampleCore_Services lists registered services through `Core.Services` for service
 // registration. Services register by name and can be recovered with typed helpers.
 func ExampleCore_Services() {
-	c := New()
+	c := New(WithCli())
 	c.Service("cache", Service{})
 	c.Service("worker", Service{})
 	Println(c.Services())
-	// Output: [cache worker]
+	// Output: [cli cache worker]
 }
 
 // ExampleWithService injects a service through `WithService` for service registration.

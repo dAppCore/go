@@ -454,7 +454,7 @@ func (h *ErrorPanic) SafeGo(fn func()) {
 //	if r.OK { reports := r.Value.([]core.CrashReport); _ = reports }
 func (h *ErrorPanic) Reports(n int) Result {
 	if h.filePath == "" {
-		return Result{}
+		return Result{E("error.Reports", "no crash file configured — core.WithCrashFile", nil), false}
 	}
 	crashMu.Lock()
 	defer crashMu.Unlock()
@@ -473,6 +473,11 @@ func (h *ErrorPanic) Reports(n int) Result {
 	return Result{reports[len(reports)-n:], true}
 }
 
+// crashMu is a package-global (not Core-scoped) on purpose: it serialises the
+// read-modify-write of the crash-report file across every ErrorPanic instance,
+// so two Cores sharing a crash file can't interleave writes. It guards a file
+// critical section, not an in-memory collection — hence a bare Mutex, not a
+// Registry or c.Lock.
 var crashMu Mutex
 
 func (h *ErrorPanic) appendReport(report CrashReport) {

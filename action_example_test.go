@@ -29,11 +29,11 @@ func ExampleActionHandler() {
 // actions and tasks.
 func ExampleAction_Run() {
 	c := New()
-	c.Action("double", func(_ Context, opts Options) Result {
+	c.Action("math.double", func(_ Context, opts Options) Result {
 		return Result{Value: opts.Int("n") * 2, OK: true}
 	})
 
-	r := c.Action("double").Run(Background(), NewOptions(
+	r := c.Action("math.double").Run(Background(), NewOptions(
 		Option{Key: "n", Value: 21},
 	))
 	Println(r.Value)
@@ -45,8 +45,8 @@ func ExampleAction_Run() {
 // actions and tasks.
 func ExampleCore_Action() {
 	c := New()
-	c.Action("deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
-	Println(c.Action("deploy").Exists())
+	c.Action("agent.deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
+	Println(c.Action("agent.deploy").Exists())
 	// Output: true
 }
 
@@ -55,10 +55,10 @@ func ExampleCore_Action() {
 // dAppCore actions and tasks.
 func ExampleCore_Actions_action() {
 	c := New()
-	c.Action("deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
-	c.Action("test", func(_ Context, _ Options) Result { return Result{OK: true} })
+	c.Action("agent.deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
+	c.Action("agent.test", func(_ Context, _ Options) Result { return Result{OK: true} })
 	Println(c.Actions())
-	// Output: [deploy test]
+	// Output: [core.actions core.info core.health agent.deploy agent.test]
 }
 
 // ExampleStep declares one task step through `Step` for an agent dispatch workflow.
@@ -113,10 +113,10 @@ func ExampleCore_Tasks() {
 // Consumers copy the Result-shaped handler contract for dAppCore actions and tasks.
 func ExampleAction_Exists() {
 	c := New()
-	Println(c.Action("missing").Exists())
+	Println(c.Action("agent.missing").Exists())
 
-	c.Action("present", func(_ Context, _ Options) Result { return Result{OK: true} })
-	Println(c.Action("present").Exists())
+	c.Action("agent.present", func(_ Context, _ Options) Result { return Result{OK: true} })
+	Println(c.Action("agent.present").Exists())
 	// Output:
 	// false
 	// true
@@ -127,11 +127,11 @@ func ExampleAction_Exists() {
 // actions and tasks.
 func ExampleAction_Run_panicRecovery() {
 	c := New()
-	c.Action("boom", func(_ Context, _ Options) Result {
+	c.Action("agent.boom", func(_ Context, _ Options) Result {
 		panic("explosion")
 	})
 
-	r := c.Action("boom").Run(Background(), NewOptions())
+	r := c.Action("agent.boom").Run(Background(), NewOptions())
 	Println(r.OK)
 	// Output: false
 }
@@ -141,17 +141,17 @@ func ExampleAction_Run_panicRecovery() {
 // Result-shaped handler contract for dAppCore actions and tasks.
 func ExampleAction_Run_entitlementDenied() {
 	c := New()
-	c.Action("premium", func(_ Context, _ Options) Result {
+	c.Action("agent.premium", func(_ Context, _ Options) Result {
 		return Result{Value: "secret", OK: true}
 	})
 	c.SetEntitlementChecker(func(action string, _ int, _ Context) Entitlement {
-		if action == "premium" {
+		if action == "agent.premium" {
 			return Entitlement{Allowed: false, Reason: "upgrade"}
 		}
 		return Entitlement{Allowed: true, Unlimited: true}
 	})
 
-	r := c.Action("premium").Run(Background(), NewOptions())
+	r := c.Action("agent.premium").Run(Background(), NewOptions())
 	Println(r.OK)
 	// Output: false
 }
@@ -208,7 +208,7 @@ func ExampleCore_PerformAsync() {
 // ExampleAction_Enable re-enables a disabled action through `Action.Enable`.
 func ExampleAction_Enable() {
 	c := New()
-	a := c.Action("deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
+	a := c.Action("agent.deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
 	a.Disable()
 	a.Enable()
 	Println(a.Enabled())
@@ -218,7 +218,7 @@ func ExampleAction_Enable() {
 // ExampleAction_Disable soft-disables an action through `Action.Disable`.
 func ExampleAction_Disable() {
 	c := New()
-	a := c.Action("deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
+	a := c.Action("agent.deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
 	a.Disable()
 	Println(a.Enabled())
 	// Output: false
@@ -227,7 +227,7 @@ func ExampleAction_Disable() {
 // ExampleAction_Enabled reports whether an action is active through `Action.Enabled`.
 func ExampleAction_Enabled() {
 	c := New()
-	a := c.Action("deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
+	a := c.Action("agent.deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
 	Println(a.Enabled())
 	// Output: true
 }
@@ -250,4 +250,18 @@ func ExampleCore_Progress() {
 	// Output:
 	// 0.5
 	// halfway
+}
+
+// ExampleCore_Action_remote dispatches "host:action" through the named
+// endpoint's transport — the colon law. Local registrations always win.
+func ExampleCore_Action_remote() {
+	c := New()
+	c.API().RegisterProtocol("http", mockFactory("pong"))
+	c.Drive().New(NewOptions(
+		Option{Key: "name", Value: "charon"},
+		Option{Key: "transport", Value: "http://10.69.69.165:9101/mcp"},
+	))
+	r := c.Action("charon:agentic.status").Run(Background(), NewOptions())
+	Println(r.String())
+	// Output: pong
 }

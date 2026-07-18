@@ -5,9 +5,10 @@ import (
 )
 
 func TestSql_SQLDrivers_Good(t *T) {
+	// core/go intentionally registers no SQL driver; consumers import one.
 	drivers := SQLDrivers()
 
-	AssertGreaterOrEqual(t, len(drivers), 0)
+	AssertEmpty(t, drivers)
 }
 
 func TestSql_SQLDrivers_Bad(t *T) {

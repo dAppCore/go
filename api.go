@@ -60,13 +60,61 @@ type StreamFactory func(handle *DriveHandle) (Stream, error)
 type API struct {
 	core      *Core
 	protocols *Registry[StreamFactory]
+	endpoint  string // non-empty on a bound view — see On / c.API(name)
 }
 
-// API returns the remote communication primitive.
+// API returns the remote communication primitive. With a name it
+// returns a view bound to that Drive endpoint — the named-resource
+// accessor for remotes (see c.Lock, c.Feature, c.Config for the same
+// mechanic on other subsystems).
 //
-//	c.API().Stream("charon")
-func (c *Core) API() *API {
-	return c.api
+//	c.API().Stream("charon")                      // subsystem, as ever
+//	c.API("codex").Invoke("agentic.status", opts) // bound endpoint
+//	c.API("lem-local").Stream()
+func (c *Core) API(name ...string) *API {
+	if len(name) == 0 || name[0] == "" {
+		return c.api
+	}
+	return c.api.On(name[0])
+}
+
+// On returns a view of the API bound to a named Drive endpoint. The
+// view shares the protocol registry with the parent; only the binding
+// is new. Sugar reached via c.API(name).
+//
+//	lem := c.API().On("lem-local")
+//	r := lem.Invoke("engine.status", opts)
+func (a *API) On(name string) *API {
+	return &API{core: a.core, protocols: a.protocols, endpoint: name}
+}
+
+// Invoke calls a named Action on the bound endpoint — the verb for
+// c.API(name). Fails with operation "api.Invoke" when the view has no
+// binding.
+//
+//	r := c.API("codex").Invoke("agentic.status", opts)
+func (a *API) Invoke(action string, opts Options) Result {
+	if a.endpoint == "" {
+		return Result{E("api.Invoke", "no endpoint bound — use c.API(name)", nil), false}
+	}
+	return a.Call(a.endpoint, action, opts)
+}
+
+// Exists reports whether the bound endpoint has a Drive handle — the
+// capability check for named remotes.
+//
+//	if c.API("codex").Exists() { ... }
+func (a *API) Exists() bool {
+	return a.endpoint != "" && a.core.Drive().Has(a.endpoint)
+}
+
+// Discover queries the bound endpoint's capability map — sugar over
+// Invoke("core.actions", ...). Every Core answers it, so a mesh of
+// Core apps is walkable.
+//
+//	r := c.API("codex").Discover()
+func (a *API) Discover() Result {
+	return a.Invoke("core.actions", NewOptions())
 }
 
 // RegisterProtocol registers a stream factory for a URL scheme.
@@ -81,14 +129,23 @@ func (a *API) RegisterProtocol(scheme string, factory StreamFactory) {
 
 // Stream opens a connection to a named endpoint.
 // Looks up the endpoint in Drive, extracts the protocol from the transport URL,
-// and delegates to the registered protocol handler.
+// and delegates to the registered protocol handler. On a bound view the
+// name may be omitted — the binding is used.
 //
 //	r := c.API().Stream("charon")
+//	r = c.API("charon").Stream()
 //	if r.OK { stream := r.Value.(Stream) }
-func (a *API) Stream(name string) Result {
-	r := a.core.Drive().Get(name)
+func (a *API) Stream(name ...string) Result {
+	target := a.endpoint
+	if len(name) > 0 && name[0] != "" {
+		target = name[0]
+	}
+	if target == "" {
+		return Result{E("api.Stream", "no endpoint — pass a name or bind with c.API(name)", nil), false}
+	}
+	r := a.core.Drive().Get(target)
 	if !r.OK {
-		return Result{E("api.Stream", Concat("endpoint not found in Drive: ", name), nil), false}
+		return Result{E("api.Stream", Concat("endpoint not found in Drive: ", target), nil), false}
 	}
 
 	handle := r.Value.(*DriveHandle)
@@ -357,18 +414,17 @@ func HTTPStripPrefix(prefix string, h Handler) Handler {
 }
 
 // HTTPListenAndServe runs an HTTPServer on the given address with the given
-// handler, returning a Result. ListenAndServe only returns on error, so a
-// non-OK Result is the normal outcome — Value carries ErrHTTPServerClosed after
-// a graceful shutdown, other errors otherwise.
+// handler, blocking until the server stops. A graceful shutdown
+// (ErrHTTPServerClosed) yields Result{OK: true}; any other error yields
+// Result{OK: false} carrying it.
 //
-//	if r := core.HTTPListenAndServe(":8080", mux); !r.OK {
-//	    if err, _ := r.Value.(error); !core.Is(err, core.ErrHTTPServerClosed) {
-//	        core.Error("listen", "err", err)
-//	    }
+//	r := core.HTTPListenAndServe(":8080", mux)
+//	if !r.OK {
+//	    core.Error("listen", "err", r.Error())
 //	}
 func HTTPListenAndServe(addr string, handler Handler) Result {
-	if err := http.ListenAndServe(addr, handler); err != nil {
-		return Result{Value: err, OK: false}
+	if err := http.ListenAndServe(addr, handler); !Is(err, ErrHTTPServerClosed) {
+		return Result{E("api.HTTPListenAndServe", Concat("listen on \"", addr, "\" failed"), err), false}
 	}
 	return Result{OK: true}
 }

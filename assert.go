@@ -434,6 +434,30 @@ func AssertElementsMatch(t TB, want, got any, msg ...string) {
 	}
 }
 
+// assertAllocsRuns is the sample size AssertAllocs feeds to AllocsPerRun.
+// Matches the codebase's own alloc-gate convention (see alloc_gate_test.go)
+// for cheap, hot-path primitives.
+const assertAllocsRuns = 1000
+
+// AssertAllocs fails the test if calling fn allocates more than max heap
+// allocations per run, averaged over repeated calls — the house alloc-gate
+// one-liner for locking in a hot path's allocation ceiling.
+//
+//	core.AssertAllocs(t, 0, func() { _ = fastPath() })
+//	core.AssertAllocs(t, 1, func() { r = core.Ok("ready") })
+func AssertAllocs(t TB, max int, fn func(), msg ...string) {
+	t.Helper()
+	got := AllocsPerRun(assertAllocsRuns, fn)
+	whole := int(got)
+	if whole > max {
+		var report any = whole
+		if got != float64(whole) {
+			report = Sprintf("%.1f", got)
+		}
+		assertFail(t, false, "AssertAllocs", msg, "got", report, "want<=", max)
+	}
+}
+
 // RequireNoError fails the test AND stops it if err is non-nil. Use when
 // the rest of the test depends on the operation succeeding.
 //

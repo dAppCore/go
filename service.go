@@ -28,6 +28,10 @@ type Service struct {
 	OnStart  func() Result
 	OnStop   func() Result
 	OnReload func() Result
+	// Optional marks a non-essential service: a failed OnStart logs a
+	// warning and startup continues (degraded boot) instead of aborting.
+	// Zero value keeps the strict contract — essential by default.
+	Optional bool
 }
 
 // ServiceRegistry holds registered services. Embeds Registry[*Service]
@@ -50,7 +54,9 @@ func (c *Core) Service(name string, service ...Service) Result {
 	if len(service) == 0 {
 		r := c.services.Get(name)
 		if !r.OK {
-			return Result{}
+			// Coded miss (W2-2) — a query accessor answers "not found"
+			// with a greppable code, never a bare zero Result.
+			return Result{E("core.Service", Concat("service not found: ", name), nil), false}
 		}
 		svc := r.Value.(*Service)
 		// Return the instance if available, otherwise the Service DTO
@@ -67,7 +73,7 @@ func (c *Core) Service(name string, service ...Service) Result {
 	if c.services.Locked() {
 		return Result{E("core.Service", Concat("service \"", name, "\" not permitted — registry locked"), nil), false}
 	}
-	if c.services.Has(name) {
+	if c.services.GetIncludingDisabled(name).OK {
 		return Result{E("core.Service", Join(" ", "service", name, "already registered"), nil), false}
 	}
 
@@ -89,7 +95,7 @@ func (c *Core) RegisterService(name string, instance any) Result {
 	if c.services.Locked() {
 		return Result{E("core.RegisterService", Concat("service \"", name, "\" not permitted — registry locked"), nil), false}
 	}
-	if c.services.Has(name) {
+	if c.services.GetIncludingDisabled(name).OK {
 		return Result{E("core.RegisterService", Join(" ", "service", name, "already registered"), nil), false}
 	}
 
@@ -104,6 +110,11 @@ func (c *Core) RegisterService(name string, instance any) Result {
 	if s, ok := instance.(Stoppable); ok {
 		srv.OnStop = func() Result {
 			return s.OnShutdown(Background())
+		}
+	}
+	if s, ok := instance.(Reloadable); ok {
+		srv.OnReload = func() Result {
+			return s.OnReload(c.context)
 		}
 	}
 

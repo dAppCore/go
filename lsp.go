@@ -295,12 +295,17 @@ func (s *lspServer) dispatch(raw []byte) {
 
 func (s *lspServer) respond(id *int, result any, lerr *lspError) {
 	resp := lspMessage{JSONRPC: "2.0", ID: id, Result: result, Error: lerr}
-	_ = s.writeMessage(resp)
+	if r := s.writeMessage(resp); !r.OK {
+		// The transport itself is broken — nowhere to report but the log.
+		Debug("lsp: response write failed", "err", r.Error())
+	}
 }
 
 func (s *lspServer) notify(method string, params any) {
 	note := lspMessage{JSONRPC: "2.0", Method: method, Params: params}
-	_ = s.writeMessage(note)
+	if r := s.writeMessage(note); !r.OK {
+		Debug("lsp: notification write failed", "err", r.Error())
+	}
 }
 
 func (s *lspServer) handleInitialize(msg lspMessage) {

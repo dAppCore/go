@@ -254,6 +254,10 @@ func TestLock_Lock_Lock_Good(t *T) {
 
 	lock.Lock()
 	lock.Unlock()
+
+	r := lock.TryLock()
+	AssertTrue(t, r.OK)
+	lock.Unlock()
 }
 
 func TestLock_Lock_Lock_Bad(t *T) {
@@ -325,6 +329,10 @@ func TestLock_Lock_RLock_Good(t *T) {
 
 	lock.RLock()
 	lock.RUnlock()
+
+	r := lock.TryLock()
+	AssertTrue(t, r.OK)
+	lock.Unlock()
 }
 
 func TestLock_Lock_RLock_Bad(t *T) {
@@ -415,4 +423,26 @@ func TestLock_Lock_TryLock_Ugly(t *T) {
 	AssertTrue(t, first.OK)
 	AssertFalse(t, second.OK)
 	lock.Unlock()
+}
+
+func TestLock_Core_Reloadables_Good(t *T) {
+	c := New()
+	AssertTrue(t, c.RegisterService("probe", &reloadProbe{}).OK)
+	r := c.Reloadables()
+	AssertTrue(t, r.OK)
+	AssertLen(t, r.Value.([]*Service), 1)
+}
+
+func TestLock_Core_Reloadables_Bad(t *T) {
+	// No reloadable services: nil slice, matching Startables' contract.
+	r := New().Reloadables()
+	AssertTrue(t, r.OK)
+	AssertNil(t, r.Value)
+}
+
+func TestLock_Core_Reloadables_Ugly(t *T) {
+	c := New()
+	// A service without OnReload never appears.
+	AssertTrue(t, c.Service("plain", Service{}).OK)
+	AssertNil(t, c.Reloadables().Value)
 }

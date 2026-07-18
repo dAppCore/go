@@ -91,12 +91,12 @@ func ExampleAPI_Protocols() {
 func ExampleCore_RemoteAction() {
 	c := New()
 	// Local action
-	c.Action("status", func(_ Context, _ Options) Result {
+	c.Action("agent.status", func(_ Context, _ Options) Result {
 		return Result{Value: "running", OK: true}
 	})
 
 	// No colon — resolves locally
-	r := c.RemoteAction("status", Background(), NewOptions())
+	r := c.RemoteAction("agent.status", Background(), NewOptions())
 	Println(r.Value)
 	// Output: running
 }
@@ -426,4 +426,54 @@ func ExampleHTTPError() {
 	// Output:
 	// 400
 	// missing field
+}
+
+// ExampleCore_API_named binds a Drive endpoint by name — the
+// named-resource accessor for remotes.
+func ExampleCore_API_named() {
+	c := New()
+	c.API().RegisterProtocol("http", mockFactory("ready"))
+	c.Drive().New(NewOptions(
+		Option{Key: "name", Value: "lem-local"},
+		Option{Key: "transport", Value: "http://127.0.0.1:9101"},
+	))
+	r := c.API("lem-local").Invoke("engine.status", NewOptions())
+	Println(r.String())
+	// Output: ready
+}
+
+// ExampleAPI_On binds without connecting — the view is queryable.
+func ExampleAPI_On() {
+	c := New()
+	lem := c.API().On("lem-local")
+	Println(lem.Exists())
+	// Output: false
+}
+
+// ExampleAPI_Invoke fails with a coded Result when nothing is bound.
+func ExampleAPI_Invoke() {
+	c := New()
+	r := c.API().Invoke("engine.status", NewOptions())
+	Println(r.OK)
+	// Output: false
+}
+
+// ExampleAPI_Exists is the capability check for named remotes.
+func ExampleAPI_Exists() {
+	c := New()
+	c.Drive().New(NewOptions(
+		Option{Key: "name", Value: "codex"},
+		Option{Key: "transport", Value: "mcp://mcp.lthn.sh"},
+	))
+	Println(c.API("codex").Exists())
+	// Output: true
+}
+
+// ExampleAPI_Discover queries a peer's capability map — every Core
+// answers core.actions, so a mesh is walkable.
+func ExampleAPI_Discover() {
+	c := New()
+	r := c.API().Discover() // unbound view: coded failure, never a panic
+	Println(r.OK)
+	// Output: false
 }

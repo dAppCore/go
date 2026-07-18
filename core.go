@@ -21,7 +21,7 @@ type Core struct {
 	config  *Config     // c.Config()         — Configuration, settings, feature flags
 	error   *ErrorPanic // c.Error()          — Panic recovery and crash reporting
 	log     *ErrorLog   // c.Log()            — Structured logging + error wrapping
-	// cli accessed via ServiceFor[*Cli](c, "cli")
+	// cli accessed via c.Cli() — CLI command framework (opt-in service "cli", core.WithCli())
 	commands *CommandRegistry // c.Command("path")  — Command tree
 	services *ServiceRegistry // c.Service("name")  — Service registry
 	locks    *Registry[*Lock] // c.Lock("name")     — Named mutexes
@@ -38,6 +38,7 @@ type Core struct {
 	taskIDCounter AtomicUint64
 	waitGroup     WaitGroup
 	shutdown      AtomicBool
+	bootTime      Time // set at construction — core.health uptime
 }
 
 // --- Accessors ---
@@ -54,15 +55,30 @@ func (c *Core) Options() *Options { return c.options }
 //	c.App().Version  // "1.0.0"
 func (c *Core) App() *App { return c.app }
 
-// Data returns the embedded asset registry (Registry[*Embed]).
+// Data returns the embedded asset registry (Registry[*Embed]). With a
+// name it returns a view bound to that mount — paths become relative to
+// it (the named-resource accessor, as c.Lock / c.API / c.Config).
 //
-//	r := c.Data().ReadString("prompts/coding.md")
-func (c *Core) Data() *Data { return c.data }
+//	r := c.Data().ReadString("brain/coding.md")
+//	r = c.Data("brain").ReadString("coding.md")   // same file
+func (c *Core) Data(name ...string) *Data {
+	if len(name) == 0 || name[0] == "" {
+		return c.data
+	}
+	return c.data.On(name[0])
+}
 
 // Drive returns the transport handle registry (Registry[*DriveHandle]).
+// With a name it returns a view bound to that handle.
 //
 //	r := c.Drive().Get("forge")
-func (c *Core) Drive() *Drive { return c.drive }
+//	if c.Drive("forge").Exists() { url := c.Drive("forge").Transport() }
+func (c *Core) Drive(name ...string) *Drive {
+	if len(name) == 0 || name[0] == "" {
+		return c.drive
+	}
+	return c.drive.On(name[0])
+}
 
 // Fs returns the sandboxed filesystem.
 //
@@ -70,23 +86,26 @@ func (c *Core) Drive() *Drive { return c.drive }
 //	c.Fs().WriteAtomic("/status.json", data)
 func (c *Core) Fs() *Fs { return c.fs }
 
-// Config returns runtime settings and feature flags.
+// Config returns runtime settings and feature flags. With a group argument it
+// returns a Config view scoped under that key prefix (see Config.Group).
 //
 //	host := c.Config().String("database.host")
 //	c.Config().Enable("dark-mode")
+//	c.Config("database").Set("host", "localhost") // stores "database.host"
 func (c *Core) Config(group ...string) *Config {
-	if len(group) > 0 && group[0] != "" {
-		return c.config.Group(group[0])
+	if len(group) == 0 || group[0] == "" {
+		return c.config
 	}
-	return c.config
+	return c.config.Group(group[0])
 }
 
-// Feature returns a handle to the named feature flag, backed by this Core's
-// Config — the convenience accessor behind the c.Feature("name").Enabled()
-// pattern (see the Feature type in config.go).
+// Feature returns a keyed handle to a single feature flag (name required).
 //
+//	c.Feature("dark-mode").Enable()
 //	if c.Feature("dark-mode").Enabled() { core.Println("on") }
-func (c *Core) Feature(name string) Feature { return Feature{cfg: c.config, name: name} }
+func (c *Core) Feature(name string) Feature {
+	return Feature{cfg: c.config, name: name}
+}
 
 // Error returns the panic recovery subsystem.
 //
@@ -163,6 +182,7 @@ func (c *Core) WithContext(ctx Context) *Core {
 		i18n:               c.i18n,
 		entitlementChecker: c.entitlementChecker,
 		usageRecorder:      c.usageRecorder,
+		bootTime:           c.bootTime,
 		context:            derivedCtx,
 		cancel:             derivedCancel,
 		// taskIDCounter / waitGroup / shutdown intentionally start fresh —
@@ -198,9 +218,12 @@ func (c *Core) RunResult() Result {
 		r = cli.Run()
 	}
 
-	// CLI's empty-result "no commands registered, banner shown" is the
-	// no-op success case; treat as OK.
-	if !r.OK && r.Value == nil {
+	// "cli.noop" is the CLI's benign no-op sentinel (banner/help shown,
+	// nothing to run) — success. Everything else propagates: a valueless
+	// Result{OK: false} is a real failure, no longer inferred benign
+	// from its nil Value (W2-1; the old inference silently converted any
+	// bare failure into success).
+	if !r.OK && r.Code() == "cli.noop" {
 		return Result{OK: true}
 	}
 	return r
@@ -271,28 +294,45 @@ func (c *Core) Must(err error, op, msg string) {
 
 // --- Registry Accessor ---
 
-// RegistryOf returns a named registry for cross-cutting queries.
-// Known registries: "services", "commands", "actions".
+// RegistryOf returns a point-in-time snapshot of a named registry, wrapped in a
+// Result, for cross-cutting queries (Names/Len/Has/List). Known names:
+// "services", "commands", "actions", "tasks", "locks", "data", "drive", "api",
+// "embed", "features". An unknown name yields Result{OK:false} — distinguishable
+// from a known-but-empty registry. The snapshot is a copy taken at call time and
+// does NOT track later changes; call again for a fresh view.
 //
-//	c.RegistryOf("services").Names()           // all service names
-//	c.RegistryOf("actions").List("process.*")  // process capabilities
-//	c.RegistryOf("commands").Len()             // command count
+//	r := c.RegistryOf("services")
+//	if r.OK { names := r.Value.(*core.Registry[any]).Names() }
 func (c *Core) RegistryOf(name string) Result {
 	// Bridge typed registries to untyped access for cross-cutting queries.
-	// Each registry is wrapped in a read-only proxy.
+	// Each registry is wrapped in a read-only snapshot proxy.
 	switch name {
 	case "services":
-		return Result{Value: registryProxy(c.services.Registry), OK: true}
+		return Ok(registryProxy(c.services.Registry))
 	case "commands":
-		return Result{Value: registryProxy(c.commands.Registry), OK: true}
+		return Ok(registryProxy(c.commands.Registry))
 	case "actions":
-		return Result{Value: registryProxy(c.ipc.actions), OK: true}
+		return Ok(registryProxy(c.ipc.actions))
+	case "tasks":
+		return Ok(registryProxy(c.ipc.tasks))
+	case "locks":
+		return Ok(registryProxy(c.locks))
+	case "data":
+		return Ok(registryProxy(c.data.Registry))
+	case "drive":
+		return Ok(registryProxy(c.drive.Registry))
+	case "api":
+		return Ok(registryProxy(c.api.protocols))
+	case "embed":
+		return Ok(registryProxy(assetGroups))
+	case "features":
+		return Ok(registryProxy(c.config.featureFlags()))
 	default:
-		return Result{Value: NewRegistry[any](), OK: false} // unknown name
+		return Result{E("core.RegistryOf", Concat("unknown registry: \"", name, "\""), nil), false}
 	}
 }
 
-// registryProxy creates a read-only any-typed view of a typed registry.
+// registryProxy creates a read-only any-typed snapshot of a typed registry.
 // Copies current state — not a live view (avoids type parameter leaking).
 func registryProxy[T any](src *Registry[T]) *Registry[any] {
 	proxy := NewRegistry[any]()
@@ -301,5 +341,3 @@ func registryProxy[T any](src *Registry[T]) *Registry[any] {
 	})
 	return proxy
 }
-
-// --- Global Instance ---

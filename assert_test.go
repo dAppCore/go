@@ -21,8 +21,8 @@ func TestAssert_assertCmpFloat64_Ugly(t *T) {
 }
 func TestAssert_assertCmpInt64_Good(t *T) {
 	AssertEqual(t, -1, assertCmpInt64(-1, 1))
-	AssertEqual(t, -1, assertCmpInt64(0, 1))            // adjacent values
-	AssertEqual(t, -1, assertCmpInt64(-1<<62, 1<<62))   // wide negative-to-positive span
+	AssertEqual(t, -1, assertCmpInt64(0, 1))          // adjacent values
+	AssertEqual(t, -1, assertCmpInt64(-1<<62, 1<<62)) // wide negative-to-positive span
 }
 func TestAssert_assertCmpInt64_Bad(t *T) {
 	AssertEqual(t, 0, assertCmpInt64(42, 42))
@@ -36,8 +36,8 @@ func TestAssert_assertCmpInt64_Ugly(t *T) {
 }
 func TestAssert_assertCmpUint64_Good(t *T) {
 	AssertEqual(t, -1, assertCmpUint64(1, 2))
-	AssertEqual(t, -1, assertCmpUint64(0, 1))      // zero less than one
-	AssertEqual(t, -1, assertCmpUint64(1, 1<<63))  // small vs high bit set
+	AssertEqual(t, -1, assertCmpUint64(0, 1))     // zero less than one
+	AssertEqual(t, -1, assertCmpUint64(1, 1<<63)) // small vs high bit set
 }
 func TestAssert_assertCmpUint64_Bad(t *T) {
 	AssertEqual(t, 0, assertCmpUint64(42, 42))
@@ -112,8 +112,8 @@ func TestAssert_assertContains_Bad(t *T) {
 func TestAssert_assertContains_Ugly(t *T) {
 	AssertTrue(t, assertContains(map[string]int{"session": 1}, "session"))
 	AssertFalse(t, assertContains(map[string]int{"session": 1}, "missing")) // absent key
-	AssertTrue(t, assertContains(map[int]string{7: "x"}, 7))                 // int key membership
-	AssertFalse(t, assertContains(42, "x"))                                  // unsupported kind -> false
+	AssertTrue(t, assertContains(map[int]string{7: "x"}, 7))                // int key membership
+	AssertFalse(t, assertContains(42, "x"))                                 // unsupported kind -> false
 }
 func TestAssert_assertIsEmpty_Good(t *T) {
 	AssertTrue(t, assertIsEmpty(""))
@@ -186,7 +186,7 @@ func TestAssert_assertIsNil_Ugly(t *T) {
 }
 func TestAssert_assertMsg_Good(t *T) {
 	AssertEqual(t, " — agent retry", assertMsg([]string{"agent", "retry"}))
-	AssertEqual(t, " — solo", assertMsg([]string{"solo"}))    // single element: no join separator
+	AssertEqual(t, " — solo", assertMsg([]string{"solo"}))         // single element: no join separator
 	AssertEqual(t, " — a b c", assertMsg([]string{"a", "b", "c"})) // three elements space-joined
 }
 func TestAssert_assertMsg_Bad(t *T) {
@@ -505,6 +505,24 @@ func TestAssert_AssertElementsMatch_Ugly(t *T) {
 	assertOneMessage(t, st, "both args must be slices")
 }
 
+// --- AssertAllocs: package-level sinks so the measured closures can't be
+// elided as dead code, and so the assignment targets are guaranteed to
+// escape to the heap (matching alloc_gate_test.go's own gate-var
+// convention, kept in this package's own test file since alloc_gate_test.go
+// lives in core_test, a different package). ---
+
+var (
+	assertAllocsSinkInt    int
+	assertAllocsSinkBytes  []byte
+	assertAllocsSinkResult Result
+)
+
+func TestAssert_AssertAllocs_Bad(t *T) {
+	st := assertStub(t)
+	AssertAllocs(st, 0, func() { assertAllocsSinkBytes = make([]byte, 1024) })
+	assertOneMessage(t, st, "AssertAllocs")
+}
+
 func TestAssert_RequireNoError_Bad(t *T) {
 	st := assertStub(t)
 	RequireNoError(st, AnError)
@@ -781,6 +799,21 @@ func TestAssert_AssertElementsMatch_Good(t *T) {
 	// Same elements in a different order match.
 	st := assertStub(t)
 	AssertElementsMatch(st, []int{1, 2, 3}, []int{3, 1, 2})
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertAllocs_Good(t *T) {
+	st := assertStub(t)
+	AssertAllocs(st, 0, func() { assertAllocsSinkInt = Abs(-42) })
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertAllocs_Ugly(t *T) {
+	// Boundary: max exactly equal to the actual allocation count passes.
+	// Ok(string) boxing a non-pointer value into `any` is a stable 1-alloc
+	// (also gated at alloc_gate_test.go's "Ok_String" case).
+	st := assertStub(t)
+	AssertAllocs(st, 1, func() { assertAllocsSinkResult = Ok("ready") })
 	AssertEmpty(t, st.msgs)
 }
 

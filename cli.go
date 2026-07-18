@@ -38,6 +38,9 @@ func CliRegister(c *Core) Result {
 //
 //	c.Cli().Print("hello %s", "world")
 func (cl *Cli) Print(format string, args ...any) {
+	if cl == nil {
+		return
+	}
 	Print(cl.output, format, args...)
 }
 
@@ -45,6 +48,9 @@ func (cl *Cli) Print(format string, args ...any) {
 //
 //	c.Cli().SetOutput(core.Stderr())
 func (cl *Cli) SetOutput(w Writer) {
+	if cl == nil {
+		return
+	}
 	cl.output = w
 }
 
@@ -53,6 +59,11 @@ func (cl *Cli) SetOutput(w Writer) {
 //	c.Cli().Run()
 //	c.Cli().Run("deploy", "to", "homelab")
 func (cl *Cli) Run(args ...string) Result {
+	// Nil-receiver guard: c.Cli() is a typed nil without core.WithCli().
+	// A coded failure beats a panic (one-miss law, W2-2).
+	if cl == nil {
+		return Result{E("cli.Run", "no cli service — opt in with core.WithCli()", nil), false}
+	}
 	if len(args) == 0 {
 		args = Args()[1:]
 	}
@@ -64,14 +75,14 @@ func (cl *Cli) Run(args ...string) Result {
 		if cl.banner != nil {
 			cl.Print(cl.banner(cl))
 		}
-		return Result{}
+		return Result{Value: NewCode("cli.noop", "no command tree — banner shown"), OK: false}
 	}
 
 	if c.commands.Len() == 0 {
 		if cl.banner != nil {
 			cl.Print(cl.banner(cl))
 		}
-		return Result{}
+		return Result{Value: NewCode("cli.noop", "no commands registered — banner shown"), OK: false}
 	}
 
 	// Resolve command path from args
@@ -92,7 +103,12 @@ func (cl *Cli) Run(args ...string) Result {
 			cl.Print(cl.banner(cl))
 		}
 		cl.PrintHelp()
-		return Result{}
+		// Bare invocation (no args) is the benign no-op; args that match
+		// nothing are a real failure — a typo must not exit 0 (W2-1).
+		if len(clean) == 0 {
+			return Result{Value: NewCode("cli.noop", "no command given — help shown"), OK: false}
+		}
+		return Result{Value: NewCode("cli.unknown", Concat("unknown command: ", Join(" ", clean...))), OK: false}
 	}
 
 	// Build options from remaining args
@@ -120,6 +136,9 @@ func (cl *Cli) Run(args ...string) Result {
 //
 //	c.Cli().PrintHelp()
 func (cl *Cli) PrintHelp() {
+	if cl == nil {
+		return
+	}
 	c := cl.Core()
 	if c == nil || c.commands == nil {
 		return

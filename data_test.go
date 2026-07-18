@@ -41,6 +41,40 @@ func TestData_New_Bad(t *T) {
 	AssertFalse(t, r.OK)
 }
 
+func TestData_MountDir_Good(t *T) {
+	c := New()
+	fs := (&Fs{}).New("/")
+	dir := MustCast[string](fs.TempDir("core-data-mountdir"))
+	defer fs.DeleteAll(dir)
+	fs.Write(Path(dir, "note.txt"), "hello from disk\n")
+
+	r := c.Data().MountDir("disk", dir)
+	AssertTrue(t, r.OK)
+
+	read := c.Data("disk").ReadString("note.txt")
+	AssertTrue(t, read.OK)
+	AssertEqual(t, "hello from disk\n", read.Value.(string))
+}
+
+func TestData_MountDir_Bad(t *T) {
+	c := New()
+	r := c.Data().MountDir("", t.TempDir())
+	AssertFalse(t, r.OK)
+
+	r = c.Data().MountDir("disk", "")
+	AssertFalse(t, r.OK)
+}
+
+func TestData_MountDir_Ugly(t *T) {
+	c := New()
+	// The parent temp dir exists; the mount target inside it does not —
+	// Mount's ReadDir(".") probe fails, so MountDir fails at Mount rather
+	// than succeeding structurally and merely missing on read.
+	missing := Path(t.TempDir(), "does-not-exist")
+	r := c.Data().MountDir("disk", missing)
+	AssertFalse(t, r.OK)
+}
+
 func TestData_ReadString_Good(t *T) {
 	c := New()
 	mountTestData(t, c, "app")
@@ -285,4 +319,47 @@ func TestData_Data_Mounts_Ugly(t *T) {
 	mounts := c.Data().Mounts()
 	mounts[0] = "mutated"
 	AssertEqual(t, []string{"agent"}, c.Data().Mounts())
+}
+
+// --- Named mounts: c.Data(name) / On / Exists ---
+
+func TestData_On_Good(t *T) {
+	c := New()
+	mountTestData(t, c, "brain")
+	r := c.Data("brain").ReadString("test.txt")
+	AssertTrue(t, r.OK)
+	AssertEqual(t, "hello from testdata\n", r.Value.(string))
+}
+
+func TestData_On_Bad(t *T) {
+	c := New()
+	// A binding to a missing mount misses on every read.
+	r := c.Data("ghost").ReadString("test.txt")
+	AssertFalse(t, r.OK)
+}
+
+func TestData_On_Ugly(t *T) {
+	c := New()
+	mountTestData(t, c, "brain")
+	// The bound view and the prefixed root path read the same file.
+	bound := c.Data("brain").ReadString("test.txt")
+	rooted := c.Data().ReadString("brain/test.txt")
+	AssertEqual(t, rooted.Value.(string), bound.Value.(string))
+	// An empty name returns the root subsystem, same as zero-arg.
+	AssertSame(t, c.Data(), c.Data(""))
+}
+
+func TestData_Exists_Good(t *T) {
+	c := New()
+	mountTestData(t, c, "brain")
+	AssertTrue(t, c.Data("brain").Exists())
+}
+
+func TestData_Exists_Bad(t *T) {
+	AssertFalse(t, New().Data("ghost").Exists())
+}
+
+func TestData_Exists_Ugly(t *T) {
+	// The unbound subsystem is never a mount.
+	AssertFalse(t, New().Data().Exists())
 }

@@ -301,7 +301,7 @@ func TestFs_WriteAtomic_Good_CreatesParentDir(t *T) {
 // --- NewUnrestricted ---
 
 func TestFs_NewUnrestricted_Good(t *T) {
-	sandboxed := (&Fs{}).New(ax7TempRoot(t))
+	sandboxed := (&Fs{}).New(tempRootDir(t))
 	unrestricted := sandboxed.NewUnrestricted()
 	AssertEqual(t, "/", unrestricted.Root())
 }
@@ -363,7 +363,7 @@ func walkSeqSeed(t *T, dir string) {
 	c.Fs().Write(Path(dir, ".git", "HEAD"), "ref: refs/heads/main")
 }
 
-func ax7TempRoot(t *T) string {
+func tempRootDir(t *T) string {
 	t.Helper()
 	dir := t.TempDir()
 	r := PathEvalSymlinks(dir)
@@ -486,7 +486,7 @@ func TestFs_WalkSeq_Good_FileMode(t *T) {
 }
 
 func TestFs_CloseStream_Good(t *T) {
-	dir := ax7TempRoot(t)
+	dir := tempRootDir(t)
 	fsys := (&Fs{}).New(dir)
 	AssertTrue(t, fsys.Write("agent.log", "ready").OK)
 	r := fsys.ReadStream("agent.log")
@@ -509,7 +509,7 @@ func TestFs_CloseStream_Ugly(t *T) {
 }
 
 func TestFs_Fs_New_Good(t *T) {
-	dir := ax7TempRoot(t)
+	dir := tempRootDir(t)
 
 	fsys := (&Fs{}).New(dir)
 
@@ -533,13 +533,13 @@ func TestFs_Fs_New_Ugly(t *T) {
 }
 
 func TestFs_Fs_NewUnrestricted_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t)).NewUnrestricted()
+	fsys := (&Fs{}).New(tempRootDir(t)).NewUnrestricted()
 
 	AssertEqual(t, "/", fsys.Root())
 }
 
 func TestFs_Fs_NewUnrestricted_Bad(t *T) {
-	sandboxed := (&Fs{}).New(ax7TempRoot(t))
+	sandboxed := (&Fs{}).New(tempRootDir(t))
 	unrestricted := sandboxed.NewUnrestricted()
 
 	AssertNotEqual(t, sandboxed.Root(), unrestricted.Root())
@@ -573,7 +573,7 @@ func TestFs_Fs_Root_Ugly(t *T) {
 }
 
 func TestFs_Fs_TempDir_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.TempDir("agent-")
 	AssertTrue(t, r.OK)
@@ -585,7 +585,7 @@ func TestFs_Fs_TempDir_Good(t *T) {
 }
 
 func TestFs_Fs_TempDir_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.TempDir(Path("missing", "nested", "agent-"))
 
@@ -594,7 +594,7 @@ func TestFs_Fs_TempDir_Bad(t *T) {
 }
 
 func TestFs_Fs_TempDir_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	first := MustCast[string](fsys.TempDir("agent-"))
 	second := MustCast[string](fsys.TempDir("agent-"))
@@ -605,7 +605,7 @@ func TestFs_Fs_TempDir_Ugly(t *T) {
 }
 
 func TestFs_Fs_Write_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.Write("config/agent.json", `{"status":"ready"}`)
 
@@ -616,7 +616,7 @@ func TestFs_Fs_Write_Good(t *T) {
 }
 
 func TestFs_Fs_Write_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("config", "file").OK)
 
 	r := fsys.Write("config/agent.json", "blocked")
@@ -625,7 +625,7 @@ func TestFs_Fs_Write_Bad(t *T) {
 }
 
 func TestFs_Fs_Write_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.Write("empty.txt", "")
 
@@ -636,7 +636,7 @@ func TestFs_Fs_Write_Ugly(t *T) {
 }
 
 func TestFs_Fs_WriteMode_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.WriteMode("secrets/session.token", "token", 0o600)
 
@@ -648,7 +648,7 @@ func TestFs_Fs_WriteMode_Good(t *T) {
 }
 
 func TestFs_Fs_WriteMode_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("secrets", "file").OK)
 
 	r := fsys.WriteMode("secrets/session.token", "token", 0o600)
@@ -657,7 +657,7 @@ func TestFs_Fs_WriteMode_Bad(t *T) {
 }
 
 func TestFs_Fs_WriteMode_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.WriteMode("public.txt", "open", 0o644)
 
@@ -669,7 +669,7 @@ func TestFs_Fs_WriteMode_Ugly(t *T) {
 }
 
 func TestFs_Fs_WriteAtomic_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.WriteAtomic("status/agent.json", `{"ok":true}`)
 
@@ -680,7 +680,7 @@ func TestFs_Fs_WriteAtomic_Good(t *T) {
 }
 
 func TestFs_Fs_WriteAtomic_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("status", "file").OK)
 
 	r := fsys.WriteAtomic("status/agent.json", `{"ok":true}`)
@@ -689,7 +689,7 @@ func TestFs_Fs_WriteAtomic_Bad(t *T) {
 }
 
 func TestFs_Fs_WriteAtomicDirectoryTarget_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.EnsureDir("status").OK)
 
 	r := fsys.WriteAtomic("status", "file")
@@ -699,7 +699,7 @@ func TestFs_Fs_WriteAtomicDirectoryTarget_Bad(t *T) {
 }
 
 func TestFs_Fs_WriteAtomic_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	AssertTrue(t, fsys.WriteAtomic("status.json", "first").OK)
 	AssertTrue(t, fsys.WriteAtomic("status.json", "second").OK)
@@ -710,7 +710,7 @@ func TestFs_Fs_WriteAtomic_Ugly(t *T) {
 }
 
 func TestFs_Fs_Read_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("config/agent.json", "ready").OK)
 
 	r := fsys.Read("config/agent.json")
@@ -720,7 +720,7 @@ func TestFs_Fs_Read_Good(t *T) {
 }
 
 func TestFs_Fs_Read_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.Read("missing.txt")
 
@@ -728,7 +728,7 @@ func TestFs_Fs_Read_Bad(t *T) {
 }
 
 func TestFs_Fs_Read_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("empty.txt", "").OK)
 
 	r := fsys.Read("empty.txt")
@@ -738,7 +738,7 @@ func TestFs_Fs_Read_Ugly(t *T) {
 }
 
 func TestFs_Fs_EnsureDir_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.EnsureDir("logs/agent")
 
@@ -747,7 +747,7 @@ func TestFs_Fs_EnsureDir_Good(t *T) {
 }
 
 func TestFs_Fs_EnsureDir_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("logs", "file").OK)
 
 	r := fsys.EnsureDir("logs/agent")
@@ -756,7 +756,7 @@ func TestFs_Fs_EnsureDir_Bad(t *T) {
 }
 
 func TestFs_Fs_EnsureDir_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.EnsureDir("")
 
@@ -765,66 +765,66 @@ func TestFs_Fs_EnsureDir_Ugly(t *T) {
 }
 
 func TestFs_Fs_IsDir_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.EnsureDir("logs").OK)
 
 	AssertTrue(t, fsys.IsDir("logs").OK)
 }
 
 func TestFs_Fs_IsDir_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("logs.txt", "file").OK)
 
 	AssertFalse(t, fsys.IsDir("logs.txt").OK)
 }
 
 func TestFs_Fs_IsDir_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	AssertFalse(t, fsys.IsDir("").OK)
 }
 
 func TestFs_Fs_IsFile_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("config.json", "file").OK)
 
 	AssertTrue(t, fsys.IsFile("config.json").OK)
 }
 
 func TestFs_Fs_IsFile_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.EnsureDir("config").OK)
 
 	AssertFalse(t, fsys.IsFile("config").OK)
 }
 
 func TestFs_Fs_IsFile_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	AssertFalse(t, fsys.IsFile("").OK)
 }
 
 func TestFs_Fs_Exists_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("config.json", "file").OK)
 
 	AssertTrue(t, fsys.Exists("config.json").OK)
 }
 
 func TestFs_Fs_Exists_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	AssertFalse(t, fsys.Exists("missing.json").OK)
 }
 
 func TestFs_Fs_Exists_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	AssertTrue(t, fsys.Exists("").OK)
 }
 
 func TestFs_Fs_List_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("agents/a.json", "a").OK)
 	AssertTrue(t, fsys.Write("agents/b.json", "b").OK)
 
@@ -835,7 +835,7 @@ func TestFs_Fs_List_Good(t *T) {
 }
 
 func TestFs_Fs_List_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.List("missing")
 
@@ -843,7 +843,7 @@ func TestFs_Fs_List_Bad(t *T) {
 }
 
 func TestFs_Fs_List_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.EnsureDir("agents").OK)
 
 	r := fsys.List("agents")
@@ -853,7 +853,7 @@ func TestFs_Fs_List_Ugly(t *T) {
 }
 
 func TestFs_Fs_Stat_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("agent.json", "ready").OK)
 
 	r := fsys.Stat("agent.json")
@@ -863,7 +863,7 @@ func TestFs_Fs_Stat_Good(t *T) {
 }
 
 func TestFs_Fs_Stat_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.Stat("missing.json")
 
@@ -871,7 +871,7 @@ func TestFs_Fs_Stat_Bad(t *T) {
 }
 
 func TestFs_Fs_Stat_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.EnsureDir("agents").OK)
 
 	r := fsys.Stat("agents")
@@ -881,7 +881,7 @@ func TestFs_Fs_Stat_Ugly(t *T) {
 }
 
 func TestFs_Fs_Open_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("agent.json", "ready").OK)
 
 	r := fsys.Open("agent.json")
@@ -891,7 +891,7 @@ func TestFs_Fs_Open_Good(t *T) {
 }
 
 func TestFs_Fs_Open_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.Open("missing.json")
 
@@ -899,7 +899,7 @@ func TestFs_Fs_Open_Bad(t *T) {
 }
 
 func TestFs_Fs_Open_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("empty.txt", "").OK)
 
 	r := fsys.Open("empty.txt")
@@ -909,7 +909,7 @@ func TestFs_Fs_Open_Ugly(t *T) {
 }
 
 func TestFs_Fs_Create_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.Create("logs/agent.log")
 	RequireTrue(t, r.OK)
@@ -919,7 +919,7 @@ func TestFs_Fs_Create_Good(t *T) {
 }
 
 func TestFs_Fs_Create_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("logs", "file").OK)
 
 	r := fsys.Create("logs/agent.log")
@@ -928,7 +928,7 @@ func TestFs_Fs_Create_Bad(t *T) {
 }
 
 func TestFs_Fs_Create_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("agent.log", "old").OK)
 
 	r := fsys.Create("agent.log")
@@ -941,7 +941,7 @@ func TestFs_Fs_Create_Ugly(t *T) {
 }
 
 func TestFs_Fs_Append_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("agent.log", "start").OK)
 
 	r := fsys.Append("agent.log")
@@ -952,7 +952,7 @@ func TestFs_Fs_Append_Good(t *T) {
 }
 
 func TestFs_Fs_Append_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("logs", "file").OK)
 
 	r := fsys.Append("logs/agent.log")
@@ -961,7 +961,7 @@ func TestFs_Fs_Append_Bad(t *T) {
 }
 
 func TestFs_Fs_Append_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.Append("new.log")
 	RequireTrue(t, r.OK)
@@ -971,7 +971,7 @@ func TestFs_Fs_Append_Ugly(t *T) {
 }
 
 func TestFs_Fs_ReadStream_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("agent.log", "ready").OK)
 
 	r := fsys.ReadStream("agent.log")
@@ -981,7 +981,7 @@ func TestFs_Fs_ReadStream_Good(t *T) {
 }
 
 func TestFs_Fs_ReadStream_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.ReadStream("missing.log")
 
@@ -989,7 +989,7 @@ func TestFs_Fs_ReadStream_Bad(t *T) {
 }
 
 func TestFs_Fs_ReadStream_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("empty.log", "").OK)
 
 	r := fsys.ReadStream("empty.log")
@@ -1001,7 +1001,7 @@ func TestFs_Fs_ReadStream_Ugly(t *T) {
 }
 
 func TestFs_Fs_WriteStream_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.WriteStream("logs/agent.log")
 	RequireTrue(t, r.OK)
@@ -1011,7 +1011,7 @@ func TestFs_Fs_WriteStream_Good(t *T) {
 }
 
 func TestFs_Fs_WriteStream_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("logs", "file").OK)
 
 	r := fsys.WriteStream("logs/agent.log")
@@ -1020,7 +1020,7 @@ func TestFs_Fs_WriteStream_Bad(t *T) {
 }
 
 func TestFs_Fs_WriteStream_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.WriteStream("empty.log")
 	RequireTrue(t, r.OK)
@@ -1030,7 +1030,7 @@ func TestFs_Fs_WriteStream_Ugly(t *T) {
 }
 
 func TestFs_Fs_Delete_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("old.log", "gone").OK)
 
 	r := fsys.Delete("old.log")
@@ -1040,7 +1040,7 @@ func TestFs_Fs_Delete_Good(t *T) {
 }
 
 func TestFs_Fs_Delete_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.Delete("missing.log")
 
@@ -1067,7 +1067,7 @@ func TestFs_Fs_DeleteProtectedHome_Bad(t *T) {
 }
 
 func TestFs_Fs_DeleteAll_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("sessions/one/status.json", "done").OK)
 
 	r := fsys.DeleteAll("sessions")
@@ -1096,7 +1096,7 @@ func TestFs_Fs_DeleteAllProtectedHome_Ugly(t *T) {
 }
 
 func TestFs_Fs_DeleteAll_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.DeleteAll("missing")
 
@@ -1104,7 +1104,7 @@ func TestFs_Fs_DeleteAll_Ugly(t *T) {
 }
 
 func TestFs_Fs_Rename_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("agent.tmp", "ready").OK)
 
 	r := fsys.Rename("agent.tmp", "agent.json")
@@ -1115,7 +1115,7 @@ func TestFs_Fs_Rename_Good(t *T) {
 }
 
 func TestFs_Fs_Rename_Bad(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 
 	r := fsys.Rename("missing.tmp", "agent.json")
 
@@ -1123,7 +1123,7 @@ func TestFs_Fs_Rename_Bad(t *T) {
 }
 
 func TestFs_Fs_Rename_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	AssertTrue(t, fsys.Write("agent.tmp", "new").OK)
 	AssertTrue(t, fsys.Write("agent.json", "old").OK)
 
@@ -1351,7 +1351,7 @@ func TestFs_WalkDir_Ugly(t *T) {
 }
 
 func TestFs_WriteAll_Good(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	r := fsys.WriteStream("agent.log")
 	RequireTrue(t, r.OK)
 
@@ -1369,7 +1369,7 @@ func TestFs_WriteAll_Bad(t *T) {
 }
 
 func TestFs_WriteAll_Ugly(t *T) {
-	fsys := (&Fs{}).New(ax7TempRoot(t))
+	fsys := (&Fs{}).New(tempRootDir(t))
 	r := fsys.WriteStream("empty.log")
 	RequireTrue(t, r.OK)
 

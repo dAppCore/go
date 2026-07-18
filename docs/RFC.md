@@ -30,11 +30,11 @@ c.Run()
 
 ```
 New() → WithService factories called → LockApply()
-RunE() → defer ServiceShutdown() → ServiceStartup() → Cli.Run() → returns error
-Run()  → RunE() → os.Exit(1) on error
+RunResult() → defer ServiceShutdown() → ServiceStartup() → Cli.Run() → returns Result
+Run()  → RunResult() → c.Exit(1) when !r.OK
 ```
 
-`RunE()` is the primary lifecycle — returns `error`, always calls `ServiceShutdown` via defer (even on startup failure or panic). `Run()` is sugar that calls `RunE()` and exits on error. `ServiceStartup` calls `OnStartup(ctx)` on all `Startable` services in registration order. `ServiceShutdown` calls `OnShutdown(ctx)` on all `Stoppable` services.
+`RunResult()` is the primary lifecycle — returns `Result`, always calls `ServiceShutdown` via defer (even on startup failure or panic). `Run()` is sugar that calls `RunResult()` and exits on failure. `ServiceStartup` calls `OnStartup(ctx)` on all `Startable` services in registration order. `ServiceShutdown` calls `OnShutdown(ctx)` on all `Stoppable` services.
 
 ### 1.3 Subsystem Accessors
 
@@ -44,8 +44,8 @@ Every subsystem is accessed via a method on Core:
 c.Options()      // *Options     — input configuration
 c.App()          // *App         — application metadata (name, version)
 c.Config()       // *Config      — runtime settings, feature flags
-c.Data()         // *Data        — embedded assets (Registry[*Embed])
-c.Drive()        // *Drive       — transport handles (Registry[*DriveHandle])
+c.Data(name...)  // *Data        — embedded assets (Registry[*Embed]); named form binds a mount
+c.Drive(name...) // *Drive       — transport handles (Registry[*DriveHandle]); named form binds a handle
 c.Fs()           // *Fs          — filesystem I/O (sandboxable)
 c.Cli()          // *Cli         — CLI command framework
 c.IPC()          // *Ipc         — message bus internals
@@ -53,7 +53,7 @@ c.I18n()         // *I18n        — internationalisation
 c.Error()        // *ErrorPanic  — panic recovery
 c.Log()          // *ErrorLog    — structured logging
 c.Process()      // *Process     — managed execution (Action sugar)
-c.API()          // *API         — remote streams (protocol handlers)
+c.API(name...)   // *API         — remote streams (protocol handlers); named form binds a Drive endpoint
 c.Action(name)   // *Action      — named callable (register/invoke)
 c.Task(name)     // *Task        — composed Action sequence
 c.Entitled(name) // Entitlement  — permission check
@@ -217,7 +217,7 @@ type Stoppable interface {
 }
 ```
 
-Services implementing these are called during `RunE()` / `Run()` in registration order.
+Services implementing these are called during `RunResult()` / `Run()` in registration order.
 
 ---
 

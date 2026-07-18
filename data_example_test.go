@@ -6,7 +6,7 @@ import . "dappco.re/go"
 // can be read, listed, and extracted through Result-returning helpers.
 func ExampleData_New() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-data-example").Value.(string)
+	dir := MustCast[string](fs.TempDir("core-data-example"))
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "prompts", "hello.txt"), "hello")
 
@@ -24,11 +24,26 @@ func ExampleData_New() {
 	// [agent]
 }
 
+// ExampleData_MountDir mounts a real directory on disk as a Data mount, so dev-mode
+// assets read straight from disk serve identically to embedded prod assets mounted
+// through New.
+func ExampleData_MountDir() {
+	c := New()
+	r := c.Data().MountDir("docs", "tests/data")
+	Println(r.OK)
+
+	read := c.Data("docs").ReadString("test.txt")
+	Println(read.Value)
+	// Output:
+	// true
+	// hello from testdata
+}
+
 // ExampleData_ReadFile reads a named file through `Data.ReadFile` for embedded Lethean
 // data. Mounted data can be read, listed, and extracted through Result-returning helpers.
 func ExampleData_ReadFile() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-data-example").Value.(string)
+	dir := MustCast[string](fs.TempDir("core-data-example"))
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "prompts", "hello.txt"), "hello")
 
@@ -48,7 +63,7 @@ func ExampleData_ReadFile() {
 // data. Mounted data can be read, listed, and extracted through Result-returning helpers.
 func ExampleData_ReadString() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-data-example").Value.(string)
+	dir := MustCast[string](fs.TempDir("core-data-example"))
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "prompts", "hello.txt"), "hello")
 
@@ -68,7 +83,7 @@ func ExampleData_ReadString() {
 // data can be read, listed, and extracted through Result-returning helpers.
 func ExampleData_List() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-data-example").Value.(string)
+	dir := MustCast[string](fs.TempDir("core-data-example"))
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "prompts", "hello.txt"), "hello")
 
@@ -88,7 +103,7 @@ func ExampleData_List() {
 // data. Mounted data can be read, listed, and extracted through Result-returning helpers.
 func ExampleData_ListNames() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-data-example").Value.(string)
+	dir := MustCast[string](fs.TempDir("core-data-example"))
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "prompts", "hello.txt"), "hello")
 
@@ -108,8 +123,8 @@ func ExampleData_ListNames() {
 // data. Mounted data can be read, listed, and extracted through Result-returning helpers.
 func ExampleData_Extract() {
 	fs := (&Fs{}).New("/")
-	source := fs.TempDir("core-data-source").Value.(string)
-	target := fs.TempDir("core-data-target").Value.(string)
+	source := MustCast[string](fs.TempDir("core-data-source"))
+	target := MustCast[string](fs.TempDir("core-data-target"))
 	defer fs.DeleteAll(source)
 	defer fs.DeleteAll(target)
 
@@ -136,4 +151,25 @@ func ExampleData_Mounts() {
 	c := New()
 	Println(c.Data().Mounts())
 	// Output: []
+}
+
+// ExampleData_On binds a mount so paths become relative to it — the
+// named-resource accessor for embedded content.
+func ExampleData_On() {
+	c := New()
+	c.Data().New(NewOptions(
+		Option{Key: "name", Value: "brain"},
+		Option{Key: "source", Value: EmbeddedTestFS},
+		Option{Key: "path", Value: "tests/data"},
+	))
+	r := c.Data("brain").ReadString("test.txt")
+	Println(r.OK)
+	// Output: true
+}
+
+// ExampleData_Exists is the capability check for named mounts.
+func ExampleData_Exists() {
+	c := New()
+	Println(c.Data("ghost").Exists())
+	// Output: false
 }

@@ -284,8 +284,14 @@ func TestRuntime_NewServiceRuntime_Bad(t *T) {
 }
 
 func TestRuntime_NewServiceRuntime_Ugly(t *T) {
-	rt := NewServiceRuntime(New(), testOpts{})
-	AssertEqual(t, testOpts{}, rt.Options())
+	// Options is captured by value at construction — mutating the caller's
+	// struct afterwards must not be visible through the runtime.
+	opts := testOpts{URL: "https://api.lthn.ai", Timeout: 30}
+	rt := NewServiceRuntime(New(), opts)
+
+	opts.URL = "mutated-after-construction"
+
+	AssertEqual(t, "https://api.lthn.ai", rt.Options().URL)
 }
 
 func TestRuntime_NewWithFactories_Bad(t *T) {
@@ -314,7 +320,11 @@ func TestRuntime_Runtime_ServiceName_Bad(t *T) {
 }
 
 func TestRuntime_Runtime_ServiceName_Ugly(t *T) {
+	// ServiceName is a fixed identity — even after the wrapped Core has
+	// shut down, it still reports "Core".
 	r := &Runtime{Core: New()}
+	r.Core.ServiceShutdown(Background())
+
 	AssertEqual(t, "Core", r.ServiceName())
 }
 
@@ -371,4 +381,98 @@ func TestRuntime_Runtime_ServiceStartup_Ugly(t *T) {
 	AssertPanics(t, func() {
 		_ = rt.ServiceStartup(Background(), nil)
 	})
+}
+
+// --- W2-3: ServiceStartup seals the conclave under WithServiceLock ---
+
+func TestRuntime_ServiceStartup_Good_SealsConclave(t *T) {
+	c := New(WithServiceLock())
+	AssertTrue(t, c.ServiceStartup(Background(), nil).OK)
+	// Post-startup the capability surface is frozen: late registration
+	// does not land in the registry.
+	c.Action("late.register", func(Context, Options) Result { return Ok(nil) })
+	AssertFalse(t, c.Action("late.register").Exists())
+}
+
+func TestRuntime_ServiceStartup_Bad_NoLockNoSeal(t *T) {
+	c := New()
+	AssertTrue(t, c.ServiceStartup(Background(), nil).OK)
+	// Without WithServiceLock, the surface stays open.
+	c.Action("late.register", func(Context, Options) Result { return Ok(nil) })
+	AssertTrue(t, c.Action("late.register").Exists())
+}
+
+func TestRuntime_ServiceStartup_Ugly_FeaturesSealedNotFrozen(t *T) {
+	c := New(WithServiceLock())
+	c.Feature("dark-mode").Enable()
+	AssertTrue(t, c.ServiceStartup(Background(), nil).OK)
+	// Existing flags stay toggleable (Sealed), new flags cannot appear.
+	c.Feature("dark-mode").Disable()
+	AssertFalse(t, c.Feature("dark-mode").Enabled())
+	c.Feature("brand-new").Enable()
+	AssertFalse(t, c.Feature("brand-new").Enabled())
+}
+
+// --- W3-5: the OnReload runner ---
+
+type reloadProbe struct{ count int }
+
+func (r *reloadProbe) OnReload(Context) Result {
+	r.count++
+	return Ok(nil)
+}
+
+type failingReloader struct{}
+
+func (f *failingReloader) OnReload(Context) Result {
+	return Fail(NewError("reload broke"))
+}
+
+func TestRuntime_Core_ServiceReload_Good(t *T) {
+	c := New()
+	p := &reloadProbe{}
+	AssertTrue(t, c.RegisterService("probe", p).OK)
+	AssertTrue(t, c.ServiceReload(Background()).OK)
+	AssertEqual(t, 1, p.count)
+}
+
+func TestRuntime_Core_ServiceReload_Bad(t *T) {
+	c := New()
+	AssertTrue(t, c.RegisterService("failing", &failingReloader{}).OK)
+	AssertFalse(t, c.ServiceReload(Background()).OK)
+}
+
+func TestRuntime_Core_ServiceReload_Ugly(t *T) {
+	// A cancelled context stops the chain before any hook runs.
+	ctx, cancel := WithCancel(Background())
+	cancel()
+	c := New()
+	p := &reloadProbe{}
+	AssertTrue(t, c.RegisterService("probe", p).OK)
+	AssertFalse(t, c.ServiceReload(ctx).OK)
+	AssertEqual(t, 0, p.count)
+}
+
+// --- W4-6: optional services degrade instead of aborting boot ---
+
+func TestRuntime_Core_ServiceStartup_Good_OptionalDegrades(t *T) {
+	c := New()
+	started := false
+	AssertTrue(t, c.Service("flaky", Service{
+		Optional: true,
+		OnStart:  func() Result { return Fail(NewError("telemetry down")) },
+	}).OK)
+	AssertTrue(t, c.Service("essential", Service{
+		OnStart: func() Result { started = true; return Ok(nil) },
+	}).OK)
+	AssertTrue(t, c.ServiceStartup(Background(), nil).OK)
+	AssertTrue(t, started)
+}
+
+func TestRuntime_Core_ServiceStartup_Bad_EssentialStillAborts(t *T) {
+	c := New()
+	AssertTrue(t, c.Service("essential", Service{
+		OnStart: func() Result { return Fail(NewError("db down")) },
+	}).OK)
+	AssertFalse(t, c.ServiceStartup(Background(), nil).OK)
 }

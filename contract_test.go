@@ -274,3 +274,165 @@ func TestContract_WithCli_Ugly(t *T) {
 	AssertTrue(t, c.Service("cli").OK)
 	AssertContains(t, c.Services(), "cli")
 }
+
+// --- MustNew ---
+
+func TestContract_MustNew_Good(t *T) {
+	c := MustNew(WithOption("name", "bundle"))
+	AssertEqual(t, "bundle", c.App().Name)
+}
+
+func TestContract_MustNew_Bad(t *T) {
+	AssertPanics(t, func() {
+		MustNew(func(*Core) Result { return Result{Value: NewError("boom"), OK: false} })
+	})
+}
+
+func TestContract_MustNew_Ugly(t *T) {
+	// The panic carries the failing option's diagnostic.
+	AssertPanicsWithError(t, "option failed", func() {
+		MustNew(func(*Core) Result { return Result{Value: NewError("cascade"), OK: false} })
+	})
+}
+
+// --- W2-4: WithOptions merges instead of clobbering ---
+
+func TestContract_WithOptions_Good_MergesNotClobbers(t *T) {
+	c := New(
+		WithOption("keep", "earlier"),
+		WithOptions(NewOptions(Option{Key: "name", Value: "merged"})),
+	)
+	AssertEqual(t, "earlier", c.Options().String("keep"))
+	AssertEqual(t, "merged", c.Options().String("name"))
+}
+
+// --- W3: WithCrashFile — the exported crash-sink seam ---
+
+func TestContract_WithCrashFile_Good(t *T) {
+	path := Path(t.TempDir(), "crash.json")
+	c := New(WithCrashFile(path))
+	// Configured: the miss is now the empty file, not the missing config.
+	r := c.Error().Reports(1)
+	AssertFalse(t, r.OK)
+	AssertFalse(t, Contains(r.Error(), "no crash file"))
+}
+
+func TestContract_WithCrashFile_Bad(t *T) {
+	// An empty path is a constructor failure — MustNew panics on it.
+	AssertPanics(t, func() { MustNew(WithCrashFile("")) })
+}
+
+func TestContract_WithCrashFile_Ugly(t *T) {
+	// New() logs-and-continues on the failed option; the sink stays unset.
+	c := New(WithCrashFile(""))
+	AssertContains(t, c.Error().Reports(1).Error(), "no crash file")
+}
+
+// --- W4: constructor options for the daemon loop + bundles ---
+
+func TestContract_WithConfigFile_Good(t *T) {
+	path := Path(t.TempDir(), "config.json")
+	AssertTrue(t, WriteFile(path, []byte(`{"name": "daemon"}`), 0600).OK)
+	c := New(WithConfigFile(path))
+	AssertEqual(t, "daemon", c.Config().String("name"))
+}
+
+func TestContract_WithConfigFile_Bad(t *T) {
+	AssertPanics(t, func() { MustNew(WithConfigFile("/nonexistent.json")) })
+}
+
+func TestContract_WithConfigFile_Ugly(t *T) {
+	// New() logs-and-continues; the store just stays empty.
+	c := New(WithConfigFile("/nonexistent.json"))
+	AssertEqual(t, "", c.Config().String("name"))
+}
+
+func TestContract_WithEnvConfig_Good(t *T) {
+	AssertTrue(t, Setenv("CORETESTW4B_MODE", "mesh").OK)
+	defer Unsetenv("CORETESTW4B_MODE")
+	c := New(WithEnvConfig("CORETESTW4B_"))
+	AssertEqual(t, "mesh", c.Config().String("mode"))
+}
+
+func TestContract_WithEnvConfig_Bad(t *T) {
+	c := New(WithEnvConfig("CORETESTW4B_ABSENT_"))
+	AssertEqual(t, "", c.Config().String("mode"))
+}
+
+func TestContract_WithEnvConfig_Ugly(t *T) {
+	// Underscores nest: PREFIX_A_B → "a.b".
+	AssertTrue(t, Setenv("CORETESTW4C_A_B", "deep").OK)
+	defer Unsetenv("CORETESTW4C_A_B")
+	c := New(WithEnvConfig("CORETESTW4C_"))
+	AssertEqual(t, "deep", c.Config().String("a.b"))
+}
+
+func TestContract_WithReloadOnSIGHUP_Good(t *T) {
+	c := New(WithReloadOnSIGHUP())
+	p := &reloadProbe{}
+	AssertTrue(t, c.RegisterService("probe", p).OK)
+	// Simulate the signal service's dispatch.
+	r := c.Action("signal.received").Run(Background(), NewOptions(Option{Key: "name", Value: "SIGHUP"}))
+	AssertTrue(t, r.OK)
+	AssertEqual(t, 1, p.count)
+}
+
+func TestContract_WithReloadOnSIGHUP_Bad(t *T) {
+	// A pre-existing signal handler fails the option loudly.
+	AssertPanics(t, func() {
+		MustNew(
+			func(c *Core) Result {
+				c.Action("signal.received", func(Context, Options) Result { return Ok(nil) })
+				return Result{OK: true}
+			},
+			WithReloadOnSIGHUP(),
+		)
+	})
+}
+
+func TestContract_WithReloadOnSIGHUP_Ugly(t *T) {
+	c := New(WithReloadOnSIGHUP())
+	p := &reloadProbe{}
+	AssertTrue(t, c.RegisterService("probe", p).OK)
+	// Non-HUP signals pass through without reloading.
+	r := c.Action("signal.received").Run(Background(), NewOptions(Option{Key: "name", Value: "SIGINT"}))
+	AssertTrue(t, r.OK)
+	AssertEqual(t, 0, p.count)
+}
+
+func TestContract_WithBundle_Good(t *T) {
+	bundle := New()
+	bundle.Action("render", func(Context, Options) Result { return Ok("rendered") })
+	bundle.Drive().New(NewOptions(
+		Option{Key: "name", Value: "charon"},
+		Option{Key: "transport", Value: "http://10.69.69.165:9101"},
+	))
+
+	host := New(WithBundle("widgets", bundle))
+	r := host.Action("widgets.render").Run(Background(), NewOptions())
+	AssertTrue(t, r.OK)
+	AssertEqual(t, "rendered", r.Value.(string))
+	// Drive handles mount under the prefix too.
+	AssertTrue(t, host.Drive("widgets.charon").Exists())
+	// And the bundle's own discovery built-ins ride along: nested mesh.
+	AssertTrue(t, host.Action("widgets.core.health").Exists())
+}
+
+func TestContract_WithBundle_Bad(t *T) {
+	bundle := New()
+	bundle.Action("render", func(Context, Options) Result { return Ok(nil) })
+	AssertPanics(t, func() {
+		MustNew(
+			func(c *Core) Result {
+				c.Action("widgets.render", func(Context, Options) Result { return Ok(nil) })
+				return Result{OK: true}
+			},
+			WithBundle("widgets", bundle),
+		)
+	})
+}
+
+func TestContract_WithBundle_Ugly(t *T) {
+	AssertPanics(t, func() { MustNew(WithBundle("", New())) })
+	AssertPanics(t, func() { MustNew(WithBundle("widgets", nil)) })
+}

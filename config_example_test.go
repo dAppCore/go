@@ -249,3 +249,20 @@ func ExampleFeature_Enabled() {
 	Println(New().Feature("unset").Enabled())
 	// Output: false
 }
+
+// ExampleConfig_Load merges a JSON file into the store with dotted keys.
+func ExampleConfig_Load() {
+	c := New()
+	r := c.Config().Load("/nonexistent/config.json")
+	Println(r.OK)
+	// Output: false
+}
+
+// ExampleConfig_FromEnv imports prefixed environment variables:
+// MYAPP_DATABASE_HOST becomes "database.host".
+func ExampleConfig_FromEnv() {
+	c := New()
+	r := c.Config().FromEnv("NO_SUCH_PREFIX_XYZ_")
+	Println(r.Int())
+	// Output: 0
+}

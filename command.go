@@ -54,7 +54,6 @@ type Command struct {
 	Managed     string        // "" = one-shot, "process.daemon" = managed lifecycle
 	Flags       Options       // declared flags
 	Hidden      bool
-	commands    map[string]*Command // child commands (internal)
 }
 
 // I18nKey returns the i18n key for this command's description.
@@ -112,8 +111,8 @@ func (c *Core) Command(path string, command ...Command) Result {
 		return Result{E("core.Command", Concat("invalid command path: \"", path, "\""), nil), false}
 	}
 
-	// Check for duplicate executable command
-	if r := c.commands.Get(path); r.OK {
+	// Check for duplicate executable command (existence-check — must see disabled)
+	if r := c.commands.GetIncludingDisabled(path); r.OK {
 		existing := r.Value.(*Command)
 		if existing.Action != nil || existing.IsManaged() {
 			return Result{E("core.Command", Concat("command \"", path, "\" already registered"), nil), false}
@@ -123,36 +122,23 @@ func (c *Core) Command(path string, command ...Command) Result {
 	cmd := &command[0]
 	cmd.Name = pathName(path)
 	cmd.Path = path
-	if cmd.commands == nil {
-		cmd.commands = make(map[string]*Command)
-	}
-
-	// Preserve existing subtree when overwriting a placeholder parent
-	if r := c.commands.Get(path); r.OK {
-		existing := r.Value.(*Command)
-		for k, v := range existing.commands {
-			if _, has := cmd.commands[k]; !has {
-				cmd.commands[k] = v
-			}
-		}
-	}
-
 	c.commands.Set(path, cmd)
 
-	// Build parent chain — "deploy/to/homelab" creates "deploy" and "deploy/to" if missing
+	// Ensure ancestor paths exist as placeholders so help/listing render the
+	// tree. Children are not tracked on the Command — the flat path-keyed
+	// registry IS the tree; derive a node's children with
+	// c.commands.List("<path>/*"). Overwriting a placeholder with a real
+	// command therefore can't lose its subtree (children are independent
+	// flat entries).
 	parts := Split(path, "/")
 	for i := len(parts) - 1; i > 0; i-- {
 		parentPath := JoinPath(parts[:i]...)
-		if !c.commands.Has(parentPath) {
+		if !c.commands.GetIncludingDisabled(parentPath).OK {
 			c.commands.Set(parentPath, &Command{
-				Name:     parts[i-1],
-				Path:     parentPath,
-				commands: make(map[string]*Command),
+				Name: parts[i-1],
+				Path: parentPath,
 			})
 		}
-		parent := c.commands.Get(parentPath).Value.(*Command)
-		parent.commands[parts[i]] = cmd
-		cmd = parent
 	}
 
 	return Result{OK: true}

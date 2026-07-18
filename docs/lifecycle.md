@@ -1,11 +1,38 @@
 ---
 title: Lifecycle
-description: Startup, shutdown, context ownership, and background task draining.
+description: Run and RunResult entry points, startup, shutdown, context ownership, and background task draining.
 ---
 
 # Lifecycle
 
-CoreGO manages lifecycle through `core.Service` callbacks, not through reflection or implicit interfaces.
+CoreGO manages lifecycle through `core.Service` callbacks. `RegisterService` adapts the `Startable` and `Stoppable` interfaces onto those callbacks when an instance implements them.
+
+## Entry Points: `Run` and `RunResult`
+
+```go
+c := core.New(core.WithService(myService.Register))
+c.Run()
+```
+
+```go
+r := c.RunResult()
+if !r.OK {
+	core.Exit(1)
+}
+```
+
+### What `RunResult` Does
+
+1. defers `ServiceShutdown` — it always runs, even on startup failure or panic
+2. runs `ServiceStartup` on the Core context
+3. runs the CLI when one is registered (`core.WithCli()` or a consumer CLI service)
+4. returns the CLI's result
+
+### Failure Behavior
+
+- a failed startup returns that result; a non-error failure value is wrapped as code `core.run.startup`
+- a CLI with nothing to run (no commands registered, banner shown) counts as success
+- `Run()` is sugar over `RunResult()`: it logs the failure and calls `c.Exit(1)`, which runs the graceful shutdown chain
 
 ## Service Hooks
 
@@ -61,11 +88,9 @@ r := c.ServiceShutdown(context.Background())
 
 ## Ordering
 
-The current implementation builds `Startables()` and `Stoppables()` by iterating over a map-backed registry.
+`Startables()` and `Stoppables()` iterate the service registry in insertion order, so hooks run in registration order.
 
-That means lifecycle order is not guaranteed today.
-
-If your application needs strict startup or shutdown ordering, orchestrate it explicitly inside a smaller number of service callbacks instead of relying on registry order.
+Shutdown also runs in registration order — it is not reversed. If teardown must happen in reverse dependency order, orchestrate it explicitly inside your `OnStop` callbacks.
 
 ## `c.Context()`
 
@@ -108,4 +133,11 @@ This is what makes `PerformAsync` safe for long-running work that should complet
 
 ## `OnReload`
 
-`Service` includes an `OnReload` callback field, but CoreGO does not currently expose a top-level lifecycle runner for reload operations.
+`ServiceReload` runs every service's `OnReload` in registration order — trigger it from a signal handler, a config watcher, or an admin action. `RegisterService` adapts the `Reloadable` interface onto the callback, and `ActionServiceReload` broadcasts on success.
+
+```go
+r := c.ServiceReload(c.Context())
+if !r.OK {
+	// first failing reload stops the chain
+}
+```

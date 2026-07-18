@@ -21,7 +21,7 @@ func TestError_ErrorLog_logger_Ugly(t *T) {
 func TestError_ErrorPanic_appendReport_Good(t *T) {
 	handler := &ErrorPanic{filePath: Path(t.TempDir(), "crash.json")}
 
-	handler.appendReport(ax7CrashReport("panic: agent failed"))
+	handler.appendReport(newCrashReportFixture("panic: agent failed"))
 	r := handler.Reports(0)
 
 	RequireTrue(t, r.OK)
@@ -34,7 +34,7 @@ func TestError_ErrorPanic_appendReport_Bad(t *T) {
 	RequireTrue(t, WriteFile(path, []byte("{"), 0o600).OK)
 	handler := &ErrorPanic{filePath: path}
 
-	handler.appendReport(ax7CrashReport("panic: recovered"))
+	handler.appendReport(newCrashReportFixture("panic: recovered"))
 	r := handler.Reports(0)
 
 	RequireTrue(t, r.OK)
@@ -45,7 +45,7 @@ func TestError_ErrorPanic_appendReport_Bad(t *T) {
 func TestError_ErrorPanic_appendReport_Ugly(t *T) {
 	handler := &ErrorPanic{filePath: Path(t.TempDir(), "nested", "crash.json")}
 
-	handler.appendReport(ax7CrashReport("panic: nested path"))
+	handler.appendReport(newCrashReportFixture("panic: nested path"))
 	r := handler.Reports(0)
 
 	RequireTrue(t, r.OK)

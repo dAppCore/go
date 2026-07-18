@@ -2,8 +2,6 @@
 
 package core
 
-import "os"
-
 func TestFs_Fs_path_Good(t *T) {
 	root := t.TempDir()
 	fsys := (&Fs{}).New(root)
@@ -35,7 +33,7 @@ func TestFs_Fs_validatePath_Good(t *T) {
 func TestFs_Fs_validatePath_Bad(t *T) {
 	root := t.TempDir()
 	outside := t.TempDir()
-	RequireNoError(t, os.Symlink(outside, Path(root, "escape")))
+	RequireNoError(t, SymlinkForTest(outside, Path(root, "escape")))
 	fsys := (&Fs{}).New(root)
 
 	r := fsys.validatePath("escape/agent.txt")
