@@ -227,6 +227,27 @@ func ExampleLookupEnv() {
 	// Output: true
 }
 
+// ExampleSetenv_invalidKey sets an environment variable through `Setenv`, showing the
+// OK=false path when the OS rejects the key (env_example_test.go already covers the
+// happy path via `ExampleSetenv`, so this variant covers the documented rejection case
+// instead of redeclaring the same scenario under this file's required name).
+func ExampleSetenv_invalidKey() {
+	r := Setenv("CORE_EXAMPLE=BAD", "x") // '=' in the key is rejected by the OS
+	Println(r.OK)
+	// Output: false
+}
+
+// ExampleUnsetenv_idempotent removes an environment variable through `Unsetenv`, then
+// shows a second removal of the same already-gone key still reports OK (env_example_test.go
+// covers the single-removal happy path via `ExampleUnsetenv`).
+func ExampleUnsetenv_idempotent() {
+	Setenv("CORE_EXAMPLE_IDEMPOTENT", "x")
+	Unsetenv("CORE_EXAMPLE_IDEMPOTENT")
+	r := Unsetenv("CORE_EXAMPLE_IDEMPOTENT") // already gone; still OK
+	Println(r.OK)
+	// Output: true
+}
+
 // ExampleIsNotExist reports whether an error means "not found" through `IsNotExist`.
 func ExampleIsNotExist() {
 	Println(IsNotExist(ErrNotExist))
@@ -247,4 +268,32 @@ func ExampleIsPermission() {
 	if !r.OK {
 		_ = IsPermission(r.Value.(error))
 	}
+}
+
+// --- FS roots & process termination ---
+
+// ExampleDirFS_readFile roots an FS at a directory through `DirFS`, then reads a known
+// file back through it via ReadFSFile (fs_example_test.go's `ExampleDirFS` already
+// covers the Mount/Embed route, so this variant sticks to the plain fs.FS read path).
+func ExampleDirFS_readFile() {
+	dir := TempDir()
+	path := PathJoin(dir, "core-example-dirfs.txt")
+	WriteFile(path, []byte("dirfs"), 0o644)
+	defer Remove(path)
+
+	fsys := DirFS(dir)
+	r := ReadFSFile(fsys, "core-example-dirfs.txt")
+	Println(string(r.Value.([]byte)))
+	// Output: dirfs
+}
+
+// ExampleExit_packageLevel documents the package-level exit helper for call sites with
+// no *Core in scope. Exit terminates the process for real in production, and the
+// osExit test-hook that would let it be overridden safely is unexported (package core
+// only) — unreachable from this external test package — so the call is shown only in
+// comment form rather than invoked.
+func ExampleExit_packageLevel() {
+	// core.Exit(1) terminates the process immediately; not invoked here.
+	Println("package-level exit path documented")
+	// Output: package-level exit path documented
 }

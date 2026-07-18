@@ -5,6 +5,15 @@ import . "dappco.re/go"
 // Example_sha3_256 hashes a byte payload with SHA3-256 for Ethereum-compatible digest
 // work. SHA3 and Keccak helpers cover Ethereum-compatible digest inputs without direct
 // crypto imports.
+//
+// NOTE: this cannot be named ExampleSHA3_256 — go vet's example-association parser
+// splits an Example name on its FIRST underscore and treats the head as the target
+// identifier, so ExampleSHA3_256 resolves to "SHA3" (unknown) and go vet — and `go
+// test`'s automatic pre-test vet subset — hard-fails the whole package build with
+// "refers to unknown identifier: SHA3". Confirmed with a standalone repro. Any exported
+// identifier containing an underscore (SHA3_256, SHA3_256Hex) is unnameable as a
+// symbol-attached Example under Go's own naming grammar; the package-level
+// leading-underscore form used here is the only mechanism that stays vet-clean.
 func Example_sha3_256() {
 	sum := SHA3_256([]byte("hello"))
 	Println(HexEncode(sum[:])[:16])
@@ -14,6 +23,8 @@ func Example_sha3_256() {
 // Example_sha3_256Hex hashes a byte payload and renders SHA3-256 hex for
 // Ethereum-compatible digest work. SHA3 and Keccak helpers cover Ethereum-compatible
 // digest inputs without direct crypto imports.
+//
+// NOTE: see Example_sha3_256 — ExampleSHA3_256Hex has the same go-vet-breaking shape.
 func Example_sha3_256Hex() {
 	Println(SHA3_256Hex([]byte("hello"))[:16])
 	// Output: 3338be694f50c5f3
