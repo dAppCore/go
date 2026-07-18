@@ -16,7 +16,7 @@ func TestOs_FileMode_Good_Alias(t *T) {
 func TestOs_ModePerm_Good(t *T) {
 	AssertEqual(t, FileMode(0o777), ModePerm)
 	AssertEqual(t, FileMode(0), ModeDir&ModePerm)
-	AssertEqual(t, FileMode(0o644), (ModeDir|0o644).Perm())
+	AssertEqual(t, FileMode(0o644), (ModeDir | 0o644).Perm())
 	AssertTrue(t, ModeType&ModeDir != 0)
 	AssertTrue(t, ModeType&ModeSymlink != 0)
 }

@@ -21,8 +21,8 @@ func TestAssert_assertCmpFloat64_Ugly(t *T) {
 }
 func TestAssert_assertCmpInt64_Good(t *T) {
 	AssertEqual(t, -1, assertCmpInt64(-1, 1))
-	AssertEqual(t, -1, assertCmpInt64(0, 1))            // adjacent values
-	AssertEqual(t, -1, assertCmpInt64(-1<<62, 1<<62))   // wide negative-to-positive span
+	AssertEqual(t, -1, assertCmpInt64(0, 1))          // adjacent values
+	AssertEqual(t, -1, assertCmpInt64(-1<<62, 1<<62)) // wide negative-to-positive span
 }
 func TestAssert_assertCmpInt64_Bad(t *T) {
 	AssertEqual(t, 0, assertCmpInt64(42, 42))
@@ -36,8 +36,8 @@ func TestAssert_assertCmpInt64_Ugly(t *T) {
 }
 func TestAssert_assertCmpUint64_Good(t *T) {
 	AssertEqual(t, -1, assertCmpUint64(1, 2))
-	AssertEqual(t, -1, assertCmpUint64(0, 1))      // zero less than one
-	AssertEqual(t, -1, assertCmpUint64(1, 1<<63))  // small vs high bit set
+	AssertEqual(t, -1, assertCmpUint64(0, 1))     // zero less than one
+	AssertEqual(t, -1, assertCmpUint64(1, 1<<63)) // small vs high bit set
 }
 func TestAssert_assertCmpUint64_Bad(t *T) {
 	AssertEqual(t, 0, assertCmpUint64(42, 42))
@@ -112,8 +112,8 @@ func TestAssert_assertContains_Bad(t *T) {
 func TestAssert_assertContains_Ugly(t *T) {
 	AssertTrue(t, assertContains(map[string]int{"session": 1}, "session"))
 	AssertFalse(t, assertContains(map[string]int{"session": 1}, "missing")) // absent key
-	AssertTrue(t, assertContains(map[int]string{7: "x"}, 7))                 // int key membership
-	AssertFalse(t, assertContains(42, "x"))                                  // unsupported kind -> false
+	AssertTrue(t, assertContains(map[int]string{7: "x"}, 7))                // int key membership
+	AssertFalse(t, assertContains(42, "x"))                                 // unsupported kind -> false
 }
 func TestAssert_assertIsEmpty_Good(t *T) {
 	AssertTrue(t, assertIsEmpty(""))
@@ -186,7 +186,7 @@ func TestAssert_assertIsNil_Ugly(t *T) {
 }
 func TestAssert_assertMsg_Good(t *T) {
 	AssertEqual(t, " — agent retry", assertMsg([]string{"agent", "retry"}))
-	AssertEqual(t, " — solo", assertMsg([]string{"solo"}))    // single element: no join separator
+	AssertEqual(t, " — solo", assertMsg([]string{"solo"}))         // single element: no join separator
 	AssertEqual(t, " — a b c", assertMsg([]string{"a", "b", "c"})) // three elements space-joined
 }
 func TestAssert_assertMsg_Bad(t *T) {

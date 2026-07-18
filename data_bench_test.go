@@ -27,12 +27,12 @@ var (
 func dataFixture() *Core {
 	c := New()
 	fsys := fstest.MapFS{
-		"prompts/coding.md":         &fstest.MapFile{Data: []byte("# Coding\n\n```go\nfunc main() {}\n```\n")},
-		"prompts/review.md":         &fstest.MapFile{Data: []byte("# Review checklist\n- correctness\n- tests\n- docs\n")},
-		"prompts/triage.md":         &fstest.MapFile{Data: []byte("# Triage\n\nSurface the smallest reproducer.\n")},
-		"flow/deploy/homelab.yaml":  &fstest.MapFile{Data: []byte("target: homelab\nbranch: dev\n")},
-		"flow/deploy/de1.yaml":      &fstest.MapFile{Data: []byte("target: de1\nbranch: main\n")},
-		"persona/code/cladius.md":   &fstest.MapFile{Data: []byte("persona: cladius\n")},
+		"prompts/coding.md":          &fstest.MapFile{Data: []byte("# Coding\n\n```go\nfunc main() {}\n```\n")},
+		"prompts/review.md":          &fstest.MapFile{Data: []byte("# Review checklist\n- correctness\n- tests\n- docs\n")},
+		"prompts/triage.md":          &fstest.MapFile{Data: []byte("# Triage\n\nSurface the smallest reproducer.\n")},
+		"flow/deploy/homelab.yaml":   &fstest.MapFile{Data: []byte("target: homelab\nbranch: dev\n")},
+		"flow/deploy/de1.yaml":       &fstest.MapFile{Data: []byte("target: de1\nbranch: main\n")},
+		"persona/code/cladius.md":    &fstest.MapFile{Data: []byte("persona: cladius\n")},
 		"persona/code/hephaestus.md": &fstest.MapFile{Data: []byte("persona: hephaestus\n")},
 	}
 	c.Data().New(NewOptions(

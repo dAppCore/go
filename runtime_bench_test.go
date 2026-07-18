@@ -24,13 +24,13 @@ import (
 
 // Sinks defeat compiler dead-code elimination on the read paths.
 var (
-	runtimeSinkCore        *Core
-	runtimeSinkOpts        CliOptions
-	runtimeSinkConfig      *Config
-	runtimeSinkBool        bool
-	runtimeSinkString      string
-	runtimeSinkSvcRuntime  *ServiceRuntime[CliOptions]
-	runtimeSinkRuntimeRes  Result
+	runtimeSinkCore       *Core
+	runtimeSinkOpts       CliOptions
+	runtimeSinkConfig     *Config
+	runtimeSinkBool       bool
+	runtimeSinkString     string
+	runtimeSinkSvcRuntime *ServiceRuntime[CliOptions]
+	runtimeSinkRuntimeRes Result
 )
 
 // --- ServiceRuntime[T] ---

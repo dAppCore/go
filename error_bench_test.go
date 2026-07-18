@@ -19,8 +19,8 @@ import (
 
 // Sinks defeat compiler DCE.
 var (
-	errSinkErr error
-	errSinkStr string
+	errSinkErr  error
+	errSinkStr  string
 	errSinkBool bool
 )
 
