@@ -57,6 +57,25 @@ func (r Result) Error() string {
 	return "unknown error"
 }
 
+// Err returns the failure as a Go error — nil when OK, the unwrapped error Value
+// when it is one, otherwise the Result itself (which satisfies error via
+// [Result.Error]). The idiomatic bridge from a Result to an error at an API
+// boundary, replacing the hand-rolled "if !r.OK { return r.Value.(error) }"
+// unwrap scattered across consumers.
+//
+//	if err := core.JSONUnmarshal(data, &cfg).Err(); err != nil {
+//	    return err
+//	}
+func (r Result) Err() error {
+	if r.OK {
+		return nil
+	}
+	if err, ok := r.Value.(error); ok {
+		return err
+	}
+	return r
+}
+
 // Code returns the stable error code from the Result's failure, or ""
 // when OK or when the failure isn't a *core.Err with a Code populated.
 // Codes form a flat keyspace agents grep on (e.g. "fs.notfound",
@@ -211,21 +230,6 @@ func (r Result) Bytes() []byte {
 	}
 	b, _ := r.Value.([]byte)
 	return b
-}
-
-// Err returns the failure as an error — nil when OK. When the failure
-// Value is not itself an error (a string diagnostic), it is wrapped so
-// a failed Result NEVER yields a nil error.
-//
-//	if err := r.Err(); err != nil { return core.Fail(err) }
-func (r Result) Err() error {
-	if r.OK {
-		return nil
-	}
-	if err, ok := r.Value.(error); ok {
-		return err
-	}
-	return NewError(r.Error())
 }
 
 // Cast extracts a typed value from a Result. Returns (zero, false) when

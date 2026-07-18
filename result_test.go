@@ -19,6 +19,21 @@ func TestResult_Result_Error_Ugly(t *T) {
 	AssertEqual(t, "unknown error", r.Error())
 }
 
+func TestResult_Result_Err_Good(t *T) {
+	AssertTrue(t, Result{Value: "ready", OK: true}.Err() == nil)
+}
+
+func TestResult_Result_Err_Bad(t *T) {
+	err := NewError("dispatch failed")
+	AssertEqual(t, err, Result{Value: err, OK: false}.Err())
+}
+
+func TestResult_Result_Err_Ugly(t *T) {
+	// non-error failure value: Err() returns the Result itself as an error
+	r := Result{Value: "session refused", OK: false}
+	AssertEqual(t, "session refused", r.Err().Error())
+}
+
 func TestResult_Result_Code_Good(t *T) {
 	r := Result{Value: NewCode("agent.refused", "dispatch refused"), OK: false}
 	AssertEqual(t, "agent.refused", r.Code())
@@ -272,18 +287,6 @@ func TestResult_Result_Bytes_Ugly(t *T) {
 	AssertNil(t, Ok("text").Bytes())
 }
 
-func TestResult_Result_Err_Good(t *T) {
-	AssertNil(t, Ok("fine").Err())
-}
-
-func TestResult_Result_Err_Bad(t *T) {
-	cause := NewError("agent offline")
-	AssertEqual(t, cause, Fail(cause).Err())
-}
-
-func TestResult_Result_Err_Ugly(t *T) {
-	// A failed Result with a non-error Value still yields a non-nil error.
-	r := Result{Value: "plain diagnostic", OK: false}
-	AssertError(t, r.Err())
-	AssertEqual(t, "plain diagnostic", r.Err().Error())
-}
+// (Err triplet lives beside Error above — the senior contract from the
+// dedup-primitives lane: non-error failure Values return the Result
+// itself, which satisfies error via Result.Error.)

@@ -186,3 +186,17 @@ func TestMap_MapMerge_Ugly(t *T) {
 
 	AssertEmpty(t, merged)
 }
+
+func TestMap_MapString_Good(t *T) {
+	AssertEqual(t, "codex", MapString(map[string]any{"agent": "codex"}, "agent"))
+}
+
+func TestMap_MapString_Bad(t *T) {
+	// non-string value yields "" (not a panic)
+	AssertEqual(t, "", MapString(map[string]any{"n": 7}, "n"))
+}
+
+func TestMap_MapString_Ugly(t *T) {
+	// missing key and nil map both yield ""
+	AssertEqual(t, "", MapString(map[string]any(nil), "missing"))
+}

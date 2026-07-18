@@ -325,7 +325,7 @@ func decompress(input string) Result {
 
 func getAllFiles(dir string) Result {
 	var result []string
-	r := PathWalkDir(dir, func(path string, d FsDirEntry, err error) error {
+	walk := PathWalkDir(dir, func(path string, d FsDirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -334,8 +334,8 @@ func getAllFiles(dir string) Result {
 		}
 		return nil
 	})
-	if !r.OK {
-		return r
+	if !walk.OK {
+		return Result{Value: WrapCode(walk.Value.(error), "embed.walk.failed", "getAllFiles", "directory walk failed"), OK: false}
 	}
 	return Result{Value: result, OK: true}
 }
