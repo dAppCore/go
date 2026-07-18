@@ -235,6 +235,6 @@ func ExampleCore_RegistryOf() {
 	Println(c.RegistryOf("missing").OK)
 	// Output:
 	// true
-	// [agent.deploy]
+	// [core.actions core.info core.health agent.deploy]
 	// false
 }

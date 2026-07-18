@@ -28,6 +28,10 @@ type Service struct {
 	OnStart  func() Result
 	OnStop   func() Result
 	OnReload func() Result
+	// Optional marks a non-essential service: a failed OnStart logs a
+	// warning and startup continues (degraded boot) instead of aborting.
+	// Zero value keeps the strict contract — essential by default.
+	Optional bool
 }
 
 // ServiceRegistry holds registered services. Embeds Registry[*Service]

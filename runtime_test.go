@@ -452,3 +452,27 @@ func TestRuntime_Core_ServiceReload_Ugly(t *T) {
 	AssertFalse(t, c.ServiceReload(ctx).OK)
 	AssertEqual(t, 0, p.count)
 }
+
+// --- W4-6: optional services degrade instead of aborting boot ---
+
+func TestRuntime_Core_ServiceStartup_Good_OptionalDegrades(t *T) {
+	c := New()
+	started := false
+	AssertTrue(t, c.Service("flaky", Service{
+		Optional: true,
+		OnStart:  func() Result { return Fail(NewError("telemetry down")) },
+	}).OK)
+	AssertTrue(t, c.Service("essential", Service{
+		OnStart: func() Result { started = true; return Ok(nil) },
+	}).OK)
+	AssertTrue(t, c.ServiceStartup(Background(), nil).OK)
+	AssertTrue(t, started)
+}
+
+func TestRuntime_Core_ServiceStartup_Bad_EssentialStillAborts(t *T) {
+	c := New()
+	AssertTrue(t, c.Service("essential", Service{
+		OnStart: func() Result { return Fail(NewError("db down")) },
+	}).OK)
+	AssertFalse(t, c.ServiceStartup(Background(), nil).OK)
+}

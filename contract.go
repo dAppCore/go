@@ -202,6 +202,8 @@ func newCore() *Core {
 	}
 	c.context, c.cancel = WithCancel(Background())
 	c.api.core = c
+	c.bootTime = Now()
+	registerBuiltins(c)
 	return c
 }
 
@@ -341,5 +343,104 @@ func WithCrashFile(path string) CoreOption {
 func WithCli() CoreOption {
 	return func(c *Core) Result {
 		return CliRegister(c)
+	}
+}
+
+// WithConfigFile loads a JSON config file into c.Config() during
+// construction. A missing or malformed file fails the option — MustNew
+// panics, New logs and continues. For optional files call
+// c.Config().Load at runtime instead.
+//
+//	core.New(core.WithConfigFile("/etc/myapp/config.json"))
+func WithConfigFile(path string) CoreOption {
+	return func(c *Core) Result {
+		return c.config.Load(path)
+	}
+}
+
+// WithEnvConfig imports prefixed environment variables into c.Config()
+// during construction (MYAPP_DATABASE_HOST → "database.host").
+//
+//	core.New(core.WithEnvConfig("MYAPP_"))
+func WithEnvConfig(prefix string) CoreOption {
+	return func(c *Core) Result {
+		return c.config.FromEnv(prefix)
+	}
+}
+
+// WithReloadOnSIGHUP completes the daemon loop: when a signal service
+// (e.g. go-process) broadcasts signal.received with SIGHUP, run
+// ServiceReload. Fails when "signal.received" already has a handler —
+// call ServiceReload from that handler instead (the signal contract is
+// single-handler by design; see signal.go).
+//
+//	core.New(core.WithService(process.Register), core.WithReloadOnSIGHUP())
+func WithReloadOnSIGHUP() CoreOption {
+	return func(c *Core) Result {
+		if c.Action("signal.received").Exists() {
+			return Result{E("core.WithReloadOnSIGHUP", "signal.received already handled — call ServiceReload from your handler", nil), false}
+		}
+		c.Action("signal.received", func(ctx Context, opts Options) Result {
+			if opts.String("name") == "SIGHUP" {
+				return c.ServiceReload(ctx)
+			}
+			return Result{OK: true}
+		})
+		return Result{OK: true}
+	}
+}
+
+// WithBundle mounts another Core's capability surface under a dotted
+// prefix — sealed toolkits composing into applications. The bundle's
+// actions become "<prefix>.<name>" (delegated: the bundle's own
+// entitlements and metering fire first, then the host gates the
+// prefixed name — double-gated enclave semantics). Its data mounts and
+// drive handles become "<prefix>.<name>". Collisions fail the option
+// loudly. Mount before WithServiceLock so the seal freezes the composed
+// surface.
+//
+//	var Widgets = core.MustNew(core.WithService(widgets.Register), core.WithServiceLock())
+//
+//	c := core.New(
+//	    core.WithBundle("widgets", Widgets),
+//	    core.WithServiceLock(),
+//	)
+//	c.Action("widgets.render").Run(ctx, opts)
+func WithBundle(prefix string, other *Core) CoreOption {
+	return func(c *Core) Result {
+		if prefix == "" || other == nil {
+			return Result{E("core.WithBundle", "prefix and bundle are both required", nil), false}
+		}
+
+		// Collision pre-pass — fail before mutating anything.
+		for _, name := range other.Actions() {
+			if c.Action(Concat(prefix, ".", name)).Exists() {
+				return Result{E("core.WithBundle", Concat("action collision: ", prefix, ".", name), nil), false}
+			}
+		}
+		for _, name := range other.data.Names() {
+			if c.data.Has(Concat(prefix, ".", name)) {
+				return Result{E("core.WithBundle", Concat("data mount collision: ", prefix, ".", name), nil), false}
+			}
+		}
+		for _, name := range other.drive.Names() {
+			if c.drive.Has(Concat(prefix, ".", name)) {
+				return Result{E("core.WithBundle", Concat("drive handle collision: ", prefix, ".", name), nil), false}
+			}
+		}
+
+		for _, name := range other.Actions() {
+			orig := name
+			c.Action(Concat(prefix, ".", name), func(ctx Context, opts Options) Result {
+				return other.Action(orig).Run(ctx, opts)
+			})
+		}
+		other.data.Each(func(name string, emb *Embed) {
+			c.data.Set(Concat(prefix, ".", name), emb)
+		})
+		other.drive.Each(func(name string, handle *DriveHandle) {
+			c.drive.Set(Concat(prefix, ".", name), handle)
+		})
+		return Result{OK: true}
 	}
 }

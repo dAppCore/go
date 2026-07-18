@@ -195,3 +195,72 @@ func TestIpc_Core_RegisterQuery_Ugly(t *T) {
 	AssertTrue(t, r.OK)
 	AssertEqual(t, "fallback", r.Value)
 }
+
+// --- W4-4: typed bus sugar ---
+
+func TestIpc_On_Good(t *T) {
+	c := New()
+	got := ""
+	On(c, func(ev ActionTaskProgress) Result {
+		got = ev.Message
+		return Ok(nil)
+	})
+	c.ACTION(ActionTaskProgress{Message: "halfway"})
+	AssertEqual(t, "halfway", got)
+}
+
+func TestIpc_On_Bad(t *T) {
+	c := New()
+	fired := false
+	On(c, func(ActionTaskCompleted) Result {
+		fired = true
+		return Ok(nil)
+	})
+	// A different message type never reaches the typed handler.
+	c.ACTION(ActionTaskProgress{Message: "not mine"})
+	AssertFalse(t, fired)
+}
+
+func TestIpc_On_Ugly(t *T) {
+	c := New()
+	count := 0
+	On(c, func(ActionTaskProgress) Result { count++; return Ok(nil) })
+	On(c, func(ActionTaskProgress) Result { count++; return Ok(nil) })
+	// Broadcast semantics survive the sugar: every subscriber fires.
+	c.ACTION(ActionTaskProgress{})
+	AssertEqual(t, 2, count)
+}
+
+func TestIpc_QueryFor_Good(t *T) {
+	c := New()
+	type portQuery struct{}
+	c.RegisterQuery(func(_ *Core, q Query) Result {
+		if _, ok := q.(portQuery); ok {
+			return Ok(8080)
+		}
+		return Result{}
+	})
+	r := QueryFor[int](c, portQuery{})
+	AssertTrue(t, r.OK())
+	AssertEqual(t, 8080, r.Value)
+}
+
+func TestIpc_QueryFor_Bad(t *T) {
+	c := New()
+	type unanswered struct{}
+	r := QueryFor[int](c, unanswered{})
+	AssertFalse(t, r.OK())
+}
+
+func TestIpc_QueryFor_Ugly(t *T) {
+	c := New()
+	type strQuery struct{}
+	c.RegisterQuery(func(_ *Core, q Query) Result {
+		if _, ok := q.(strQuery); ok {
+			return Ok("not an int")
+		}
+		return Result{}
+	})
+	// Wrong type fails the lift instead of zero-valuing silently.
+	AssertFalse(t, QueryFor[int](c, strQuery{}).OK())
+}

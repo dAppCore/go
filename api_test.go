@@ -922,3 +922,23 @@ func TestApi_API_Exists_Ugly(t *T) {
 func TestApi_Stream_Bad_UnboundNoName(t *T) {
 	AssertFalse(t, New().API().Stream().OK)
 }
+
+func TestApi_API_Discover_Good(t *T) {
+	c := New()
+	c.API().RegisterProtocol("http", mockFactory(`{"actions":["core.actions"]}`))
+	c.Drive().New(NewOptions(
+		Option{Key: "name", Value: "peer"},
+		Option{Key: "transport", Value: "http://127.0.0.1:9101"},
+	))
+	r := c.API("peer").Discover()
+	AssertTrue(t, r.OK)
+	AssertContains(t, r.String(), "core.actions")
+}
+
+func TestApi_API_Discover_Bad(t *T) {
+	AssertFalse(t, New().API().Discover().OK)
+}
+
+func TestApi_API_Discover_Ugly(t *T) {
+	AssertFalse(t, New().API("ghost").Discover().OK)
+}

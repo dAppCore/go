@@ -400,3 +400,84 @@ func TestEntitlement_RecordUsage_Bad_FailureNotRecorded(t *T) {
 	c.Action("meter.fail").Run(Background(), NewOptions())
 	AssertEqual(t, 0, count)
 }
+
+// --- W4-8: declarative policy + quotas ---
+
+func TestEntitlement_NewPolicy_Good(t *T) {
+	p := NewPolicy(NewOptions(Option{Key: "admin.purge", Value: "deny"}))
+	AssertNotNil(t, p)
+	e := p.Checker()("admin.purge", 1, Background())
+	AssertFalse(t, e.Allowed)
+	AssertContains(t, e.Reason, "denied")
+}
+
+func TestEntitlement_NewPolicy_Bad(t *T) {
+	// Unruled actions default to allowed — rules restrict, absence permits.
+	p := NewPolicy(NewOptions())
+	AssertTrue(t, p.Checker()("anything.at.all", 1, Background()).Allowed)
+}
+
+func TestEntitlement_NewPolicy_Ugly(t *T) {
+	// Exact rules beat globs; longer globs beat shorter.
+	p := NewPolicy(NewOptions(
+		Option{Key: "agent.*", Value: "deny"},
+		Option{Key: "agent.safe.*", Value: "allow"},
+		Option{Key: "agent.safe.but.this", Value: "deny"},
+	))
+	check := p.Checker()
+	AssertFalse(t, check("agent.dispatch", 1, Background()).Allowed)
+	AssertTrue(t, check("agent.safe.run", 1, Background()).Allowed)
+	AssertFalse(t, check("agent.safe.but.this", 1, Background()).Allowed)
+}
+
+func TestEntitlement_Policy_Checker_Good(t *T) {
+	p := NewPolicy(NewOptions(Option{Key: "ai.credits", Value: 2}))
+	e := p.Checker()("ai.credits", 1, Background())
+	AssertTrue(t, e.Allowed)
+	AssertEqual(t, 2, e.Limit)
+	AssertEqual(t, 2, e.Remaining)
+}
+
+func TestEntitlement_Policy_Checker_Bad(t *T) {
+	p := NewPolicy(NewOptions(Option{Key: "ai.credits", Value: 1}))
+	// Asking for more than remains is denied with the quota reason.
+	e := p.Checker()("ai.credits", 5, Background())
+	AssertFalse(t, e.Allowed)
+	AssertContains(t, e.Reason, "quota exhausted")
+}
+
+func TestEntitlement_Policy_Checker_Ugly(t *T) {
+	// The full loop through Action.Run: two runs allowed, third denied.
+	c := New()
+	p := NewPolicy(NewOptions(Option{Key: "ai.credits", Value: 2}))
+	c.SetEntitlementChecker(p.Checker())
+	c.SetUsageRecorder(p.Recorder())
+	c.Action("ai.credits", func(Context, Options) Result { return Ok(nil) })
+	AssertTrue(t, c.Action("ai.credits").Run(Background(), NewOptions()).OK)
+	AssertTrue(t, c.Action("ai.credits").Run(Background(), NewOptions()).OK)
+	r := c.Action("ai.credits").Run(Background(), NewOptions())
+	AssertFalse(t, r.OK)
+	AssertContains(t, r.Error(), "not entitled")
+}
+
+func TestEntitlement_Policy_Recorder_Good(t *T) {
+	p := NewPolicy(NewOptions(Option{Key: "ai.*", Value: 10}))
+	p.Recorder()("ai.generate", 3, Background())
+	e := p.Checker()("ai.embed", 1, Background())
+	// Glob quotas pool consumption across matching actions.
+	AssertEqual(t, 7, e.Remaining)
+}
+
+func TestEntitlement_Policy_Recorder_Bad(t *T) {
+	p := NewPolicy(NewOptions(Option{Key: "admin.purge", Value: "deny"}))
+	// Recording against a non-quota rule is a no-op, never a panic.
+	p.Recorder()("admin.purge", 1, Background())
+	AssertFalse(t, p.Checker()("admin.purge", 1, Background()).Allowed)
+}
+
+func TestEntitlement_Policy_Recorder_Ugly(t *T) {
+	p := NewPolicy(NewOptions(Option{Key: "ai.credits", Value: 5}))
+	// Zero/negative quantities normalise to 1 on both sides of the loop.
+	p.Recorder()("ai.credits", 0, Background())
+	AssertEqual(t, 4, p.Checker()("ai.credits", 0, Background()).Remaining)
+}

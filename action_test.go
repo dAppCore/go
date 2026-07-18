@@ -71,13 +71,16 @@ func TestAction_Actions_Good(t *T) {
 	c.Action("agentic.dispatch", func(_ Context, _ Options) Result { return Result{OK: true} })
 
 	names := c.Actions()
-	AssertLen(t, names, 3)
-	AssertEqual(t, []string{"process.run", "process.kill", "agentic.dispatch"}, names)
+	// The three core.* discovery built-ins ride every Core (W4-1).
+	AssertLen(t, names, 6)
+	AssertEqual(t, []string{"core.actions", "core.info", "core.health", "process.run", "process.kill", "agentic.dispatch"}, names)
 }
 
 func TestAction_Actions_Bad_Empty(t *T) {
+	// A bare Core is never action-empty: the discovery built-ins are
+	// always answerable. Nothing ELSE is registered.
 	c := New()
-	AssertEmpty(t, c.Actions())
+	AssertEqual(t, []string{"core.actions", "core.info", "core.health"}, c.Actions())
 }
 
 // --- Action fields ---
@@ -312,12 +315,12 @@ func TestAction_Core_Actions_Good(t *T) {
 	c := New()
 	c.Action("agent.prepare", func(_ Context, _ Options) Result { return Result{OK: true} })
 	c.Action("agent.dispatch", func(_ Context, _ Options) Result { return Result{OK: true} })
-	AssertEqual(t, []string{"agent.prepare", "agent.dispatch"}, c.Actions())
+	AssertEqual(t, []string{"core.actions", "core.info", "core.health", "agent.prepare", "agent.dispatch"}, c.Actions())
 }
 
 func TestAction_Core_Actions_Bad(t *T) {
 	c := New()
-	AssertEmpty(t, c.Actions())
+	AssertLen(t, c.Actions(), 3) // only the built-ins
 }
 
 func TestAction_Core_Actions_Ugly(t *T) {
@@ -325,7 +328,7 @@ func TestAction_Core_Actions_Ugly(t *T) {
 	c.Action("agent.prepare", func(_ Context, _ Options) Result { return Result{OK: true} })
 	names := c.Actions()
 	names[0] = "mutated"
-	AssertEqual(t, []string{"agent.prepare"}, c.Actions())
+	AssertEqual(t, []string{"core.actions", "core.info", "core.health", "agent.prepare"}, c.Actions())
 }
 
 func TestAction_Task_Run_Good(t *T) {

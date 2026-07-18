@@ -468,3 +468,12 @@ func ExampleAPI_Exists() {
 	Println(c.API("codex").Exists())
 	// Output: true
 }
+
+// ExampleAPI_Discover queries a peer's capability map — every Core
+// answers core.actions, so a mesh is walkable.
+func ExampleAPI_Discover() {
+	c := New()
+	r := c.API().Discover() // unbound view: coded failure, never a panic
+	Println(r.OK)
+	// Output: false
+}

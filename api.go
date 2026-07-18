@@ -108,6 +108,15 @@ func (a *API) Exists() bool {
 	return a.endpoint != "" && a.core.Drive().Has(a.endpoint)
 }
 
+// Discover queries the bound endpoint's capability map — sugar over
+// Invoke("core.actions", ...). Every Core answers it, so a mesh of
+// Core apps is walkable.
+//
+//	r := c.API("codex").Discover()
+func (a *API) Discover() Result {
+	return a.Invoke("core.actions", NewOptions())
+}
+
 // RegisterProtocol registers a stream factory for a URL scheme.
 // Consumer packages call this during OnStartup.
 //

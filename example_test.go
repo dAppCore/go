@@ -91,8 +91,9 @@ func ExampleCore_Actions() {
 	c.Action("process.run", func(_ Context, _ Options) Result { return Result{OK: true} })
 	c.Action("brain.recall", func(_ Context, _ Options) Result { return Result{OK: true} })
 
+	// The discovery built-ins lead every listing (W4-1).
 	Println(c.Actions())
-	// Output: [process.run brain.recall]
+	// Output: [core.actions core.info core.health process.run brain.recall]
 }
 
 // --- Task ---

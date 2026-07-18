@@ -38,6 +38,7 @@ type Core struct {
 	taskIDCounter AtomicUint64
 	waitGroup     WaitGroup
 	shutdown      AtomicBool
+	bootTime      Time // set at construction — core.health uptime
 }
 
 // --- Accessors ---
@@ -181,6 +182,7 @@ func (c *Core) WithContext(ctx Context) *Core {
 		i18n:               c.i18n,
 		entitlementChecker: c.entitlementChecker,
 		usageRecorder:      c.usageRecorder,
+		bootTime:           c.bootTime,
 		context:            derivedCtx,
 		cancel:             derivedCancel,
 		// taskIDCounter / waitGroup / shutdown intentionally start fresh —

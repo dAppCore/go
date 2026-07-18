@@ -76,6 +76,22 @@ accessor is an ecosystem call.
 | W3-6 | **lsp.go anchoring** — 25K, biggest file in the repo, no Core accessor, absent from the subsystem table | decide: `c.LSP()` accessor + CLAUDE.md table row, or extract to `dappco.re/go/lsp` consumer package. Its registries are already dogfooded (A7). |
 | W3-7 | **`--- Global Instance ---`** dangling section header at core.go EOF with nothing under it | delete the header or build the thing it promised. verify git history for intent. |
 
+## Wave 4 — features beyond the original plan (Snider-approved 2026-07-18, all additive)
+
+| # | Feature | Status |
+|---|---|---|
+| W4-1 | **Capability discovery** — `core.actions` (names + Schema keys) / `core.info` / `core.health` built-ins registered at construction, entitlement-gated like any action; `API.Discover()` sugar. Every Core answers; the colon law makes the mesh walkable (`c.Action("peer:core.actions")`). Action listings now always lead with the three built-ins. | LANDED |
+| W4-2 | **Bundle composition** — `WithBundle(prefix, other)`: a sealed Core's actions (delegated, double-gated: bundle's entitlements + metering fire first, then the host's on the prefixed name), data mounts, and drive handles mount under `<prefix>.<name>`. Collisions fail the option loudly; mount before WithServiceLock. Nested discovery rides along (`widgets.core.health`). | LANDED |
+| W4-3 | **Daemon loop** — `Config.Load` (JSON, nested objects flatten to dotted keys), `Config.FromEnv` (MYAPP_DATABASE_HOST → database.host), `WithConfigFile` / `WithEnvConfig` constructor options, `WithReloadOnSIGHUP` (subscribes the signal contract, runs ServiceReload; fails loudly if signal.received is already handled). | LANDED |
+| W4-4 | **Typed bus sugar** — `On[T]` (type-filtered subscribe, kills the hand-written switch) and `QueryFor[T]` (QUERY → `Return[T]`). The bus stays untyped — the three-line law holds. | LANDED |
+| W4-5 | **`Data.MountDir`** — a real directory as a Data mount via DirFS: dev-disk and prod-embed serve identically through `c.Data(name)`. | agent, landing |
+| W4-6 | **`Service.Optional`** — non-essential services log-and-continue on failed OnStart (degraded boot); zero value keeps the strict contract. Named Optional, not Critical, so the zero value preserves existing behaviour. | LANDED |
+| W4-7 | **`AssertAllocs`** — the alloc-gate house idiom in assert.go, standardising the perf ratchet across the ecosystem. | agent, landing |
+| W4-8 | **`Policy`** — declarative entitlements: exact + `prefix.*` rules → allow/deny/int quota; `Checker()` + `Recorder()` pair closes the quota loop through Action.Run's metering; glob quotas pool across matching actions; unruled actions default allowed. | LANDED |
+
+Deliberately excluded from core (consumer-package shaped): scheduling/cron, supervision trees,
+protocol auth handshakes.
+
 ## Instrument fixes (skill repo — `lethean-claude/scripts`, NOT this repo)
 
 The fleet adjudicated 446 stub flags: 6 genuine, 3 tool bugs, 2 false-positive classes. The residual

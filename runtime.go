@@ -60,6 +60,12 @@ func (c *Core) ServiceStartup(ctx Context, options any) Result {
 			}
 			r := s.OnStart()
 			if !r.OK {
+				// Optional services degrade instead of aborting the
+				// boot (W4-6) — logged, skipped, startup continues.
+				if s.Optional {
+					Warn("core.ServiceStartup: optional service failed", "service", s.Name, "err", r.Error())
+					continue
+				}
 				return r
 			}
 		}

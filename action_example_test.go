@@ -58,7 +58,7 @@ func ExampleCore_Actions_action() {
 	c.Action("agent.deploy", func(_ Context, _ Options) Result { return Result{OK: true} })
 	c.Action("agent.test", func(_ Context, _ Options) Result { return Result{OK: true} })
 	Println(c.Actions())
-	// Output: [agent.deploy agent.test]
+	// Output: [core.actions core.info core.health agent.deploy agent.test]
 }
 
 // ExampleStep declares one task step through `Step` for an agent dispatch workflow.

@@ -201,3 +201,38 @@ func ExampleWithCrashFile() {
 	Println(c.Error() != nil)
 	// Output: true
 }
+
+// ExampleWithConfigFile loads config at construction — a missing file
+// fails the option, so MustNew bundles fail loudly at import.
+func ExampleWithConfigFile() {
+	c := New(WithConfigFile("/etc/myapp/config.json"))
+	Println(c.Config() != nil)
+	// Output: true
+}
+
+// ExampleWithEnvConfig binds prefixed environment into the store.
+func ExampleWithEnvConfig() {
+	c := New(WithEnvConfig("MYAPP_"))
+	Println(c.Config() != nil)
+	// Output: true
+}
+
+// ExampleWithReloadOnSIGHUP completes the daemon loop: SIGHUP from the
+// signal service triggers ServiceReload.
+func ExampleWithReloadOnSIGHUP() {
+	c := New(WithReloadOnSIGHUP())
+	Println(c.Action("signal.received").Exists())
+	// Output: true
+}
+
+// ExampleWithBundle composes a sealed toolkit into a host under a
+// prefix — the bundle's own gates still apply, then the host's.
+func ExampleWithBundle() {
+	bundle := New()
+	bundle.Action("render", func(Context, Options) Result { return Ok("rendered") })
+
+	host := New(WithBundle("widgets", bundle))
+	r := host.Action("widgets.render").Run(Background(), NewOptions())
+	Println(r.String())
+	// Output: rendered
+}
