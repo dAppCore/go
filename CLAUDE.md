@@ -65,6 +65,7 @@ func Register(c *core.Core) core.Result {
 | `c.Entitled(name)` | `Entitlement` | Permission check |
 | `c.RegistryOf(n)` | `Result` (snapshot `*Registry[any]`) | Cross-cutting queries; OK=false on unknown name |
 | `c.I18n()` | `*I18n` | Internationalisation |
+| — (`LSPServe(ctx)`) | package-level | AX lint server (SPOR diagnostics for editors) — standalone by design, zero Core coupling; sources via `LSPRegisterDiagnostic` |
 
 ## Messaging
 
