@@ -428,7 +428,7 @@ func (f *failingReloader) OnReload(Context) Result {
 	return Fail(NewError("reload broke"))
 }
 
-func TestRuntime_ServiceReload_Good(t *T) {
+func TestRuntime_Core_ServiceReload_Good(t *T) {
 	c := New()
 	p := &reloadProbe{}
 	AssertTrue(t, c.RegisterService("probe", p).OK)
@@ -436,13 +436,13 @@ func TestRuntime_ServiceReload_Good(t *T) {
 	AssertEqual(t, 1, p.count)
 }
 
-func TestRuntime_ServiceReload_Bad(t *T) {
+func TestRuntime_Core_ServiceReload_Bad(t *T) {
 	c := New()
 	AssertTrue(t, c.RegisterService("failing", &failingReloader{}).OK)
 	AssertFalse(t, c.ServiceReload(Background()).OK)
 }
 
-func TestRuntime_ServiceReload_Ugly(t *T) {
+func TestRuntime_Core_ServiceReload_Ugly(t *T) {
 	// A cancelled context stops the chain before any hook runs.
 	ctx, cancel := WithCancel(Background())
 	cancel()
