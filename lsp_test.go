@@ -123,10 +123,11 @@ var _ sync.Mutex
 // returns immediately (no work to do).
 
 func TestLsp_LSPServe_Good(t *T) {
-	// LSPServe is the canonical entry point; verify it's callable with
-	// a Background context. Don't actually run — would block on stdin.
-	_ = LSPServe // signature reference
-	AssertNotNil(t, LSPServe)
+	// LSPServe is the canonical entry point; verify its signature matches
+	// the documented contract (ctx in, Result out). Don't actually run —
+	// would block on stdin; termination paths are covered by Bad/Ugly below.
+	var entryPoint func(Context) Result = LSPServe
+	AssertNotNil(t, entryPoint)
 }
 
 func TestLsp_LSPServe_Bad(t *T) {

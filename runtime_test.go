@@ -284,8 +284,14 @@ func TestRuntime_NewServiceRuntime_Bad(t *T) {
 }
 
 func TestRuntime_NewServiceRuntime_Ugly(t *T) {
-	rt := NewServiceRuntime(New(), testOpts{})
-	AssertEqual(t, testOpts{}, rt.Options())
+	// Options is captured by value at construction — mutating the caller's
+	// struct afterwards must not be visible through the runtime.
+	opts := testOpts{URL: "https://api.lthn.ai", Timeout: 30}
+	rt := NewServiceRuntime(New(), opts)
+
+	opts.URL = "mutated-after-construction"
+
+	AssertEqual(t, "https://api.lthn.ai", rt.Options().URL)
 }
 
 func TestRuntime_NewWithFactories_Bad(t *T) {
@@ -314,7 +320,11 @@ func TestRuntime_Runtime_ServiceName_Bad(t *T) {
 }
 
 func TestRuntime_Runtime_ServiceName_Ugly(t *T) {
+	// ServiceName is a fixed identity — even after the wrapped Core has
+	// shut down, it still reports "Core".
 	r := &Runtime{Core: New()}
+	r.Core.ServiceShutdown(Background())
+
 	AssertEqual(t, "Core", r.ServiceName())
 }
 

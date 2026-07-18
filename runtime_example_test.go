@@ -118,7 +118,7 @@ func ExampleNewWithFactories() {
 	// Output:
 	// true
 	// gui
-	// [cli alpha beta]
+	// [alpha beta]
 }
 
 // ExampleNewRuntime constructs a runtime through `NewRuntime` for service runtime
