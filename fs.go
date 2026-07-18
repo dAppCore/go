@@ -282,17 +282,23 @@ func (m *Fs) WriteMode(p, content string, mode FileMode) Result {
 	return Result{OK: true}
 }
 
-// TempDir creates a temporary directory and returns its path.
-// The caller is responsible for cleanup via fs.DeleteAll().
+// TempDir creates a temporary directory, returning its path in Result.Value.
+// The caller is responsible for cleanup via fs.DeleteAll(). Returns
+// Result{OK: false} carrying the error if the directory could not be created.
 //
-//	dir := fs.TempDir("agent-workspace")
+//	r := fs.TempDir("agent-workspace")
+//	if !r.OK {
+//		return r
+//	}
+//	dir := r.Value.(string)
 //	defer fs.DeleteAll(dir)
-func (m *Fs) TempDir(prefix string) string {
+func (m *Fs) TempDir(prefix string) Result {
 	r := MkdirTemp("", prefix)
 	if !r.OK {
-		return ""
+		cause, _ := r.Value.(error)
+		return Result{E("fs.TempDir", Concat("could not create temp dir with prefix \"", prefix, "\""), cause), false}
 	}
-	return r.Value.(string)
+	return r
 }
 
 // ReadDir reads a directory from fsys.
@@ -325,10 +331,18 @@ func Sub(fsys FS, dir string) Result {
 }
 
 // WalkDir walks fsys from root, calling fn for each file or directory.
+// Returns Result{OK: true} on a complete walk, or Result{OK: false}
+// carrying the error (the first fn error, or a traversal failure).
 //
-//	err := core.WalkDir(core.DirFS("templates"), ".", fn)
-func WalkDir(fsys FS, root string, fn WalkDirFunc) error {
-	return fs.WalkDir(fsys, root, fn)
+//	r := core.WalkDir(core.DirFS("templates"), ".", fn)
+//	if !r.OK {
+//		return r
+//	}
+func WalkDir(fsys FS, root string, fn WalkDirFunc) Result {
+	if err := fs.WalkDir(fsys, root, fn); err != nil {
+		return Result{E("fs.WalkDir", Concat("walk \"", root, "\" failed"), err), false}
+	}
+	return Result{OK: true}
 }
 
 // WriteAtomic writes content by writing to a temp file then renaming.
@@ -373,56 +387,67 @@ func (m *Fs) EnsureDir(p string) Result {
 	return Result{OK: true}
 }
 
-// IsDir returns true if path is a directory.
+// IsDir reports whether path is a directory via Result.OK. The false path
+// carries the reason — a validation/stat error, or "not a directory" when the
+// path exists but is something else — so callers can tell "absent" from "wrong
+// kind".
 //
 //	fsys := (&core.Fs{}).New("/tmp/agent-workspace")
-//	if fsys.IsDir("logs") { core.Println("logs ready") }
-func (m *Fs) IsDir(p string) bool {
+//	if fsys.IsDir("logs").OK { core.Println("logs ready") }
+func (m *Fs) IsDir(p string) Result {
 	if p == "" {
-		return false
+		return Result{E("fs.IsDir", "empty path", nil), false}
 	}
 	vp := m.validatePath(p)
 	if !vp.OK {
-		return false
+		return vp
 	}
 	r := Stat(vp.Value.(string))
 	if !r.OK {
-		return false
+		return r
 	}
-	info := r.Value.(interface{ IsDir() bool })
-	return info.IsDir()
+	if !r.Value.(interface{ IsDir() bool }).IsDir() {
+		return Result{E("fs.IsDir", Concat("\"", p, "\" is not a directory"), nil), false}
+	}
+	return Result{OK: true}
 }
 
-// IsFile returns true if path is a regular file.
+// IsFile reports whether path is a regular file via Result.OK. The false path
+// carries the reason — a validation/stat error, or "not a regular file" when
+// the path exists but is a directory or special file.
 //
 //	fsys := (&core.Fs{}).New("/tmp/agent-workspace")
-//	if fsys.IsFile("config/agent.json") { core.Println("config ready") }
-func (m *Fs) IsFile(p string) bool {
+//	if fsys.IsFile("config/agent.json").OK { core.Println("config ready") }
+func (m *Fs) IsFile(p string) Result {
 	if p == "" {
-		return false
+		return Result{E("fs.IsFile", "empty path", nil), false}
 	}
 	vp := m.validatePath(p)
 	if !vp.OK {
-		return false
+		return vp
 	}
 	r := Stat(vp.Value.(string))
 	if !r.OK {
-		return false
+		return r
 	}
-	info := r.Value.(interface{ Mode() FileMode })
-	return info.Mode().IsRegular()
+	if !r.Value.(interface{ Mode() FileMode }).Mode().IsRegular() {
+		return Result{E("fs.IsFile", Concat("\"", p, "\" is not a regular file"), nil), false}
+	}
+	return Result{OK: true}
 }
 
-// Exists returns true if path exists.
+// Exists reports whether path exists via Result.OK. A non-existent path is a
+// valid answer (OK=false), not a swallowed error; a path-validation failure is
+// returned as its own Result.
 //
 //	fsys := (&core.Fs{}).New("/tmp/agent-workspace")
-//	if fsys.Exists("config/agent.json") { core.Println("config present") }
-func (m *Fs) Exists(p string) bool {
+//	if fsys.Exists("config/agent.json").OK { core.Println("config present") }
+func (m *Fs) Exists(p string) Result {
 	vp := m.validatePath(p)
 	if !vp.OK {
-		return false
+		return vp
 	}
-	return Stat(vp.Value.(string)).OK
+	return Result{OK: Stat(vp.Value.(string)).OK}
 }
 
 // List returns directory entries.

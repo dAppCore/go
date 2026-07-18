@@ -50,7 +50,15 @@ type LocaleProvider interface {
 //	r := c.I18n().Translate("cmd.deploy.description")
 //	if r.OK { core.Println(r.Value.(string)) }
 type I18n struct {
-	mu         RWMutex
+	// mu is an encapsulated guard over this struct's own fields, kept as a
+	// private RWMutex (not c.Lock("i18n")) on purpose: I18n is used as a zero
+	// value, so it has no Core back-reference, and this guards internal state
+	// rather than coordinating a named cross-cutting lock. Same call as
+	// log.mu / Config.mu.
+	mu RWMutex
+	// locales is an ordered append-list of mounts with no unique natural key
+	// (several Embeds can mount at "."), so it stays a slice rather than being
+	// forced into a keyless Registry.
 	locales    []*Embed // collected from LocaleProvider services
 	locale     string
 	translator Translator // registered implementation (nil until set)

@@ -41,8 +41,13 @@ type Action struct {
 	Handler     ActionHandler
 	Description string
 	Schema      Options // declares expected input keys (optional)
-	enabled     bool
-	core        *Core // for entitlement checks during Run()
+	// enabled is a per-Action flag, deliberately NOT the actions Registry's
+	// disable mechanism: Run checks it on every dispatch (a free field read on
+	// the hot path — a Registry.Disabled lookup would add an RLock per call),
+	// and it preserves the "queryable but won't fire" contract that a
+	// registry-disabled (unfetchable, post-F1) entry cannot.
+	enabled bool
+	core    *Core // for entitlement checks during Run()
 }
 
 // Run executes the action with panic recovery.

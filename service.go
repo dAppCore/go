@@ -67,7 +67,7 @@ func (c *Core) Service(name string, service ...Service) Result {
 	if c.services.Locked() {
 		return Result{E("core.Service", Concat("service \"", name, "\" not permitted — registry locked"), nil), false}
 	}
-	if c.services.Has(name) {
+	if c.services.GetIncludingDisabled(name).OK {
 		return Result{E("core.Service", Join(" ", "service", name, "already registered"), nil), false}
 	}
 
@@ -89,7 +89,7 @@ func (c *Core) RegisterService(name string, instance any) Result {
 	if c.services.Locked() {
 		return Result{E("core.RegisterService", Concat("service \"", name, "\" not permitted — registry locked"), nil), false}
 	}
-	if c.services.Has(name) {
+	if c.services.GetIncludingDisabled(name).OK {
 		return Result{E("core.RegisterService", Join(" ", "service", name, "already registered"), nil), false}
 	}
 

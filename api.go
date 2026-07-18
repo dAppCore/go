@@ -356,15 +356,20 @@ func HTTPStripPrefix(prefix string, h Handler) Handler {
 	return http.StripPrefix(prefix, h)
 }
 
-// HTTPListenAndServe runs an HTTPServer on the given address with the
-// given handler. Returns ErrHTTPServerClosed after graceful shutdown,
-// other errors otherwise.
+// HTTPListenAndServe runs an HTTPServer on the given address with the given
+// handler, blocking until the server stops. A graceful shutdown
+// (ErrHTTPServerClosed) yields Result{OK: true}; any other error yields
+// Result{OK: false} carrying it.
 //
-//	if err := core.HTTPListenAndServe(":8080", mux); !core.Is(err, core.ErrHTTPServerClosed) {
-//	    core.Error("listen", "err", err)
+//	r := core.HTTPListenAndServe(":8080", mux)
+//	if !r.OK {
+//	    core.Error("listen", "err", r.Error())
 //	}
-func HTTPListenAndServe(addr string, handler Handler) error {
-	return http.ListenAndServe(addr, handler)
+func HTTPListenAndServe(addr string, handler Handler) Result {
+	if err := http.ListenAndServe(addr, handler); !Is(err, ErrHTTPServerClosed) {
+		return Result{E("api.HTTPListenAndServe", Concat("listen on \"", addr, "\" failed"), err), false}
+	}
+	return Result{OK: true}
 }
 
 // HTTPFileServer returns a Handler that serves HTTP requests with the

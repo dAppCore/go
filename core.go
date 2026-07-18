@@ -21,10 +21,10 @@ type Core struct {
 	config  *Config     // c.Config()         — Configuration, settings, feature flags
 	error   *ErrorPanic // c.Error()          — Panic recovery and crash reporting
 	log     *ErrorLog   // c.Log()            — Structured logging + error wrapping
-	// cli accessed via ServiceFor[*Cli](c, "cli")
+	// cli accessed via c.Cli() — CLI command framework (opt-in service "cli", core.WithCli())
 	commands *CommandRegistry // c.Command("path")  — Command tree
 	services *ServiceRegistry // c.Service("name")  — Service registry
-	lock     *Lock            // c.Lock("name")     — Named mutexes
+	locks    *Registry[*Lock] // c.Lock("name")     — Named mutexes
 	ipc      *Ipc             // c.IPC()            — Message bus for IPC
 	api      *API             // c.API()            — Remote streams
 	info     *SysInfo         // c.Env("key")        — Read-only system/environment information
@@ -70,11 +70,26 @@ func (c *Core) Drive() *Drive { return c.drive }
 //	c.Fs().WriteAtomic("/status.json", data)
 func (c *Core) Fs() *Fs { return c.fs }
 
-// Config returns runtime settings and feature flags.
+// Config returns runtime settings and feature flags. With a group argument it
+// returns a Config view scoped under that key prefix (see Config.Group).
 //
 //	host := c.Config().String("database.host")
 //	c.Config().Enable("dark-mode")
-func (c *Core) Config() *Config { return c.config }
+//	c.Config("database").Set("host", "localhost") // stores "database.host"
+func (c *Core) Config(group ...string) *Config {
+	if len(group) == 0 || group[0] == "" {
+		return c.config
+	}
+	return c.config.Group(group[0])
+}
+
+// Feature returns a keyed handle to a single feature flag (name required).
+//
+//	c.Feature("dark-mode").Enable()
+//	if c.Feature("dark-mode").Enabled() { core.Println("on") }
+func (c *Core) Feature(name string) Feature {
+	return Feature{cfg: c.config, name: name}
+}
 
 // Error returns the panic recovery subsystem.
 //
@@ -144,7 +159,7 @@ func (c *Core) WithContext(ctx Context) *Core {
 		log:                c.log,
 		commands:           c.commands,
 		services:           c.services,
-		lock:               c.lock,
+		locks:              c.locks,
 		ipc:                c.ipc,
 		api:                c.api,
 		info:               c.info,
@@ -259,28 +274,45 @@ func (c *Core) Must(err error, op, msg string) {
 
 // --- Registry Accessor ---
 
-// RegistryOf returns a named registry for cross-cutting queries.
-// Known registries: "services", "commands", "actions".
+// RegistryOf returns a point-in-time snapshot of a named registry, wrapped in a
+// Result, for cross-cutting queries (Names/Len/Has/List). Known names:
+// "services", "commands", "actions", "tasks", "locks", "data", "drive", "api",
+// "embed", "features". An unknown name yields Result{OK:false} — distinguishable
+// from a known-but-empty registry. The snapshot is a copy taken at call time and
+// does NOT track later changes; call again for a fresh view.
 //
-//	c.RegistryOf("services").Names()           // all service names
-//	c.RegistryOf("actions").List("process.*")  // process capabilities
-//	c.RegistryOf("commands").Len()             // command count
-func (c *Core) RegistryOf(name string) *Registry[any] {
+//	r := c.RegistryOf("services")
+//	if r.OK { names := r.Value.(*core.Registry[any]).Names() }
+func (c *Core) RegistryOf(name string) Result {
 	// Bridge typed registries to untyped access for cross-cutting queries.
-	// Each registry is wrapped in a read-only proxy.
+	// Each registry is wrapped in a read-only snapshot proxy.
 	switch name {
 	case "services":
-		return registryProxy(c.services.Registry)
+		return Ok(registryProxy(c.services.Registry))
 	case "commands":
-		return registryProxy(c.commands.Registry)
+		return Ok(registryProxy(c.commands.Registry))
 	case "actions":
-		return registryProxy(c.ipc.actions)
+		return Ok(registryProxy(c.ipc.actions))
+	case "tasks":
+		return Ok(registryProxy(c.ipc.tasks))
+	case "locks":
+		return Ok(registryProxy(c.locks))
+	case "data":
+		return Ok(registryProxy(c.data.Registry))
+	case "drive":
+		return Ok(registryProxy(c.drive.Registry))
+	case "api":
+		return Ok(registryProxy(c.api.protocols))
+	case "embed":
+		return Ok(registryProxy(assetGroups))
+	case "features":
+		return Ok(registryProxy(c.config.featureFlags()))
 	default:
-		return NewRegistry[any]() // empty registry for unknown names
+		return Result{E("core.RegistryOf", Concat("unknown registry: \"", name, "\""), nil), false}
 	}
 }
 
-// registryProxy creates a read-only any-typed view of a typed registry.
+// registryProxy creates a read-only any-typed snapshot of a typed registry.
 // Copies current state — not a live view (avoids type parameter leaking).
 func registryProxy[T any](src *Registry[T]) *Registry[any] {
 	proxy := NewRegistry[any]()

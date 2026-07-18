@@ -473,6 +473,11 @@ func (h *ErrorPanic) Reports(n int) Result {
 	return Result{reports[len(reports)-n:], true}
 }
 
+// crashMu is a package-global (not Core-scoped) on purpose: it serialises the
+// read-modify-write of the crash-report file across every ErrorPanic instance,
+// so two Cores sharing a crash file can't interleave writes. It guards a file
+// critical section, not an in-memory collection — hence a bare Mutex, not a
+// Registry or c.Lock.
 var crashMu Mutex
 
 func (h *ErrorPanic) appendReport(report CrashReport) {
