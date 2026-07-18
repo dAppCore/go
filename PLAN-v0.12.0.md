@@ -84,9 +84,9 @@ accessor is an ecosystem call.
 | W4-2 | **Bundle composition** — `WithBundle(prefix, other)`: a sealed Core's actions (delegated, double-gated: bundle's entitlements + metering fire first, then the host's on the prefixed name), data mounts, and drive handles mount under `<prefix>.<name>`. Collisions fail the option loudly; mount before WithServiceLock. Nested discovery rides along (`widgets.core.health`). | LANDED |
 | W4-3 | **Daemon loop** — `Config.Load` (JSON, nested objects flatten to dotted keys), `Config.FromEnv` (MYAPP_DATABASE_HOST → database.host), `WithConfigFile` / `WithEnvConfig` constructor options, `WithReloadOnSIGHUP` (subscribes the signal contract, runs ServiceReload; fails loudly if signal.received is already handled). | LANDED |
 | W4-4 | **Typed bus sugar** — `On[T]` (type-filtered subscribe, kills the hand-written switch) and `QueryFor[T]` (QUERY → `Return[T]`). The bus stays untyped — the three-line law holds. | LANDED |
-| W4-5 | **`Data.MountDir`** — a real directory as a Data mount via DirFS: dev-disk and prod-embed serve identically through `c.Data(name)`. | agent, landing |
+| W4-5 | **`Data.MountDir`** — a real directory as a Data mount via DirFS: dev-disk and prod-embed serve identically through `c.Data(name)`. | LANDED |
 | W4-6 | **`Service.Optional`** — non-essential services log-and-continue on failed OnStart (degraded boot); zero value keeps the strict contract. Named Optional, not Critical, so the zero value preserves existing behaviour. | LANDED |
-| W4-7 | **`AssertAllocs`** — the alloc-gate house idiom in assert.go, standardising the perf ratchet across the ecosystem. | agent, landing |
+| W4-7 | **`AssertAllocs`** — the alloc-gate house idiom in assert.go, standardising the perf ratchet across the ecosystem (SPOR: AllocsPerRun wrapped in test.go). | LANDED |
 | W4-8 | **`Policy`** — declarative entitlements: exact + `prefix.*` rules → allow/deny/int quota; `Checker()` + `Recorder()` pair closes the quota loop through Action.Run's metering; glob quotas pool across matching actions; unruled actions default allowed. | LANDED |
 
 Deliberately excluded from core (consumer-package shaped): scheduling/cron, supervision trees,
