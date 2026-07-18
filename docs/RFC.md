@@ -44,8 +44,8 @@ Every subsystem is accessed via a method on Core:
 c.Options()      // *Options     — input configuration
 c.App()          // *App         — application metadata (name, version)
 c.Config()       // *Config      — runtime settings, feature flags
-c.Data()         // *Data        — embedded assets (Registry[*Embed])
-c.Drive()        // *Drive       — transport handles (Registry[*DriveHandle])
+c.Data(name...)  // *Data        — embedded assets (Registry[*Embed]); named form binds a mount
+c.Drive(name...) // *Drive       — transport handles (Registry[*DriveHandle]); named form binds a handle
 c.Fs()           // *Fs          — filesystem I/O (sandboxable)
 c.Cli()          // *Cli         — CLI command framework
 c.IPC()          // *Ipc         — message bus internals
@@ -53,7 +53,7 @@ c.I18n()         // *I18n        — internationalisation
 c.Error()        // *ErrorPanic  — panic recovery
 c.Log()          // *ErrorLog    — structured logging
 c.Process()      // *Process     — managed execution (Action sugar)
-c.API()          // *API         — remote streams (protocol handlers)
+c.API(name...)   // *API         — remote streams (protocol handlers); named form binds a Drive endpoint
 c.Action(name)   // *Action      — named callable (register/invoke)
 c.Task(name)     // *Task        — composed Action sequence
 c.Entitled(name) // Entitlement  — permission check

@@ -53,8 +53,8 @@ func Register(c *core.Core) core.Result {
 | `c.App()` | `*App` | Application identity |
 | `c.Config(group...)` | `*Config` | Runtime settings, feature flags; pass a group for a key-prefixed view |
 | `c.Feature(name)` | `Feature` | Keyed feature-flag handle (Enable/Disable/Enabled) |
-| `c.Data()` | `*Data` | Embedded assets (Registry[*Embed]) |
-| `c.Drive()` | `*Drive` | Transport handles (Registry[*DriveHandle]) |
+| `c.Data(name...)` | `*Data` | Embedded assets (Registry[*Embed]); named form binds a mount — paths relative to it |
+| `c.Drive(name...)` | `*Drive` | Transport handles (Registry[*DriveHandle]); named form binds a handle (`Exists`/`Handle`/`Transport`) |
 | `c.Fs()` | `*Fs` | Filesystem I/O (sandboxable) |
 | `c.Cli()` | `*Cli` | CLI command framework |
 | `c.IPC()` | `*Ipc` | Message bus internals |

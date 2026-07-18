@@ -28,8 +28,32 @@ package core
 //	c := core.New()
 //	r := c.Data().ReadString("agent/persona/developer.md")
 //	if r.OK { core.Println(r.Value.(string)) }
+//
+// A view bound to one mount reads relative to it (see On / c.Data(name)):
+//
+//	r = c.Data("agent").ReadString("persona/developer.md")
 type Data struct {
 	*Registry[*Embed]
+	bound string // non-empty on a mount-bound view — see On / c.Data(name)
+}
+
+// On returns a view of Data bound to a named mount. Paths on the view
+// are relative to that mount — no name prefix. The view shares the
+// mount registry with the parent; only the binding is new. Sugar
+// reached via c.Data(name).
+//
+//	brain := c.Data().On("brain")
+//	r := brain.ReadString("coding.md")   // reads brain/coding.md
+func (d *Data) On(name string) *Data {
+	return &Data{Registry: d.Registry, bound: name}
+}
+
+// Exists reports whether the bound mount is registered — the
+// capability check for named content.
+//
+//	if c.Data("brain").Exists() { ... }
+func (d *Data) Exists() bool {
+	return d.bound != "" && d.Has(d.bound)
 }
 
 // New registers an embedded filesystem under a named prefix.
@@ -71,9 +95,17 @@ func (d *Data) New(opts Options) Result {
 }
 
 // resolve splits a path like "brain/coding.md" into mount name + relative path.
-// Uses Index + string-slicing so the split is zero-alloc — SplitN
-// would allocate a []string of length two plus the slice header.
+// On a bound view the whole path is relative to the binding. Uses Index +
+// string-slicing so the split is zero-alloc — SplitN would allocate a
+// []string of length two plus the slice header.
 func (d *Data) resolve(path string) (*Embed, string) {
+	if d.bound != "" {
+		r := d.Get(d.bound)
+		if !r.OK {
+			return nil, ""
+		}
+		return r.Value.(*Embed), path
+	}
 	i := Index(path, "/")
 	if i < 0 {
 		return nil, ""

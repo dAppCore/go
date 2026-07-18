@@ -137,3 +137,24 @@ func ExampleData_Mounts() {
 	Println(c.Data().Mounts())
 	// Output: []
 }
+
+// ExampleData_On binds a mount so paths become relative to it — the
+// named-resource accessor for embedded content.
+func ExampleData_On() {
+	c := New()
+	c.Data().New(NewOptions(
+		Option{Key: "name", Value: "brain"},
+		Option{Key: "source", Value: EmbeddedTestFS},
+		Option{Key: "path", Value: "tests/data"},
+	))
+	r := c.Data("brain").ReadString("test.txt")
+	Println(r.OK)
+	// Output: true
+}
+
+// ExampleData_Exists is the capability check for named mounts.
+func ExampleData_Exists() {
+	c := New()
+	Println(c.Data("ghost").Exists())
+	// Output: false
+}

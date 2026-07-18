@@ -859,25 +859,25 @@ func TestApi_API_Ugly_BoundViewSharesProtocols(t *T) {
 	AssertTrue(t, bound.Stream().OK)
 }
 
-func TestApi_On_Good(t *T) {
+func TestApi_API_On_Good(t *T) {
 	c := New()
 	AssertNotNil(t, c.API().On("lem-local"))
 }
 
-func TestApi_On_Bad(t *T) {
+func TestApi_API_On_Bad(t *T) {
 	c := New()
 	// A binding to a missing endpoint is queryable but not connectable.
 	AssertFalse(t, c.API().On("ghost").Exists())
 }
 
-func TestApi_On_Ugly(t *T) {
+func TestApi_API_On_Ugly(t *T) {
 	c := New()
 	// Rebinding never mutates the parent subsystem view.
 	_ = c.API().On("a").On("b")
 	AssertFalse(t, c.API().Exists())
 }
 
-func TestApi_Invoke_Good(t *T) {
+func TestApi_API_Invoke_Good(t *T) {
 	c := New()
 	c.API().RegisterProtocol("http", mockFactory(`{"ok":true}`))
 	c.Drive().New(NewOptions(
@@ -889,19 +889,19 @@ func TestApi_Invoke_Good(t *T) {
 	AssertEqual(t, `{"ok":true}`, r.String())
 }
 
-func TestApi_Invoke_Bad_Unbound(t *T) {
+func TestApi_API_Invoke_Bad(t *T) {
 	c := New()
 	r := c.API().Invoke("agentic.status", NewOptions())
 	AssertFalse(t, r.OK)
 }
 
-func TestApi_Invoke_Ugly_MissingEndpoint(t *T) {
+func TestApi_API_Invoke_Ugly(t *T) {
 	c := New()
 	r := c.API("ghost").Invoke("agentic.status", NewOptions())
 	AssertFalse(t, r.OK)
 }
 
-func TestApi_Exists_Good(t *T) {
+func TestApi_API_Exists_Good(t *T) {
 	c := New()
 	c.Drive().New(NewOptions(
 		Option{Key: "name", Value: "lem"},
@@ -910,11 +910,11 @@ func TestApi_Exists_Good(t *T) {
 	AssertTrue(t, c.API("lem").Exists())
 }
 
-func TestApi_Exists_Bad(t *T) {
+func TestApi_API_Exists_Bad(t *T) {
 	AssertFalse(t, New().API("ghost").Exists())
 }
 
-func TestApi_Exists_Ugly(t *T) {
+func TestApi_API_Exists_Ugly(t *T) {
 	// The unbound subsystem is never an endpoint.
 	AssertFalse(t, New().API().Exists())
 }

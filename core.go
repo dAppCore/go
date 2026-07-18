@@ -54,15 +54,30 @@ func (c *Core) Options() *Options { return c.options }
 //	c.App().Version  // "1.0.0"
 func (c *Core) App() *App { return c.app }
 
-// Data returns the embedded asset registry (Registry[*Embed]).
+// Data returns the embedded asset registry (Registry[*Embed]). With a
+// name it returns a view bound to that mount — paths become relative to
+// it (the named-resource accessor, as c.Lock / c.API / c.Config).
 //
-//	r := c.Data().ReadString("prompts/coding.md")
-func (c *Core) Data() *Data { return c.data }
+//	r := c.Data().ReadString("brain/coding.md")
+//	r = c.Data("brain").ReadString("coding.md")   // same file
+func (c *Core) Data(name ...string) *Data {
+	if len(name) == 0 || name[0] == "" {
+		return c.data
+	}
+	return c.data.On(name[0])
+}
 
 // Drive returns the transport handle registry (Registry[*DriveHandle]).
+// With a name it returns a view bound to that handle.
 //
 //	r := c.Drive().Get("forge")
-func (c *Core) Drive() *Drive { return c.drive }
+//	if c.Drive("forge").Exists() { url := c.Drive("forge").Transport() }
+func (c *Core) Drive(name ...string) *Drive {
+	if len(name) == 0 || name[0] == "" {
+		return c.drive
+	}
+	return c.drive.On(name[0])
+}
 
 // Fs returns the sandboxed filesystem.
 //

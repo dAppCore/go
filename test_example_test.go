@@ -196,7 +196,8 @@ func ExampleAssertInDelta() {
 func ExampleAssertSame() {
 	var t *T
 	a := &struct{}{}
-	AssertSame(t, a, a)
+	b := a // a second reference to the same pointer
+	AssertSame(t, a, b)
 }
 
 // ExampleRequireNoError requires no error through `RequireNoError` for AX-native tests.

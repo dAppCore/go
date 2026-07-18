@@ -41,8 +41,59 @@ type DriveHandle struct {
 //	    core.Option{Key: "name", Value: "homelab"},
 //	    core.Option{Key: "transport", Value: "ssh://agent@10.69.69.165"},
 //	))
+//
+// A view bound to one handle answers for it directly (see On / c.Drive(name)):
+//
+//	if c.Drive("homelab").Exists() { transport := c.Drive("homelab").Transport() }
 type Drive struct {
 	*Registry[*DriveHandle]
+	bound string // non-empty on a handle-bound view — see On / c.Drive(name)
+}
+
+// On returns a view of Drive bound to a named handle. The view shares
+// the handle registry with the parent; only the binding is new. Sugar
+// reached via c.Drive(name).
+//
+//	forge := c.Drive().On("forge")
+//	if forge.Exists() { ... }
+func (d *Drive) On(name string) *Drive {
+	return &Drive{Registry: d.Registry, bound: name}
+}
+
+// Exists reports whether the bound handle is registered — the
+// capability check for named transports.
+//
+//	if c.Drive("forge").Exists() { ... }
+func (d *Drive) Exists() bool {
+	return d.bound != "" && d.Has(d.bound)
+}
+
+// Handle returns the bound transport handle. Fails with operation
+// "drive.Handle" when the view has no binding or the handle is missing.
+//
+//	r := c.Drive("forge").Handle()
+//	if r.OK { handle := r.Value.(*core.DriveHandle) }
+func (d *Drive) Handle() Result {
+	if d.bound == "" {
+		return Result{E("drive.Handle", "no handle bound — use c.Drive(name)", nil), false}
+	}
+	r := d.Get(d.bound)
+	if !r.OK {
+		return Result{E("drive.Handle", Concat("handle not found: ", d.bound), nil), false}
+	}
+	return r
+}
+
+// Transport returns the bound handle's transport URL, "" when the
+// binding is absent — the Options-getter contract for named transports.
+//
+//	url := c.Drive("homelab").Transport()  // "ssh://agent@10.69.69.165"
+func (d *Drive) Transport() string {
+	r := d.Handle()
+	if !r.OK {
+		return ""
+	}
+	return r.Value.(*DriveHandle).Transport
 }
 
 // New registers a transport handle.

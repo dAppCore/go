@@ -56,3 +56,43 @@ func ExampleDrive_Get() {
 	}
 	// Output: http://10.69.69.165:9101
 }
+
+// ExampleDrive_On binds a named transport handle.
+func ExampleDrive_On() {
+	c := New()
+	c.Drive().New(NewOptions(
+		Option{Key: "name", Value: "homelab"},
+		Option{Key: "transport", Value: "ssh://agent@10.69.69.165"},
+	))
+	Println(c.Drive("homelab").Exists())
+	// Output: true
+}
+
+// ExampleDrive_Exists is the capability check for named transports.
+func ExampleDrive_Exists() {
+	Println(New().Drive("ghost").Exists())
+	// Output: false
+}
+
+// ExampleDrive_Handle retrieves the bound handle as a Result.
+func ExampleDrive_Handle() {
+	c := New()
+	c.Drive().New(NewOptions(
+		Option{Key: "name", Value: "forge"},
+		Option{Key: "transport", Value: "https://api.lthn.ai"},
+	))
+	r := c.Drive("forge").Handle()
+	Println(r.OK)
+	// Output: true
+}
+
+// ExampleDrive_Transport reads the bound transport URL, "" when absent.
+func ExampleDrive_Transport() {
+	c := New()
+	c.Drive().New(NewOptions(
+		Option{Key: "name", Value: "homelab"},
+		Option{Key: "transport", Value: "ssh://agent@10.69.69.165"},
+	))
+	Println(c.Drive("homelab").Transport())
+	// Output: ssh://agent@10.69.69.165
+}
