@@ -80,28 +80,28 @@ func TestEntitlement_Entitled_Ugly_DefaultQuantityIsOne(t *T) {
 
 func TestEntitlement_ActionRun_Good_Permitted(t *T) {
 	c := New()
-	c.Action("work", func(_ Context, _ Options) Result {
+	c.Action("test.work", func(_ Context, _ Options) Result {
 		return Result{Value: "done", OK: true}
 	})
 
-	r := c.Action("work").Run(Background(), NewOptions())
+	r := c.Action("test.work").Run(Background(), NewOptions())
 	AssertTrue(t, r.OK)
 	AssertEqual(t, "done", r.Value)
 }
 
 func TestEntitlement_ActionRun_Bad_Denied(t *T) {
 	c := New()
-	c.Action("restricted", func(_ Context, _ Options) Result {
+	c.Action("test.restricted", func(_ Context, _ Options) Result {
 		return Result{Value: "should not reach", OK: true}
 	})
 	c.SetEntitlementChecker(func(action string, qty int, ctx Context) Entitlement {
-		if action == "restricted" {
+		if action == "test.restricted" {
 			return Entitlement{Allowed: false, Reason: "tier too low"}
 		}
 		return Entitlement{Allowed: true, Unlimited: true}
 	})
 
-	r := c.Action("restricted").Run(Background(), NewOptions())
+	r := c.Action("test.restricted").Run(Background(), NewOptions())
 	AssertFalse(t, r.OK, "denied action must not execute")
 	err, ok := r.Value.(error)
 	AssertTrue(t, ok)
@@ -111,21 +111,21 @@ func TestEntitlement_ActionRun_Bad_Denied(t *T) {
 
 func TestEntitlement_ActionRun_Good_OtherActionsStillWork(t *T) {
 	c := New()
-	c.Action("allowed", func(_ Context, _ Options) Result {
+	c.Action("test.allowed", func(_ Context, _ Options) Result {
 		return Result{Value: "ok", OK: true}
 	})
-	c.Action("blocked", func(_ Context, _ Options) Result {
+	c.Action("test.blocked", func(_ Context, _ Options) Result {
 		return Result{Value: "nope", OK: true}
 	})
 	c.SetEntitlementChecker(func(action string, qty int, ctx Context) Entitlement {
-		if action == "blocked" {
+		if action == "test.blocked" {
 			return Entitlement{Allowed: false, Reason: "nope"}
 		}
 		return Entitlement{Allowed: true, Unlimited: true}
 	})
 
-	AssertTrue(t, c.Action("allowed").Run(Background(), NewOptions()).OK)
-	AssertFalse(t, c.Action("blocked").Run(Background(), NewOptions()).OK)
+	AssertTrue(t, c.Action("test.allowed").Run(Background(), NewOptions()).OK)
+	AssertFalse(t, c.Action("test.blocked").Run(Background(), NewOptions()).OK)
 }
 
 // --- NearLimit ---

@@ -739,7 +739,11 @@ func TestLog_Username_Bad(t *T) {
 }
 
 func TestLog_Username_Ugly(t *T) {
-	AssertEqual(t, Username(), Username())
+	// When the OS user lookup succeeds, Username must surface its
+	// Username field verbatim rather than falling through to env vars.
+	if r := UserCurrent(); r.OK {
+		AssertEqual(t, r.Value.(*User).Username, Username())
+	}
 }
 
 func TestLog_Warn_Bad(t *T) {
@@ -812,5 +816,6 @@ func TestLog_identity_Bad(t *T) {
 	AssertEqual(t, "", identity(""))
 }
 func TestLog_identity_Ugly(t *T) {
-	AssertEqual(t, "colour", identity("colour"))
+	// A no-op style hook must not alter embedded control characters.
+	AssertEqual(t, "a\nb", identity("a\nb"))
 }

@@ -55,7 +55,7 @@ func ExampleLocaleProvider() {
 // localisation. Language selection and translation stay behind the I18n service.
 func ExampleI18n_AddLocales() {
 	fs := (&Fs{}).New("/")
-	dir := fs.TempDir("core-i18n-example")
+	dir := MustCast[string](fs.TempDir("core-i18n-example"))
 	defer fs.DeleteAll(dir)
 	fs.Write(Path(dir, "locales", "en.yaml"), "hello: Hello")
 

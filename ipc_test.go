@@ -8,10 +8,10 @@ import (
 
 func TestIpc_Core_Action_Good(t *T) {
 	c := New()
-	c.Action("compute", func(_ Context, opts Options) Result {
+	c.Action("test.compute", func(_ Context, opts Options) Result {
 		return Result{Value: 42, OK: true}
 	})
-	r := c.Action("compute").Run(Background(), NewOptions())
+	r := c.Action("test.compute").Run(Background(), NewOptions())
 	AssertTrue(t, r.OK)
 	AssertEqual(t, 42, r.Value)
 }
