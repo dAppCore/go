@@ -219,6 +219,14 @@ func ExampleAssertElementsMatch_ints() {
 	AssertElementsMatch(t, []int{1, 2, 3}, []int{3, 2, 1})
 }
 
+// ExampleAssertAllocs gates a hot path's allocation ceiling through
+// `AssertAllocs` for AX-native tests. Passing assertions are silent while
+// failures stay one-line and AI-readable.
+func ExampleAssertAllocs() {
+	var t *T
+	AssertAllocs(t, 0, func() { _ = Abs(-1) })
+}
+
 // ExampleRequireNoError_withMessage requires no error with context through
 // `RequireNoError` for AX-native tests. Passing assertions are silent while failures
 // stay one-line and AI-readable.

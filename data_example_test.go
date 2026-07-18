@@ -24,6 +24,21 @@ func ExampleData_New() {
 	// [agent]
 }
 
+// ExampleData_MountDir mounts a real directory on disk as a Data mount, so dev-mode
+// assets read straight from disk serve identically to embedded prod assets mounted
+// through New.
+func ExampleData_MountDir() {
+	c := New()
+	r := c.Data().MountDir("docs", "tests/data")
+	Println(r.OK)
+
+	read := c.Data("docs").ReadString("test.txt")
+	Println(read.Value)
+	// Output:
+	// true
+	// hello from testdata
+}
+
 // ExampleData_ReadFile reads a named file through `Data.ReadFile` for embedded Lethean
 // data. Mounted data can be read, listed, and extracted through Result-returning helpers.
 func ExampleData_ReadFile() {

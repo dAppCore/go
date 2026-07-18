@@ -94,6 +94,32 @@ func (d *Data) New(opts Options) Result {
 	return Result{emb, true}
 }
 
+// MountDir mounts a real directory on disk as a Data mount under name, so
+// dev-mode assets read straight from disk serve identically to a prod
+// embed.FS mounted through New — both end up behind the same c.Data(name)
+// accessor.
+//
+//	r := c.Data().MountDir("brain", "/srv/agent/prompts")
+//	if r.OK { content := c.Data("brain").ReadString("coding.md") }
+func (d *Data) MountDir(name, dir string) Result {
+	if name == "" {
+		return Result{E("data.MountDir", "name is required", nil), false}
+	}
+	if dir == "" {
+		return Result{E("data.MountDir", "dir is required", nil), false}
+	}
+
+	fsys := DirFS(dir)
+	mr := Mount(fsys, ".")
+	if !mr.OK {
+		return mr
+	}
+
+	emb := mr.Value.(*Embed)
+	d.Set(name, emb)
+	return Result{emb, true}
+}
+
 // resolve splits a path like "brain/coding.md" into mount name + relative path.
 // On a bound view the whole path is relative to the binding. Uses Index +
 // string-slicing so the split is zero-alloc — SplitN would allocate a

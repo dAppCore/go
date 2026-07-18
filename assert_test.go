@@ -505,6 +505,24 @@ func TestAssert_AssertElementsMatch_Ugly(t *T) {
 	assertOneMessage(t, st, "both args must be slices")
 }
 
+// --- AssertAllocs: package-level sinks so the measured closures can't be
+// elided as dead code, and so the assignment targets are guaranteed to
+// escape to the heap (matching alloc_gate_test.go's own gate-var
+// convention, kept in this package's own test file since alloc_gate_test.go
+// lives in core_test, a different package). ---
+
+var (
+	assertAllocsSinkInt    int
+	assertAllocsSinkBytes  []byte
+	assertAllocsSinkResult Result
+)
+
+func TestAssert_AssertAllocs_Bad(t *T) {
+	st := assertStub(t)
+	AssertAllocs(st, 0, func() { assertAllocsSinkBytes = make([]byte, 1024) })
+	assertOneMessage(t, st, "AssertAllocs")
+}
+
 func TestAssert_RequireNoError_Bad(t *T) {
 	st := assertStub(t)
 	RequireNoError(st, AnError)
@@ -781,6 +799,21 @@ func TestAssert_AssertElementsMatch_Good(t *T) {
 	// Same elements in a different order match.
 	st := assertStub(t)
 	AssertElementsMatch(st, []int{1, 2, 3}, []int{3, 1, 2})
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertAllocs_Good(t *T) {
+	st := assertStub(t)
+	AssertAllocs(st, 0, func() { assertAllocsSinkInt = Abs(-42) })
+	AssertEmpty(t, st.msgs)
+}
+
+func TestAssert_AssertAllocs_Ugly(t *T) {
+	// Boundary: max exactly equal to the actual allocation count passes.
+	// Ok(string) boxing a non-pointer value into `any` is a stable 1-alloc
+	// (also gated at alloc_gate_test.go's "Ok_String" case).
+	st := assertStub(t)
+	AssertAllocs(st, 1, func() { assertAllocsSinkResult = Ok("ready") })
 	AssertEmpty(t, st.msgs)
 }
 

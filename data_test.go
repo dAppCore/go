@@ -41,6 +41,40 @@ func TestData_New_Bad(t *T) {
 	AssertFalse(t, r.OK)
 }
 
+func TestData_MountDir_Good(t *T) {
+	c := New()
+	fs := (&Fs{}).New("/")
+	dir := MustCast[string](fs.TempDir("core-data-mountdir"))
+	defer fs.DeleteAll(dir)
+	fs.Write(Path(dir, "note.txt"), "hello from disk\n")
+
+	r := c.Data().MountDir("disk", dir)
+	AssertTrue(t, r.OK)
+
+	read := c.Data("disk").ReadString("note.txt")
+	AssertTrue(t, read.OK)
+	AssertEqual(t, "hello from disk\n", read.Value.(string))
+}
+
+func TestData_MountDir_Bad(t *T) {
+	c := New()
+	r := c.Data().MountDir("", t.TempDir())
+	AssertFalse(t, r.OK)
+
+	r = c.Data().MountDir("disk", "")
+	AssertFalse(t, r.OK)
+}
+
+func TestData_MountDir_Ugly(t *T) {
+	c := New()
+	// The parent temp dir exists; the mount target inside it does not —
+	// Mount's ReadDir(".") probe fails, so MountDir fails at Mount rather
+	// than succeeding structurally and merely missing on read.
+	missing := Path(t.TempDir(), "does-not-exist")
+	r := c.Data().MountDir("disk", missing)
+	AssertFalse(t, r.OK)
+}
+
 func TestData_ReadString_Good(t *T) {
 	c := New()
 	mountTestData(t, c, "app")

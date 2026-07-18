@@ -69,3 +69,15 @@ type B = testing.B
 //	    f.Fuzz(func(t *T, raw string) { ... })
 //	}
 type F = testing.F
+
+// AllocsPerRun returns the mean number of heap allocations per call when fn
+// is invoked runs times (plus one untimed warm-up call to settle
+// steady-state behaviour). Re-exports testing.AllocsPerRun so callers never
+// need their own `import "testing"` — test.go is the SPOR owner for the
+// testing package; assert.go's AssertAllocs calls this rather than reaching
+// into testing directly.
+//
+//	avg := core.AllocsPerRun(1000, func() { _ = fastPath() })
+func AllocsPerRun(runs int, fn func()) float64 {
+	return testing.AllocsPerRun(runs, fn)
+}
