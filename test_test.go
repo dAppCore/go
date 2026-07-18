@@ -724,3 +724,20 @@ func TestTest_RequireTrue_Ugly(t *T) {
 	RequireTrue(t, len("") == 0)
 	RequireTrue(t, len([]int{1, 2}) == 2)
 }
+
+func TestTest_AllocsPerRun_Good(t *T) {
+	AssertEqual(t, 0.0, AllocsPerRun(100, func() {}))
+}
+
+func TestTest_AllocsPerRun_Bad(t *T) {
+	// An allocating body reports at least one alloc per run.
+	AssertTrue(t, AllocsPerRun(100, func() { testAllocSink = make([]byte, 1024) }) >= 1)
+}
+
+func TestTest_AllocsPerRun_Ugly(t *T) {
+	// Misuse-panic contract (stdlib): zero runs divides by zero. Same
+	// documented-panic idiom as RandPick.
+	AssertPanics(t, func() { AllocsPerRun(0, func() {}) })
+}
+
+var testAllocSink []byte

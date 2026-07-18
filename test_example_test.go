@@ -228,3 +228,10 @@ func ExampleAssertElementsMatch() {
 	var t *T
 	AssertElementsMatch(t, []string{"alpha", "bravo"}, []string{"bravo", "alpha"})
 }
+
+// ExampleAllocsPerRun measures a function's allocation rate — the SPOR
+// seam AssertAllocs gates through.
+func ExampleAllocsPerRun() {
+	Println(AllocsPerRun(100, func() {}))
+	// Output: 0
+}

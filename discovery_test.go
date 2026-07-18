@@ -4,7 +4,7 @@ package core_test
 
 import . "dappco.re/go"
 
-func TestDiscovery_CoreActions_Good(t *T) {
+func TestDiscovery_Action_CoreActions_Good(t *T) {
 	c := New()
 	a := c.Action("agent.deploy", func(Context, Options) Result { return Ok(nil) })
 	a.Schema = NewOptions(Option{Key: "target", Value: "required"})
@@ -15,14 +15,14 @@ func TestDiscovery_CoreActions_Good(t *T) {
 	AssertEqual(t, []string{"target"}, m["schemas"].(map[string][]string)["agent.deploy"])
 }
 
-func TestDiscovery_CoreInfo_Good(t *T) {
+func TestDiscovery_Action_CoreInfo_Good(t *T) {
 	c := New(WithOption("name", "meshnode"))
 	r := c.Action("core.info").Run(Background(), NewOptions())
 	AssertTrue(t, r.OK)
 	AssertEqual(t, "meshnode", r.Value.(map[string]any)["name"].(string))
 }
 
-func TestDiscovery_CoreHealth_Good(t *T) {
+func TestDiscovery_Action_CoreHealth_Good(t *T) {
 	r := New().Action("core.health").Run(Background(), NewOptions())
 	AssertTrue(t, r.OK)
 	AssertEqual(t, "ok", r.Value.(map[string]any)["status"].(string))
