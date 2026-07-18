@@ -67,12 +67,27 @@ func (a *Action) Run(ctx Context, opts Options) (result Result) {
 			return Result{E("action.Run", Concat("not entitled: ", a.Name, " — ", e.Reason), nil), false}
 		}
 	}
+	// Schema validation (opt-in, W3-4): declared keys are required
+	// inputs. Zero cost for schema-less actions — one Len read.
+	if a.Schema.Len() > 0 {
+		for _, opt := range a.Schema.Items() {
+			if !opts.Has(opt.Key) {
+				return Result{NewCode("action.schema", Concat("missing required option \"", opt.Key, "\" for action ", a.Name)), false}
+			}
+		}
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			result = Result{E("action.Run", Sprint("panic in action ", a.Name, ": ", r), nil), false}
 		}
 	}()
-	return a.Handler(ctx, opts)
+	result = a.Handler(ctx, opts)
+	// Close the metering loop at the choke point (W3-3): a successful
+	// gated action records consumption. No-op without a UsageRecorder.
+	if result.OK && a.core != nil {
+		a.core.RecordUsage(a.Name)
+	}
+	return result
 }
 
 // Exists returns true if this action has a registered handler.
@@ -138,6 +153,22 @@ func (c *Core) Action(name string, handler ...ActionHandler) *Action {
 	}
 	r := c.ipc.actions.Get(name)
 	if !r.OK {
+		// The colon law (W3-1): "host:action" synthesises a remote Action
+		// routed via c.API(host).Invoke when the host has a Drive handle.
+		// Local registrations always win; this scan runs only on a
+		// registry miss, so the local hot path pays nothing. Entitlements
+		// still gate the full colon name through Run.
+		if i := Index(name, ":"); i > 0 && i < len(name)-1 && c.drive.Has(name[:i]) {
+			endpoint, remote := name[:i], name[i+1:]
+			return &Action{
+				Name:    name,
+				enabled: true,
+				core:    c,
+				Handler: func(_ Context, opts Options) Result {
+					return c.API(endpoint).Invoke(remote, opts)
+				},
+			}
+		}
 		return &Action{Name: name} // no handler — Exists() returns false
 	}
 	return r.Value.(*Action)
@@ -283,7 +314,13 @@ func (c *Core) PerformAsync(action string, opts Options) Result {
 	}
 	taskID := ID()
 
-	c.ACTION(ActionTaskStarted{TaskIdentifier: taskID, Action: action, Options: opts})
+	// Hand the task its own ID under the reserved "_task" key so the
+	// handler can call c.Progress(taskID, ...) — cloned first: the
+	// caller's Options must not grow a surprise key (W3-2).
+	taskOpts := NewOptions(opts.Items()...)
+	taskOpts.Set("_task", taskID)
+
+	c.ACTION(ActionTaskStarted{TaskIdentifier: taskID, Action: action, Options: taskOpts})
 
 	c.waitGroup.Go(func() {
 		defer func() {
@@ -296,7 +333,10 @@ func (c *Core) PerformAsync(action string, opts Options) Result {
 			}
 		}()
 
-		r := c.Action(action).Run(Background(), opts)
+		// Core's lifecycle context, not Background (W3-2): shutdown
+		// signals in-flight tasks so the drain in ServiceShutdown can
+		// complete instead of waiting blind.
+		r := c.Action(action).Run(c.context, taskOpts)
 
 		c.ACTION(ActionTaskCompleted{
 			TaskIdentifier: taskID,

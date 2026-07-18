@@ -52,6 +52,20 @@ the bound verb — no collapse.
 
 ## Wave 3 — wiring the dormant features (additive, each needs one decision)
 
+**Status 2026-07-18 (same session):** W3-1 LANDED — the colon law: `c.Action("host:action")`
+synthesises a remote Action via `c.API(host).Invoke` on registry miss when the host has a
+Drive handle; local registrations always win; entitlements gate the full colon name; the
+local hot path pays nothing (scan only on miss). W3-2 LANDED — PerformAsync clones opts,
+injects the reserved `_task` key, and dispatches on `c.context` (shutdown now signals
+in-flight tasks). W3-3 LANDED — Action.Run records usage on success (default quantity 1;
+no-op without a recorder). W3-4 LANDED — non-empty Schema keys are required inputs, code
+`action.schema`. W3-5 LANDED — `Reloadable` interface + `Reloadables()` + `ServiceReload(ctx)`
+runner + `ActionServiceReload` broadcast; RegisterService auto-discovers. W3-7 LANDED (header
+deleted). Also: `WithCrashFile` CoreOption (the fleet's stopped-test seam — crash-file round
+trip now black-box tested), Cli nil-receiver guards (typed-nil `c.Cli().Run()` degrades to a
+coded failure), coded `error.Reports` miss. W3-6 (lsp anchoring) still open — extraction vs
+accessor is an ecosystem call.
+
 | # | Item | Decision needed |
 |---|---|---|
 | W3-1 | **RemoteAction into dispatch** — the colon law. `c.RemoteAction` fully resolves `"host:action"` (api.go:159) but has zero production callers | decide: wire into `Action.Run` when name contains ":" (transparent, matches the godoc vision) vs keep explicit. Transparent makes `c.API(name)` + Action registry one namespace — the vision — but adds a hot-path branch (bench it; Action.Run is per-dispatch). |

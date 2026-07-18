@@ -108,6 +108,11 @@ func (c *Core) RegisterService(name string, instance any) Result {
 			return s.OnShutdown(Background())
 		}
 	}
+	if s, ok := instance.(Reloadable); ok {
+		srv.OnReload = func() Result {
+			return s.OnReload(c.context)
+		}
+	}
 
 	c.services.Set(name, srv)
 

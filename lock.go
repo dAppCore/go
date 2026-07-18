@@ -156,3 +156,24 @@ func (c *Core) Stoppables() Result {
 	}
 	return Result{out, true}
 }
+
+// Reloadables returns services that have an OnReload function, in registration order.
+//
+//	c := core.New()
+//	r := c.Reloadables()
+//	if r.OK { services := r.Value.([]*core.Service); _ = services }
+func (c *Core) Reloadables() Result {
+	if c.services == nil {
+		return Result{}
+	}
+	out := make([]*Service, 0, c.services.Len())
+	c.services.Each(func(_ string, svc *Service) {
+		if svc.OnReload != nil {
+			out = append(out, svc)
+		}
+	})
+	if len(out) == 0 {
+		out = nil
+	}
+	return Result{out, true}
+}

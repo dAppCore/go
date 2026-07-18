@@ -305,3 +305,25 @@ func TestContract_WithOptions_Good_MergesNotClobbers(t *T) {
 	AssertEqual(t, "earlier", c.Options().String("keep"))
 	AssertEqual(t, "merged", c.Options().String("name"))
 }
+
+// --- W3: WithCrashFile — the exported crash-sink seam ---
+
+func TestContract_WithCrashFile_Good(t *T) {
+	path := Path(t.TempDir(), "crash.json")
+	c := New(WithCrashFile(path))
+	// Configured: the miss is now the empty file, not the missing config.
+	r := c.Error().Reports(1)
+	AssertFalse(t, r.OK)
+	AssertFalse(t, Contains(r.Error(), "no crash file"))
+}
+
+func TestContract_WithCrashFile_Bad(t *T) {
+	// An empty path is a constructor failure — MustNew panics on it.
+	AssertPanics(t, func() { MustNew(WithCrashFile("")) })
+}
+
+func TestContract_WithCrashFile_Ugly(t *T) {
+	// New() logs-and-continues on the failed option; the sink stays unset.
+	c := New(WithCrashFile(""))
+	AssertContains(t, c.Error().Reports(1).Error(), "no crash file")
+}

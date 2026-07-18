@@ -234,13 +234,26 @@ func TestError_ErrorPanic_Reports_Good(t *T) {
 	dir := t.TempDir()
 	path := Path(dir, "crashes.json")
 
-	// Create ErrorPanic with file output
-	c := New()
-	// Access internals via a crash that writes to file
-	// Since ErrorPanic fields are unexported, we test via Recover
-	_ = c
-	_ = path
-	// Crash reporting needs ErrorPanic configured with filePath — tested indirectly
+	// WithCrashFile is the exported seam for the report sink (W3).
+	c := New(WithCrashFile(path))
+	c.Error().SafeGo(func() {
+		panic("agent worker exploded")
+	})
+
+	// Recover writes the report after the goroutine's own defers —
+	// poll until it lands.
+	var r Result
+	for i := 0; i < 200; i++ {
+		r = c.Error().Reports(5)
+		if r.OK {
+			break
+		}
+		Sleep(5 * Millisecond)
+	}
+	AssertTrue(t, r.OK)
+	reports := r.Value.([]CrashReport)
+	AssertLen(t, reports, 1)
+	AssertContains(t, reports[0].Error, "agent worker exploded")
 }
 
 // --- ErrorPanic Crash File ---
@@ -253,12 +266,21 @@ func TestError_ErrorPanic_CrashFile_Good(t *T) {
 	// ErrorPanic.filePath is unexported — but we can test via the package-level
 	// error handling that writes crash reports
 
-	// For now, test that Reports handles missing file gracefully
-	c := New()
-	r := c.Error().Reports(5)
-	AssertFalse(t, r.OK)
-	AssertNil(t, r.Value)
-	_ = path
+	// A second crash appends — Reports returns newest-limited slices.
+	c := New(WithCrashFile(path))
+	c.Error().SafeGo(func() { panic("first crash") })
+	c.Error().SafeGo(func() { panic("second crash") })
+
+	var r Result
+	for i := 0; i < 200; i++ {
+		r = c.Error().Reports(5)
+		if r.OK && len(r.Value.([]CrashReport)) == 2 {
+			break
+		}
+		Sleep(5 * Millisecond)
+	}
+	AssertTrue(t, r.OK)
+	AssertLen(t, r.Value.([]CrashReport), 2)
 }
 
 // --- Error formatting branches ---
@@ -552,15 +574,17 @@ func TestError_ErrorPanic_Recover_Ugly(t *T) {
 }
 
 func TestError_ErrorPanic_Reports_Bad(t *T) {
+	// Unconfigured sink misses with a coded error, not a bare Result.
 	r := New().Error().Reports(1)
 	AssertFalse(t, r.OK)
-	AssertNil(t, r.Value)
+	AssertError(t, r.Err())
+	AssertContains(t, r.Error(), "no crash file")
 }
 
 func TestError_ErrorPanic_Reports_Ugly(t *T) {
 	r := New().Error().Reports(0)
 	AssertFalse(t, r.OK)
-	AssertNil(t, r.Value)
+	AssertContains(t, r.Error(), "WithCrashFile")
 }
 
 func TestError_ErrorPanic_SafeGo_Bad(t *T) {

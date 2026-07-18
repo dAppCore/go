@@ -45,6 +45,17 @@ type Stoppable interface {
 	OnShutdown(ctx Context) Result
 }
 
+// Reloadable is implemented by services that support configuration
+// reload. ServiceReload is the top-level runner; trigger it from a
+// signal handler, a config watcher, or an admin action.
+//
+//	func (s *MyService) OnReload(ctx Context) core.Result {
+//	    return s.reconnect(ctx)
+//	}
+type Reloadable interface {
+	OnReload(ctx Context) Result
+}
+
 // --- Action Messages ---
 
 // ActionServiceStartup is broadcast when a Core service finishes startup.
@@ -56,6 +67,16 @@ type Stoppable interface {
 //	    return core.Result{OK: true}
 //	})
 type ActionServiceStartup struct{}
+
+// ActionServiceReload is broadcast when ServiceReload completes.
+//
+//	c.RegisterAction(func(_ *core.Core, msg core.Message) core.Result {
+//	    if _, ok := msg.(core.ActionServiceReload); ok {
+//	        core.Info("configuration reloaded")
+//	    }
+//	    return core.Result{OK: true}
+//	})
+type ActionServiceReload struct{}
 
 // ActionServiceShutdown is broadcast when Core begins service shutdown.
 //
@@ -293,6 +314,21 @@ func WithOption(key string, value any) CoreOption {
 func WithServiceLock() CoreOption {
 	return func(c *Core) Result {
 		c.LockEnable()
+		return Result{OK: true}
+	}
+}
+
+// WithCrashFile sets the crash-report file for panic recovery — the
+// exported seam for ErrorPanic's report sink. Recover appends reports
+// there; Reports reads them back.
+//
+//	core.New(core.WithCrashFile("/var/log/myapp/crash.json"))
+func WithCrashFile(path string) CoreOption {
+	return func(c *Core) Result {
+		if path == "" {
+			return Result{E("core.WithCrashFile", "path cannot be empty", nil), false}
+		}
+		c.error.filePath = path
 		return Result{OK: true}
 	}
 }

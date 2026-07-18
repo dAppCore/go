@@ -377,3 +377,26 @@ func TestEntitlement_Core_SetUsageRecorder_Ugly(t *T) {
 	c.RecordUsage("agent.dispatch")
 	AssertEqual(t, "second", recorded)
 }
+
+// --- W3: the metering loop closes at Action.Run ---
+
+func TestEntitlement_RecordUsage_Good_ActionChokePoint(t *T) {
+	c := New()
+	var recorded []string
+	c.SetUsageRecorder(func(action string, quantity int, _ Context) {
+		recorded = append(recorded, Sprintf("%s:%d", action, quantity))
+	})
+	c.Action("meter.me", func(Context, Options) Result { return Ok(nil) })
+	c.Action("meter.me").Run(Background(), NewOptions())
+	AssertLen(t, recorded, 1)
+	AssertEqual(t, "meter.me:1", recorded[0])
+}
+
+func TestEntitlement_RecordUsage_Bad_FailureNotRecorded(t *T) {
+	c := New()
+	count := 0
+	c.SetUsageRecorder(func(string, int, Context) { count++ })
+	c.Action("meter.fail", func(Context, Options) Result { return Fail(NewError("nope")) })
+	c.Action("meter.fail").Run(Background(), NewOptions())
+	AssertEqual(t, 0, count)
+}

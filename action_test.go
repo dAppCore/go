@@ -757,3 +757,74 @@ func TestAction_Action_Enabled_Ugly(t *T) {
 	a := &Action{Name: "x"}
 	AssertFalse(t, a.Enabled())
 }
+
+// --- W3: schema validation, remote colon dispatch, task ID injection ---
+
+func TestAction_Run_Good_SchemaSatisfied(t *T) {
+	c := New()
+	a := c.Action("schema.check", func(_ Context, opts Options) Result { return Ok(opts.String("dir")) })
+	a.Schema = NewOptions(Option{Key: "dir", Value: "required"})
+	r := c.Action("schema.check").Run(Background(), NewOptions(Option{Key: "dir", Value: "/tmp"}))
+	AssertTrue(t, r.OK)
+	AssertEqual(t, "/tmp", r.Value.(string))
+}
+
+func TestAction_Run_Bad_SchemaMissingKey(t *T) {
+	c := New()
+	a := c.Action("schema.check", func(Context, Options) Result { return Ok(nil) })
+	a.Schema = NewOptions(Option{Key: "dir", Value: "required"})
+	r := c.Action("schema.check").Run(Background(), NewOptions())
+	AssertFalse(t, r.OK)
+	AssertEqual(t, "action.schema", r.Code())
+}
+
+func TestAction_Action_Good_RemoteColon(t *T) {
+	c := New()
+	c.API().RegisterProtocol("http", mockFactory(`{"ok":true}`))
+	c.Drive().New(NewOptions(
+		Option{Key: "name", Value: "charon"},
+		Option{Key: "transport", Value: "http://10.69.69.165:9101/mcp"},
+	))
+	a := c.Action("charon:agentic.status")
+	AssertTrue(t, a.Exists())
+	r := a.Run(Background(), NewOptions())
+	AssertTrue(t, r.OK)
+}
+
+func TestAction_Action_Bad_RemoteColonNoHandle(t *T) {
+	// No Drive handle for the host — the colon name stays a zombie.
+	AssertFalse(t, New().Action("ghost:x.y").Exists())
+}
+
+func TestAction_Action_Ugly_LocalBeatsColon(t *T) {
+	c := New()
+	c.Drive().New(NewOptions(
+		Option{Key: "name", Value: "charon"},
+		Option{Key: "transport", Value: "http://10.69.69.165:9101/mcp"},
+	))
+	// A local registration under a colon name wins over remote synthesis.
+	c.Action("charon:agentic.status", func(Context, Options) Result { return Ok("local") })
+	r := c.Action("charon:agentic.status").Run(Background(), NewOptions())
+	AssertEqual(t, "local", r.Value.(string))
+}
+
+func TestAction_PerformAsync_Good_TaskIDInjected(t *T) {
+	c := New()
+	got := make(chan string, 1)
+	c.Action("task.echo", func(_ Context, opts Options) Result {
+		got <- opts.String("_task")
+		return Ok(nil)
+	})
+	r := c.PerformAsync("task.echo", NewOptions())
+	AssertEqual(t, r.Value.(string), <-got)
+}
+
+func TestAction_PerformAsync_Ugly_CallerOptionsUntouched(t *T) {
+	c := New()
+	done := make(chan struct{})
+	c.Action("task.noop", func(Context, Options) Result { close(done); return Ok(nil) })
+	opts := NewOptions(Option{Key: "k", Value: "v"})
+	c.PerformAsync("task.noop", opts)
+	<-done
+	AssertFalse(t, opts.Has("_task"))
+}

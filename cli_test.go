@@ -325,3 +325,12 @@ func TestCLI_Run_Ugly_BareHandlerFailurePropagates(t *T) {
 	AssertFalse(t, r.OK)
 	AssertEqual(t, "", r.Code())
 }
+
+func TestCLI_Run_Bad_NilReceiver(t *T) {
+	// Without WithCli, c.Cli() is a typed nil — Run degrades to a coded
+	// failure instead of a panic.
+	c := New()
+	r := c.Cli().Run("anything")
+	AssertFalse(t, r.OK)
+	AssertContains(t, r.Error(), "WithCli")
+}

@@ -251,3 +251,17 @@ func ExampleCore_Progress() {
 	// 0.5
 	// halfway
 }
+
+// ExampleCore_Action_remote dispatches "host:action" through the named
+// endpoint's transport — the colon law. Local registrations always win.
+func ExampleCore_Action_remote() {
+	c := New()
+	c.API().RegisterProtocol("http", mockFactory("pong"))
+	c.Drive().New(NewOptions(
+		Option{Key: "name", Value: "charon"},
+		Option{Key: "transport", Value: "http://10.69.69.165:9101/mcp"},
+	))
+	r := c.Action("charon:agentic.status").Run(Background(), NewOptions())
+	Println(r.String())
+	// Output: pong
+}

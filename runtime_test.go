@@ -412,3 +412,43 @@ func TestRuntime_ServiceStartup_Ugly_FeaturesSealedNotFrozen(t *T) {
 	c.Feature("brand-new").Enable()
 	AssertFalse(t, c.Feature("brand-new").Enabled())
 }
+
+// --- W3-5: the OnReload runner ---
+
+type reloadProbe struct{ count int }
+
+func (r *reloadProbe) OnReload(Context) Result {
+	r.count++
+	return Ok(nil)
+}
+
+type failingReloader struct{}
+
+func (f *failingReloader) OnReload(Context) Result {
+	return Fail(NewError("reload broke"))
+}
+
+func TestRuntime_ServiceReload_Good(t *T) {
+	c := New()
+	p := &reloadProbe{}
+	AssertTrue(t, c.RegisterService("probe", p).OK)
+	AssertTrue(t, c.ServiceReload(Background()).OK)
+	AssertEqual(t, 1, p.count)
+}
+
+func TestRuntime_ServiceReload_Bad(t *T) {
+	c := New()
+	AssertTrue(t, c.RegisterService("failing", &failingReloader{}).OK)
+	AssertFalse(t, c.ServiceReload(Background()).OK)
+}
+
+func TestRuntime_ServiceReload_Ugly(t *T) {
+	// A cancelled context stops the chain before any hook runs.
+	ctx, cancel := WithCancel(Background())
+	cancel()
+	c := New()
+	p := &reloadProbe{}
+	AssertTrue(t, c.RegisterService("probe", p).OK)
+	AssertFalse(t, c.ServiceReload(ctx).OK)
+	AssertEqual(t, 0, p.count)
+}

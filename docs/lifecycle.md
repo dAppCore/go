@@ -133,4 +133,11 @@ This is what makes `PerformAsync` safe for long-running work that should complet
 
 ## `OnReload`
 
-`Service` includes an `OnReload` callback field, but CoreGO does not currently expose a top-level lifecycle runner for reload operations.
+`ServiceReload` runs every service's `OnReload` in registration order — trigger it from a signal handler, a config watcher, or an admin action. `RegisterService` adapts the `Reloadable` interface onto the callback, and `ActionServiceReload` broadcasts on success.
+
+```go
+r := c.ServiceReload(c.Context())
+if !r.OK {
+	// first failing reload stops the chain
+}
+```

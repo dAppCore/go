@@ -71,6 +71,30 @@ func (c *Core) ServiceStartup(ctx Context, options any) Result {
 	return Result{OK: true}
 }
 
+// ServiceReload runs OnReload for all registered services that have
+// one, in registration order — the top-level runner the OnReload field
+// was waiting for (W3-5). A failing reload stops the chain and returns
+// that result. Broadcasts ActionServiceReload on success.
+//
+//	r := c.ServiceReload(c.Context())
+//	if !r.OK { return r }
+func (c *Core) ServiceReload(ctx Context) Result {
+	reloadables := c.Reloadables()
+	if reloadables.OK {
+		for _, s := range reloadables.Value.([]*Service) {
+			if err := ctx.Err(); err != nil {
+				return Result{err, false}
+			}
+			r := s.OnReload()
+			if !r.OK {
+				return r
+			}
+		}
+	}
+	c.ACTION(ActionServiceReload{})
+	return Result{OK: true}
+}
+
 // ServiceShutdown drains background tasks, then stops all registered services.
 //
 //	c := core.New()

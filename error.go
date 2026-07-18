@@ -454,7 +454,7 @@ func (h *ErrorPanic) SafeGo(fn func()) {
 //	if r.OK { reports := r.Value.([]core.CrashReport); _ = reports }
 func (h *ErrorPanic) Reports(n int) Result {
 	if h.filePath == "" {
-		return Result{}
+		return Result{E("error.Reports", "no crash file configured — core.WithCrashFile", nil), false}
 	}
 	crashMu.Lock()
 	defer crashMu.Unlock()

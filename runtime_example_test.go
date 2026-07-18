@@ -190,3 +190,19 @@ func ExampleCore_IsShutdown() {
 	// false
 	// true
 }
+
+type reloadableCache struct{}
+
+func (r *reloadableCache) OnReload(Context) Result {
+	Println("cache reloaded")
+	return Ok(nil)
+}
+
+// ExampleCore_ServiceReload runs every service's OnReload in
+// registration order — trigger from a signal handler or admin action.
+func ExampleCore_ServiceReload() {
+	c := New()
+	c.RegisterService("cache", &reloadableCache{})
+	c.ServiceReload(Background())
+	// Output: cache reloaded
+}

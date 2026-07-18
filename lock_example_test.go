@@ -125,3 +125,12 @@ func ExampleCore_Stoppables() {
 	Println(len(r.Value.([]*Service)))
 	// Output: 1
 }
+
+// ExampleCore_Reloadables lists services carrying an OnReload hook.
+func ExampleCore_Reloadables() {
+	c := New()
+	c.RegisterService("cache", &reloadableCache{})
+	r := c.Reloadables()
+	Println(len(r.Value.([]*Service)))
+	// Output: 1
+}

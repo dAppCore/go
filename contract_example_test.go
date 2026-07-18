@@ -193,3 +193,11 @@ func ExampleMustNew() {
 	Println(bundle.App().Name)
 	// Output: widgets
 }
+
+// ExampleWithCrashFile wires the crash-report sink at construction —
+// Recover appends reports there, Reports reads them back.
+func ExampleWithCrashFile() {
+	c := New(WithCrashFile("/var/log/myapp/crash.json"))
+	Println(c.Error() != nil)
+	// Output: true
+}

@@ -339,5 +339,3 @@ func registryProxy[T any](src *Registry[T]) *Registry[any] {
 	})
 	return proxy
 }
-
-// --- Global Instance ---
