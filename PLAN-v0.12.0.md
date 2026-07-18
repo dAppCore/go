@@ -63,8 +63,11 @@ no-op without a recorder). W3-4 LANDED — non-empty Schema keys are required in
 runner + `ActionServiceReload` broadcast; RegisterService auto-discovers. W3-7 LANDED (header
 deleted). Also: `WithCrashFile` CoreOption (the fleet's stopped-test seam — crash-file round
 trip now black-box tested), Cli nil-receiver guards (typed-nil `c.Cli().Run()` degrades to a
-coded failure), coded `error.Reports` miss. W3-6 (lsp anchoring) still open — extraction vs
-accessor is an ecosystem call.
+coded failure), coded `error.Reports` miss. W3-6 CLOSED: lsp.go has ZERO Core coupling —
+it is the standalone AX lint server (SPOR diagnostics next to the idioms they lint), so a
+c.LSP() accessor would be artificial. Anchored by documentation (CLAUDE.md subsystem table
+names LSPServe / LSPRegisterDiagnostic); extraction to dappco.re/go/lsp is the v0.13
+candidate when the consumer split earns a module.
 
 | # | Item | Decision needed |
 |---|---|---|
