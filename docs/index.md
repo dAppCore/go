@@ -55,7 +55,7 @@ The full contract is `docs/RFC.md` (21 sections, 1476 lines). An agent should be
 | [services.md](services.md) | Service registry, ServiceRuntime, service locks |
 | [commands.md](commands.md) | Path-based commands, Managed field |
 | [messaging.md](messaging.md) | ACTION, QUERY, named Actions, PerformAsync |
-| [lifecycle.md](lifecycle.md) | RunE, ServiceStartup, ServiceShutdown |
+| [lifecycle.md](lifecycle.md) | RunResult, ServiceStartup, ServiceShutdown |
 | [subsystems.md](subsystems.md) | App, Data, Drive, Fs, Config, I18n |
 | [errors.md](errors.md) | core.E(), structured errors, panic recovery |
 | [testing.md](testing.md) | AX-7 TestFile_Function_{Good,Bad,Ugly} |

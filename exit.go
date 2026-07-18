@@ -2,7 +2,7 @@
 
 // Process termination with graceful shutdown.
 //
-// Always prefer returning errors from RunE() over calling Exit. Use Exit only
+// Always prefer returning a failed Result up to RunResult() over calling Exit. Use Exit only
 // when you cannot return: signal handlers, panic recovery, or fatal errors deep
 // in callbacks where the caller chain has no place for an error.
 //

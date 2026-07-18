@@ -30,11 +30,11 @@ c.Run()
 
 ```
 New() → WithService factories called → LockApply()
-RunE() → defer ServiceShutdown() → ServiceStartup() → Cli.Run() → returns error
-Run()  → RunE() → os.Exit(1) on error
+RunResult() → defer ServiceShutdown() → ServiceStartup() → Cli.Run() → returns Result
+Run()  → RunResult() → c.Exit(1) when !r.OK
 ```
 
-`RunE()` is the primary lifecycle — returns `error`, always calls `ServiceShutdown` via defer (even on startup failure or panic). `Run()` is sugar that calls `RunE()` and exits on error. `ServiceStartup` calls `OnStartup(ctx)` on all `Startable` services in registration order. `ServiceShutdown` calls `OnShutdown(ctx)` on all `Stoppable` services.
+`RunResult()` is the primary lifecycle — returns `Result`, always calls `ServiceShutdown` via defer (even on startup failure or panic). `Run()` is sugar that calls `RunResult()` and exits on failure. `ServiceStartup` calls `OnStartup(ctx)` on all `Startable` services in registration order. `ServiceShutdown` calls `OnShutdown(ctx)` on all `Stoppable` services.
 
 ### 1.3 Subsystem Accessors
 
@@ -217,7 +217,7 @@ type Stoppable interface {
 }
 ```
 
-Services implementing these are called during `RunE()` / `Run()` in registration order.
+Services implementing these are called during `RunResult()` / `Run()` in registration order.
 
 ---
 
