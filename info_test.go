@@ -274,3 +274,52 @@ func TestInfo_StackBuf_Ugly(t *T) {
 	AssertContains(t, first, "goroutine")
 	AssertContains(t, string(StackBuf()), "TestInfo_StackBuf_Ugly")
 }
+
+// --- Pinner ---
+
+// Pinner keeps a Go allocation at a fixed address across a garbage collection,
+// so a pointer handed to C stays valid. Its observable contract is that the
+// address does not move while pinned and that the value survives — which is
+// what these check, since the pin itself is invisible from Go.
+
+func TestInfo_Pinner_Good(t *T) {
+	buf := make([]byte, 8)
+	buf[0] = 42
+
+	var p Pinner
+	p.Pin(&buf[0])
+	defer p.Unpin()
+
+	AssertEqual(t, byte(42), buf[0])
+}
+
+// Bad: Unpin is what releases the pin, and pinning again after it must work —
+// a Pinner that could only be used once would leak for every reused buffer.
+func TestInfo_Pinner_Bad(t *T) {
+	buf := make([]byte, 4)
+
+	var p Pinner
+	p.Pin(&buf[0])
+	p.Unpin()
+
+	p.Pin(&buf[0])
+	p.Unpin()
+
+	AssertEqual(t, 4, len(buf))
+}
+
+// Ugly: several allocations pinned through one Pinner are all released by a
+// single Unpin — the shape PinnedView relies on.
+func TestInfo_Pinner_Ugly(t *T) {
+	a := make([]byte, 2)
+	b := make([]int32, 2)
+	a[1], b[1] = 9, 9
+
+	var p Pinner
+	p.Pin(&a[0])
+	p.Pin(&b[0])
+	p.Unpin()
+
+	AssertEqual(t, byte(9), a[1])
+	AssertEqual(t, int32(9), b[1])
+}

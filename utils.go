@@ -7,8 +7,6 @@ package core
 
 import (
 	cryptorand "crypto/rand"
-	"encoding/hex"
-	"strconv"
 )
 
 // --- ID Generation ---
@@ -29,14 +27,14 @@ func ID() string {
 	// "id-" + uint64 (max 20 digits) + "-" + 6 hex chars = 30 cap.
 	buf := make([]byte, 0, 32)
 	buf = append(buf, "id-"...)
-	buf = strconv.AppendUint(buf, idCounter.Add(1), 10)
+	buf = AppendUint(buf, idCounter.Add(1), 10)
 	buf = append(buf, '-')
 
 	var rnd [3]byte
 	if _, err := cryptorand.Read(rnd[:]); err != nil {
 		buf = append(buf, "000000"...)
 	} else {
-		buf = hex.AppendEncode(buf, rnd[:])
+		buf = HexAppendEncode(buf, rnd[:])
 	}
 	return AsString(buf)
 }
@@ -49,7 +47,7 @@ func shortRand() string {
 	if _, err := cryptorand.Read(rnd[:]); err != nil {
 		return "000000"
 	}
-	buf = hex.AppendEncode(buf, rnd[:])
+	buf = HexAppendEncode(buf, rnd[:])
 	return AsString(buf)
 }
 

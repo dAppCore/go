@@ -7,7 +7,6 @@ package core
 
 import (
 	cryptorand "crypto/rand"
-	"encoding/binary"
 	fastrand "math/rand/v2"
 )
 
@@ -75,7 +74,7 @@ func RandomInt(min, max int) Result {
 		if _, err := cryptorand.Read(buf[:]); err != nil {
 			return Result{Value: WrapCode(err, "random.entropy.failed", "RandomInt", "OS entropy source failed"), OK: false}
 		}
-		n := binary.BigEndian.Uint64(buf[:])
+		n := BigEndianUint64(buf[:])
 		if n < threshold {
 			return Result{Value: int(n%span) + min, OK: true}
 		}
