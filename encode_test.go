@@ -132,3 +132,86 @@ func TestEncode_Base64URLDecode_Ugly(t *T) {
 	_, ok := r.Value.(error)
 	AssertTrue(t, ok)
 }
+
+// --- BigEndianUint64 ---
+
+func TestEncode_BigEndianUint64_Good(t *T) {
+	AssertEqual(t, uint64(1), BigEndianUint64([]byte{0, 0, 0, 0, 0, 0, 0, 1}))
+}
+
+// Bad: byte order is the whole point — the same bytes read big-endian and
+// little-endian must not agree, or a caller has picked the wrong one.
+func TestEncode_BigEndianUint64_Bad(t *T) {
+	b := []byte{1, 0, 0, 0, 0, 0, 0, 0}
+	AssertEqual(t, uint64(1)<<56, BigEndianUint64(b))
+	AssertFalse(t, BigEndianUint64(b) == LittleEndianUint64(b))
+}
+
+// Ugly: only the first eight bytes are read, so a longer slice is not an error
+// and the tail is ignored.
+func TestEncode_BigEndianUint64_Ugly(t *T) {
+	AssertEqual(t, ^uint64(0), BigEndianUint64([]byte{255, 255, 255, 255, 255, 255, 255, 255, 9, 9}))
+}
+
+// --- LittleEndianUint64 ---
+
+func TestEncode_LittleEndianUint64_Good(t *T) {
+	AssertEqual(t, uint64(1), LittleEndianUint64([]byte{1, 0, 0, 0, 0, 0, 0, 0}))
+}
+
+func TestEncode_LittleEndianUint64_Bad(t *T) {
+	AssertEqual(t, uint64(1)<<56, LittleEndianUint64([]byte{0, 0, 0, 0, 0, 0, 0, 1}))
+}
+
+// Ugly: round-trips with the write side, which is how Keccak absorbs and
+// squeezes its state.
+func TestEncode_LittleEndianUint64_Ugly(t *T) {
+	buf := make([]byte, 8)
+	PutLittleEndianUint64(buf, 0xDEADBEEFCAFEBABE)
+	AssertEqual(t, uint64(0xDEADBEEFCAFEBABE), LittleEndianUint64(buf))
+}
+
+// --- PutLittleEndianUint64 ---
+
+func TestEncode_PutLittleEndianUint64_Good(t *T) {
+	buf := make([]byte, 8)
+	PutLittleEndianUint64(buf, 1)
+	AssertEqual(t, byte(1), buf[0])
+	AssertEqual(t, byte(0), buf[7])
+}
+
+// Bad: writes exactly eight bytes and nothing beyond them, so a caller can
+// write into the middle of a larger buffer without clobbering its neighbours.
+func TestEncode_PutLittleEndianUint64_Bad(t *T) {
+	buf := make([]byte, 10)
+	buf[8], buf[9] = 7, 7
+	PutLittleEndianUint64(buf[:8], ^uint64(0))
+	AssertEqual(t, byte(7), buf[8])
+	AssertEqual(t, byte(7), buf[9])
+}
+
+func TestEncode_PutLittleEndianUint64_Ugly(t *T) {
+	buf := make([]byte, 16)
+	PutLittleEndianUint64(buf[8:], 0x0102030405060708)
+	AssertEqual(t, uint64(0), LittleEndianUint64(buf[:8]))
+	AssertEqual(t, uint64(0x0102030405060708), LittleEndianUint64(buf[8:]))
+}
+
+// --- HexAppendEncode ---
+
+func TestEncode_HexAppendEncode_Good(t *T) {
+	AssertEqual(t, "0aff", AsString(HexAppendEncode(nil, []byte{0x0a, 0xff})))
+}
+
+// Bad: an empty src appends nothing at all — dst comes back untouched rather
+// than gaining a separator or a padding byte.
+func TestEncode_HexAppendEncode_Bad(t *T) {
+	AssertEqual(t, "id-", AsString(HexAppendEncode([]byte("id-"), nil)))
+}
+
+// Ugly: the reason this exists over HexEncode — it extends dst in place, so a
+// caller building an identifier stays at one allocation.
+func TestEncode_HexAppendEncode_Ugly(t *T) {
+	AssertEqual(t, "id-42-0aff", AsString(HexAppendEncode([]byte("id-42-"), []byte{0x0a, 0xff})))
+	AssertEqual(t, HexEncode([]byte{0x0a, 0xff}), AsString(HexAppendEncode(nil, []byte{0x0a, 0xff})))
+}

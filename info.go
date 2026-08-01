@@ -175,3 +175,16 @@ func EnvKeys() []string {
 	}
 	return keys
 }
+
+// Pinner pins Go memory in place for the lifetime of a cgo call, so a pointer
+// handed to C stays valid across a garbage collection.
+//
+//	var p core.Pinner
+//	p.Pin(&buf[0])
+//	defer p.Unpin()
+//
+// Aliased here rather than imported at the use site because info.go is
+// runtime's sole owner (SPOR). The consumer is PinnedView in unsafe.go, which
+// documents the safety contract — a slice holding Go pointers makes Pin panic
+// under the race detector.
+type Pinner = runtime.Pinner
