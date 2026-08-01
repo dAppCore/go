@@ -4,8 +4,6 @@
 
 package core
 
-import ()
-
 // ConfigVar is a variable that can be set, unset, and queried for its state.
 //
 //	host := core.NewConfigVar("homelab.lthn.sh")

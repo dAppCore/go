@@ -6,8 +6,6 @@
 
 package core
 
-import ()
-
 // Translator defines the interface for translation services.
 // Implemented by go-i18n's Srv.
 //
