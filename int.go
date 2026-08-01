@@ -50,3 +50,37 @@ func ParseInt(s string, base int, bitSize int) Result {
 	}
 	return Result{i, true}
 }
+
+// The Append* family formats into a caller-supplied buffer and returns the
+// extended slice, so a caller assembling a line stays at one allocation where
+// the Format*/Itoa forms would each add their own. int.go is strconv's sole
+// owner (SPOR), so they live here rather than at the call sites that need them
+// — the structured logger's field encoder and ID(). All are inlinable
+// pass-throughs, so routing through core costs nothing over the direct call.
+
+// AppendInt appends the base-`base` text of i to dst.
+//
+//	buf = core.AppendInt(buf[:0], -42, 10)
+func AppendInt(dst []byte, i int64, base int) []byte { return strconv.AppendInt(dst, i, base) }
+
+// AppendUint appends the base-`base` text of i to dst.
+//
+//	buf = core.AppendUint(buf, counter.Add(1), 10)
+func AppendUint(dst []byte, i uint64, base int) []byte { return strconv.AppendUint(dst, i, base) }
+
+// AppendBool appends "true" or "false" to dst.
+//
+//	buf = core.AppendBool(buf[:0], ok)
+func AppendBool(dst []byte, b bool) []byte { return strconv.AppendBool(dst, b) }
+
+// AppendFloat appends the text of f to dst, formatted as by FormatFloat.
+//
+//	buf = core.AppendFloat(buf[:0], f, 'g', -1, 64)
+func AppendFloat(dst []byte, f float64, fmt byte, prec, bitSize int) []byte {
+	return strconv.AppendFloat(dst, f, fmt, prec, bitSize)
+}
+
+// AppendQuote appends the double-quoted Go string literal of s to dst.
+//
+//	buf = core.AppendQuote(buf[:0], v)
+func AppendQuote(dst []byte, s string) []byte { return strconv.AppendQuote(dst, s) }

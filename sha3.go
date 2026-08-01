@@ -8,7 +8,6 @@ package core
 
 import (
 	"crypto/sha3"
-	"encoding/binary"
 	"math/bits"
 )
 
@@ -80,7 +79,7 @@ func Keccak256(data []byte) [32]byte {
 
 	for len(data) >= keccak256Rate {
 		for i := range keccak256Rate / 8 {
-			state[i] ^= binary.LittleEndian.Uint64(data[i*8:])
+			state[i] ^= LittleEndianUint64(data[i*8:])
 		}
 		keccakF1600(&state)
 		data = data[keccak256Rate:]
@@ -91,13 +90,13 @@ func Keccak256(data []byte) [32]byte {
 	block[len(data)] = 0x01
 	block[keccak256Rate-1] ^= 0x80
 	for i := range keccak256Rate / 8 {
-		state[i] ^= binary.LittleEndian.Uint64(block[i*8:])
+		state[i] ^= LittleEndianUint64(block[i*8:])
 	}
 	keccakF1600(&state)
 
 	var sum [32]byte
 	for i := range len(sum) / 8 {
-		binary.LittleEndian.PutUint64(sum[i*8:], state[i])
+		PutLittleEndianUint64(sum[i*8:], state[i])
 	}
 	return sum
 }

@@ -6,8 +6,6 @@
 
 package core
 
-import "sync"
-
 // Pool is a concurrency-safe LIFO free-list of reusable T values — the zero-alloc
 // recycling primitive behind hot-path scratch buffers and device handles. Get
 // pops a recycled value (or the zero T when empty, so the caller builds a fresh
@@ -26,7 +24,7 @@ import "sync"
 //	}
 //	defer pool.Put(s)
 type Pool[T any] struct {
-	mu    sync.Mutex
+	mu    Mutex
 	items []T
 }
 

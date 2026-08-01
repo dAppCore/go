@@ -7,7 +7,6 @@ package core
 
 import (
 	goio "io"
-	"strconv"
 )
 
 // Level defines logging verbosity.
@@ -278,19 +277,19 @@ func (l *Log) log(level Level, prefix, msg string, keyvals ...any) {
 		// previous behaviour for less common values.
 		switch v := val.(type) {
 		case string:
-			line.Write(strconv.AppendQuote(scratch[:0], v))
+			line.Write(AppendQuote(scratch[:0], v))
 		case int:
-			line.Write(strconv.AppendInt(scratch[:0], int64(v), 10))
+			line.Write(AppendInt(scratch[:0], int64(v), 10))
 		case int64:
-			line.Write(strconv.AppendInt(scratch[:0], v, 10))
+			line.Write(AppendInt(scratch[:0], v, 10))
 		case uint:
-			line.Write(strconv.AppendUint(scratch[:0], uint64(v), 10))
+			line.Write(AppendUint(scratch[:0], uint64(v), 10))
 		case uint64:
-			line.Write(strconv.AppendUint(scratch[:0], v, 10))
+			line.Write(AppendUint(scratch[:0], v, 10))
 		case bool:
-			line.Write(strconv.AppendBool(scratch[:0], v))
+			line.Write(AppendBool(scratch[:0], v))
 		case float64:
-			line.Write(strconv.AppendFloat(scratch[:0], v, 'g', -1, 64))
+			line.Write(AppendFloat(scratch[:0], v, 'g', -1, 64))
 		default:
 			line.WriteString(Sprintf("%v", val))
 		}

@@ -33,7 +33,6 @@
 package core
 
 import (
-	"runtime"
 	"unsafe"
 )
 
@@ -97,7 +96,7 @@ func AsString(b []byte) string {
 //	defer view.Release()
 //	C.kernel_run(view.Ptr(), C.size_t(view.Bytes()))
 type PinnedView struct {
-	pinner runtime.Pinner
+	pinner Pinner
 	ptr    unsafe.Pointer
 	length int
 	bytes  int
