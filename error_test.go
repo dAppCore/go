@@ -243,7 +243,7 @@ func TestError_ErrorPanic_Reports_Good(t *T) {
 	// Recover writes the report after the goroutine's own defers —
 	// poll until it lands.
 	var r Result
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		r = c.Error().Reports(5)
 		if r.OK {
 			break
@@ -272,7 +272,7 @@ func TestError_ErrorPanic_CrashFile_Good(t *T) {
 	c.Error().SafeGo(func() { panic("second crash") })
 
 	var r Result
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		r = c.Error().Reports(5)
 		if r.OK && len(r.Value.([]CrashReport)) == 2 {
 			break

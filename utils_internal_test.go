@@ -15,7 +15,7 @@ func TestUtils_shortRand_Bad(t *T) {
 	AssertFalse(t, Contains(token, "/"))
 }
 func TestUtils_shortRand_Ugly(t *T) {
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		token := shortRand()
 		decoded := HexDecode(token)
 		RequireTrue(t, decoded.OK)

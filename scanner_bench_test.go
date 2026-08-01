@@ -28,7 +28,7 @@ var (
 // scannerCorpus returns a 1024-line fixture (~32KB) for the scan loop.
 func scannerCorpus() []byte {
 	var buf bytes.Buffer
-	for i := 0; i < 1024; i++ {
+	for range 1024 {
 		buf.WriteString("the quick brown fox jumps over the lazy dog\n")
 	}
 	return buf.Bytes()

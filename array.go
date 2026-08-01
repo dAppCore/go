@@ -48,12 +48,7 @@ func (s *Array[T]) AddUnique(values ...T) {
 //	    core.Println("agent present")
 //	}
 func (s *Array[T]) Contains(val T) bool {
-	for _, v := range s.items {
-		if v == val {
-			return true
-		}
-	}
-	return false
+	return SliceContains(s.items, val)
 }
 
 // IndexOf returns the index of the first occurrence of val, or -1 when

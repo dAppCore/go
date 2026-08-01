@@ -106,7 +106,7 @@ func BenchmarkService_Services_Empty(b *B) {
 
 func BenchmarkService_Services_TenRegistered(b *B) {
 	c := New()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		c.RegisterService(Sprintf("bench.svc.%d", i), &benchService{id: i})
 	}
 	b.ReportAllocs()

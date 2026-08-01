@@ -163,7 +163,7 @@ func BenchmarkSyncMap_Store(b *B) {
 
 func BenchmarkSyncMap_Load_Hit(b *B) {
 	var m SyncMap
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		m.Store(i, i)
 	}
 	b.ReportAllocs()
@@ -202,7 +202,7 @@ func BenchmarkSyncMap_Delete(b *B) {
 
 func BenchmarkSyncMap_Load_Parallel(b *B) {
 	var m SyncMap
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		m.Store(i, i)
 	}
 	b.ReportAllocs()
@@ -257,7 +257,7 @@ func BenchmarkSyncMap_CompareAndDelete_Miss(b *B) {
 
 func BenchmarkSyncMap_Range_1000(b *B) {
 	var m SyncMap
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		m.Store(i, i)
 	}
 	b.ReportAllocs()
@@ -275,7 +275,7 @@ func BenchmarkSyncMap_Clear_1000(b *B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		var m SyncMap
-		for j := 0; j < 1000; j++ {
+		for j := range 1000 {
 			m.Store(j, j)
 		}
 		m.Clear()

@@ -275,7 +275,7 @@ func TestLock_Lock_Lock_Ugly(t *T) {
 	var count AtomicInt32
 	var wg WaitGroup
 
-	for i := 0; i < 16; i++ {
+	for range 16 {
 		wg.Go(func() {
 			lock.Lock()
 			count.Add(1)
@@ -314,7 +314,7 @@ func TestLock_Lock_Unlock_Bad(t *T) {
 func TestLock_Lock_Unlock_Ugly(t *T) {
 	lock := New().Lock("agent.dispatch")
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		lock.Lock()
 		lock.Unlock()
 	}
@@ -385,7 +385,7 @@ func TestLock_Lock_RUnlock_Bad(t *T) {
 func TestLock_Lock_RUnlock_Ugly(t *T) {
 	lock := New().Lock("agent.dispatch")
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		lock.RLock()
 		lock.RUnlock()
 	}

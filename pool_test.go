@@ -71,15 +71,13 @@ func TestPoolConcurrent(t *testing.T) {
 	var pool Pool[int]
 	const workers, each = 8, 1000
 	var wg sync.WaitGroup
-	for w := 0; w < workers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := 0; i < each; i++ {
+	for range workers {
+		wg.Go(func() {
+			for i := range each {
 				pool.Put(i)
 				pool.Get()
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	// Every Put is matched by a Get, so the pool nets to empty.

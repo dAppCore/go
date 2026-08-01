@@ -26,7 +26,7 @@ var (
 // registryFixture builds a Registry[int] pre-populated with n entries.
 func registryFixture(n int) *Registry[int] {
 	r := NewRegistry[int]()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		r.Set(Sprintf("entry.%d", i), i)
 	}
 	return r

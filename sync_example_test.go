@@ -144,7 +144,7 @@ func ExampleRWMutex_RUnlock() {
 // ExampleOnce_Do runs an initialiser exactly once through `Once.Do`.
 func ExampleOnce_Do() {
 	var once Once
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		once.Do(func() { Println("init") })
 	}
 	// Output: init

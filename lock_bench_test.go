@@ -105,7 +105,7 @@ func BenchmarkLock_Startables_Empty(b *B) {
 
 func BenchmarkLock_Startables_FiveRegistered(b *B) {
 	c := New()
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		c.Service(Sprintf("bench.%d", i), Service{
 			Name:    Sprintf("bench.%d", i),
 			OnStart: func() Result { return Result{OK: true} },
@@ -119,7 +119,7 @@ func BenchmarkLock_Startables_FiveRegistered(b *B) {
 
 func BenchmarkLock_Stoppables_FiveRegistered(b *B) {
 	c := New()
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		c.Service(Sprintf("bench.%d", i), Service{
 			Name:   Sprintf("bench.%d", i),
 			OnStop: func() Result { return Result{OK: true} },

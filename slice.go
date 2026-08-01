@@ -205,12 +205,7 @@ func SliceDrop[T any](s []T, n int) []T {
 //
 //	hasNeg := core.SliceAny(nums, func(n int) bool { return n < 0 })
 func SliceAny[T any](s []T, pred func(T) bool) bool {
-	for _, v := range s {
-		if pred(v) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(s, pred)
 }
 
 // SliceAll reports whether every element of s satisfies pred. Vacuously

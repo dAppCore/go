@@ -850,7 +850,7 @@ func TestTime_Tick_Ugly(t *T) {
 	// The channel keeps delivering — drain three ticks without blocking
 	// forever.
 	ch := Tick(Millisecond)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		select {
 		case <-ch:
 		case <-After(Second):

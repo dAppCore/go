@@ -55,7 +55,7 @@ func TestRandom_RandomInt_Bad(t *T) {
 }
 
 func TestRandom_RandomInt_Ugly(t *T) {
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		r := RandomInt(-3, 3)
 		RequireTrue(t, r.OK)
 		value := r.Value.(int)
@@ -79,7 +79,7 @@ func TestRandom_RandPick_Bad(t *T) {
 func TestRandom_RandPick_Ugly(t *T) {
 	items := []int{1, 2, 3}
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		AssertTrue(t, SliceContains(items, RandPick(items)))
 	}
 }
@@ -118,7 +118,7 @@ func TestRandom_RandRead_Ugly(t *T) {
 }
 
 func TestRandom_RandIntn_Ugly(t *T) {
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		value := RandIntn(5)
 		AssertGreaterOrEqual(t, value, 0)
 		AssertLess(t, value, 5)

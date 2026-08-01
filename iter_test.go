@@ -35,7 +35,7 @@ func TestIter_Pull_Bad(t *T) {
 
 func TestIter_Pull_Ugly(t *T) {
 	seq := func(yield func(int) bool) {
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			if !yield(i) {
 				return
 			}

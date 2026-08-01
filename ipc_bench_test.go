@@ -57,7 +57,7 @@ func BenchmarkIPC_ACTION_OneHandler(b *B) {
 
 func BenchmarkIPC_ACTION_TenHandlers(b *B) {
 	c := New()
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		c.RegisterAction(noopHandler())
 	}
 	msg := benchMessage{id: 1}
@@ -92,7 +92,7 @@ func BenchmarkIPC_QUERY_OneHandler(b *B) {
 
 func BenchmarkIPC_QUERYALL_TenHandlers(b *B) {
 	c := New()
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		c.RegisterQuery(noopQueryHandler())
 	}
 	q := benchQuery{id: 1}

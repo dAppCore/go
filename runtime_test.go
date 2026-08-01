@@ -161,11 +161,11 @@ func TestRuntime_Core_Go_Ugly(t *T) {
 	c := New()
 	const n = 16
 	done := make(chan int, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		c.Go(func() { done <- 1 })
 	}
 	sum := 0
-	for i := 0; i < n; i++ {
+	for range n {
 		select {
 		case <-done:
 			sum++

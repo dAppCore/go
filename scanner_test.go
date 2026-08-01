@@ -65,7 +65,7 @@ func TestScanner_NewLineScannerWithSize_Ugly(t *T) {
 
 func scannerRepeat(s string, count int) string {
 	b := NewBuilder()
-	for i := 0; i < count; i++ {
+	for range count {
 		b.WriteString(s)
 	}
 	return b.String()

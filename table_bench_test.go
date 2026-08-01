@@ -69,7 +69,7 @@ func BenchmarkTable_BuildAndFlush_10Rows(b *B) {
 		buf.Reset()
 		table := NewTable(&buf)
 		table.Row("Name", "Status", "Host")
-		for r := 0; r < 10; r++ {
+		for range 10 {
 			table.Row("agent", "ok", "homelab")
 		}
 		tableSinkResult = table.Flush()

@@ -28,7 +28,7 @@ func TestAtomic_AtomicBool_Ugly(t *T) {
 	var a AtomicBool
 	var wins AtomicInt32
 	var wg WaitGroup
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -65,7 +65,7 @@ func TestAtomic_AtomicInt32_Ugly(t *T) {
 	// Ugly: 1000 concurrent Adds. Final value must be exact (race-free).
 	var a AtomicInt32
 	var wg WaitGroup
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -95,7 +95,7 @@ func TestAtomic_AtomicInt64_Bad(t *T) {
 func TestAtomic_AtomicInt64_Ugly(t *T) {
 	var a AtomicInt64
 	var wg WaitGroup
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -127,7 +127,7 @@ func TestAtomic_AtomicUint32_Bad(t *T) {
 func TestAtomic_AtomicUint32_Ugly(t *T) {
 	var a AtomicUint32
 	var wg WaitGroup
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -156,7 +156,7 @@ func TestAtomic_AtomicUint64_Bad(t *T) {
 func TestAtomic_AtomicUint64_Ugly(t *T) {
 	var a AtomicUint64
 	var wg WaitGroup
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -193,7 +193,7 @@ func TestAtomic_AtomicPointer_Ugly(t *T) {
 	var a AtomicPointer[pointerVal]
 	var wg WaitGroup
 	pvs := make([]*pointerVal, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		pvs[i] = &pointerVal{n: i}
 		wg.Add(1)
 		go func(pv *pointerVal) {
@@ -448,7 +448,7 @@ func TestAtomic_AtomicInt32_CompareAndSwap_Ugly(t *T) {
 	var wins AtomicInt32
 	var wg WaitGroup
 
-	for i := 0; i < 32; i++ {
+	for range 32 {
 		wg.Go(func() {
 			if depth.CompareAndSwap(0, 1) {
 				wins.Add(1)
@@ -589,7 +589,7 @@ func TestAtomic_AtomicInt64_CompareAndSwap_Ugly(t *T) {
 	var wins AtomicInt32
 	var wg WaitGroup
 
-	for i := 0; i < 32; i++ {
+	for range 32 {
 		wg.Go(func() {
 			if count.CompareAndSwap(0, 1) {
 				wins.Add(1)

@@ -209,11 +209,7 @@ func (w *WaitGroup) Wait() { w.inner.Wait() }
 //	wg.Go(func() { core.Println("agent done") })
 //	wg.Wait()
 func (w *WaitGroup) Go(fn func()) {
-	w.inner.Add(1)
-	go func() {
-		defer w.inner.Done()
-		fn()
-	}()
+	w.inner.Go(fn)
 }
 
 // --- SyncMap: Concurrent map ---

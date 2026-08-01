@@ -370,7 +370,7 @@ type CrashReport struct {
 	Timestamp Time              `json:"timestamp"`
 	Error     string            `json:"error"`
 	Stack     string            `json:"stack"`
-	System    CrashSystem       `json:"system,omitempty"`
+	System    CrashSystem       `json:"system"`
 	Meta      map[string]string `json:"meta,omitempty"`
 }
 

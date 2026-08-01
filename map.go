@@ -83,12 +83,8 @@ func MapFilter[K comparable, V any](m map[K]V, pred func(K, V) bool) map[K]V {
 //	combined := core.MapMerge(defaults, overrides)
 func MapMerge[K comparable, V any](a, b map[K]V) map[K]V {
 	out := make(map[K]V, len(a)+len(b))
-	for k, v := range a {
-		out[k] = v
-	}
-	for k, v := range b {
-		out[k] = v
-	}
+	maps.Copy(out, a)
+	maps.Copy(out, b)
 	return out
 }
 

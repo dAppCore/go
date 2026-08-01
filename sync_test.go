@@ -30,11 +30,11 @@ func TestSync_Mutex_Ugly(t *T) {
 	var m Mutex
 	count := 0
 	var wg WaitGroup
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 500; j++ {
+			for range 500 {
 				m.Lock()
 				count++
 				m.Unlock()
@@ -76,11 +76,11 @@ func TestSync_RWMutex_Ugly(t *T) {
 	value := 0
 	var wg WaitGroup
 	// 5 readers
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 100; j++ {
+			for range 100 {
 				m.RLock()
 				_ = value
 				m.RUnlock()
@@ -88,11 +88,11 @@ func TestSync_RWMutex_Ugly(t *T) {
 		}()
 	}
 	// 2 writers
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 50; j++ {
+			for range 50 {
 				m.Lock()
 				value++
 				m.Unlock()
@@ -173,7 +173,7 @@ func TestSync_WaitGroup_Ugly(t *T) {
 	var wg WaitGroup
 	var mu Mutex
 	counter := 0
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -214,7 +214,7 @@ func TestSync_Mutex_Lock_Ugly(t *T) {
 	count := 0
 	var wg WaitGroup
 
-	for i := 0; i < 16; i++ {
+	for range 16 {
 		wg.Go(func() {
 			mu.Lock()
 			count++
@@ -253,7 +253,7 @@ func TestSync_Mutex_Unlock_Bad(t *T) {
 func TestSync_Mutex_Unlock_Ugly(t *T) {
 	var mu Mutex
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		mu.Lock()
 		mu.Unlock()
 	}
@@ -319,7 +319,7 @@ func TestSync_RWMutex_Lock_Ugly(t *T) {
 	count := 0
 	var wg WaitGroup
 
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		wg.Go(func() {
 			mu.Lock()
 			count++
@@ -358,7 +358,7 @@ func TestSync_RWMutex_Unlock_Bad(t *T) {
 func TestSync_RWMutex_Unlock_Ugly(t *T) {
 	var mu RWMutex
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		mu.Lock()
 		mu.Unlock()
 	}
@@ -430,7 +430,7 @@ func TestSync_RWMutex_RUnlock_Bad(t *T) {
 func TestSync_RWMutex_RUnlock_Ugly(t *T) {
 	var mu RWMutex
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		mu.RLock()
 		mu.RUnlock()
 	}
@@ -512,7 +512,7 @@ func TestSync_Once_Do_Ugly(t *T) {
 	var count AtomicInt32
 	var wg WaitGroup
 
-	for i := 0; i < 16; i++ {
+	for range 16 {
 		wg.Go(func() {
 			once.Do(func() { count.Add(1) })
 		})
@@ -547,7 +547,7 @@ func TestSync_Once_Reset_Ugly(t *T) {
 	var once Once
 	count := 0
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		once.Do(func() { count++ })
 		once.Reset()
 	}
@@ -609,7 +609,7 @@ func TestSync_WaitGroup_Done_Ugly(t *T) {
 	var wg WaitGroup
 	var count AtomicInt32
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		wg.Add(1)
 		go func() { count.Add(1); wg.Done() }()
 	}
@@ -645,7 +645,7 @@ func TestSync_WaitGroup_Wait_Ugly(t *T) {
 	var wg WaitGroup
 	var count AtomicInt32
 
-	for i := 0; i < 32; i++ {
+	for range 32 {
 		wg.Go(func() { count.Add(1) })
 	}
 	wg.Wait()
@@ -677,7 +677,7 @@ func TestSync_WaitGroup_Go_Ugly(t *T) {
 	var wg WaitGroup
 	var count AtomicInt32
 
-	for i := 0; i < 64; i++ {
+	for range 64 {
 		wg.Go(func() { count.Add(1) })
 	}
 	wg.Wait()

@@ -23,7 +23,7 @@ var (
 
 func BenchmarkIter_RangeSeq_Small(b *B) {
 	seq := func(yield func(int) bool) {
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			if !yield(i) {
 				return
 			}
@@ -41,7 +41,7 @@ func BenchmarkIter_RangeSeq_Small(b *B) {
 
 func BenchmarkIter_RangeSeq_Large(b *B) {
 	seq := func(yield func(int) bool) {
-		for i := 0; i < 1000; i++ {
+		for i := range 1000 {
 			if !yield(i) {
 				return
 			}
@@ -61,7 +61,7 @@ func BenchmarkIter_RangeSeq_Large(b *B) {
 
 func BenchmarkIter_Pull_Cycle(b *B) {
 	seq := func(yield func(int) bool) {
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			if !yield(i) {
 				return
 			}
@@ -82,7 +82,7 @@ func BenchmarkIter_Pull_Cycle(b *B) {
 
 func BenchmarkIter_Pull_OnlyFirst(b *B) {
 	seq := func(yield func(int) bool) {
-		for i := 0; i < 1000; i++ {
+		for i := range 1000 {
 			if !yield(i) {
 				return
 			}
@@ -100,7 +100,7 @@ func BenchmarkIter_Pull_OnlyFirst(b *B) {
 
 func BenchmarkIter_Pull2_Cycle(b *B) {
 	seq2 := func(yield func(string, int) bool) {
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			if !yield("k", i) {
 				return
 			}

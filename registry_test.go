@@ -48,7 +48,7 @@ func TestRegistry_Set_Good_SealedExistingKey(t *T) {
 func TestRegistry_Set_Ugly_ConcurrentWrites(t *T) {
 	r := NewRegistry[int]()
 	var wg WaitGroup
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()
@@ -87,7 +87,7 @@ func TestRegistry_GetOrSet_Ugly(t *T) {
 	r := NewRegistry[*Lock]()
 	var wg WaitGroup
 	results := make([]*Lock, 50)
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()
@@ -424,7 +424,7 @@ func TestRegistry_Ugly_ConcurrentReadWrite(t *T) {
 	var wg WaitGroup
 
 	// Concurrent writers
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()
@@ -433,7 +433,7 @@ func TestRegistry_Ugly_ConcurrentReadWrite(t *T) {
 	}
 
 	// Concurrent readers
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()

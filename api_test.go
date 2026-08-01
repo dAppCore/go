@@ -707,7 +707,7 @@ func TestApi_HTTPListenAndServe_Good(t *T) {
 	}))
 
 	var got Result
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		if got = HTTPGet("http://" + addr + "/"); got.OK {
 			break
 		}

@@ -154,7 +154,7 @@ func BenchmarkAction_Actions_Empty(b *B) {
 func BenchmarkAction_Actions_TenRegistered(b *B) {
 	c := New()
 	h := noopActionHandler()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		c.Action(Sprintf("bench.action.%d", i), h)
 	}
 	b.ReportAllocs()
@@ -196,7 +196,7 @@ func BenchmarkAction_Task_Run_TwoSteps(b *B) {
 func BenchmarkAction_Tasks(b *B) {
 	c := New()
 	c.Action("bench.step", noopActionHandler())
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		c.Task(Sprintf("bench.task.%d", i), Task{
 			Name:  Sprintf("bench.task.%d", i),
 			Steps: []Step{{Action: "bench.step"}},

@@ -14,7 +14,7 @@ func TestUtils_ID_Good(t *T) {
 
 func TestUtils_ID_Good_Unique(t *T) {
 	seen := make(map[string]bool)
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		id := ID()
 		AssertFalse(t, seen[id], "ID collision: %s", id)
 		seen[id] = true
@@ -507,7 +507,7 @@ func TestUtils_ID_Bad(t *T) {
 
 func TestUtils_ID_Ugly(t *T) {
 	seen := make(map[string]bool)
-	for i := 0; i < 64; i++ {
+	for range 64 {
 		id := ID()
 		AssertFalse(t, seen[id])
 		seen[id] = true

@@ -29,14 +29,14 @@ var (
 	}
 	mapMedium = func() map[string]int {
 		m := make(map[string]int, 100)
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			m[string(rune('a'+i%26))+string(rune('a'+(i/26)%26))] = i
 		}
 		return m
 	}()
 	mapLarge = func() map[string]int {
 		m := make(map[string]int, 10000)
-		for i := 0; i < 10000; i++ {
+		for i := range 10000 {
 			m[string(rune(i))+string(rune(i+1))] = i
 		}
 		return m

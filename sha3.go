@@ -79,7 +79,7 @@ func Keccak256(data []byte) [32]byte {
 	var state [25]uint64
 
 	for len(data) >= keccak256Rate {
-		for i := 0; i < keccak256Rate/8; i++ {
+		for i := range keccak256Rate / 8 {
 			state[i] ^= binary.LittleEndian.Uint64(data[i*8:])
 		}
 		keccakF1600(&state)
@@ -90,13 +90,13 @@ func Keccak256(data []byte) [32]byte {
 	copy(block[:], data)
 	block[len(data)] = 0x01
 	block[keccak256Rate-1] ^= 0x80
-	for i := 0; i < keccak256Rate/8; i++ {
+	for i := range keccak256Rate / 8 {
 		state[i] ^= binary.LittleEndian.Uint64(block[i*8:])
 	}
 	keccakF1600(&state)
 
 	var sum [32]byte
-	for i := 0; i < len(sum)/8; i++ {
+	for i := range len(sum) / 8 {
 		binary.LittleEndian.PutUint64(sum[i*8:], state[i])
 	}
 	return sum
@@ -128,29 +128,29 @@ func SHA3Shake256(data []byte, outLen int) []byte {
 func keccakF1600(a *[25]uint64) {
 	for _, rc := range keccakfRoundConstants {
 		var c, d [5]uint64
-		for x := 0; x < 5; x++ {
+		for x := range 5 {
 			c[x] = a[x] ^ a[x+5] ^ a[x+10] ^ a[x+15] ^ a[x+20]
 		}
-		for x := 0; x < 5; x++ {
+		for x := range 5 {
 			d[x] = c[(x+4)%5] ^ bits.RotateLeft64(c[(x+1)%5], 1)
 		}
-		for y := 0; y < 5; y++ {
-			for x := 0; x < 5; x++ {
+		for y := range 5 {
+			for x := range 5 {
 				a[x+5*y] ^= d[x]
 			}
 		}
 
 		var b [25]uint64
-		for y := 0; y < 5; y++ {
-			for x := 0; x < 5; x++ {
+		for y := range 5 {
+			for x := range 5 {
 				b[y+5*((2*x+3*y)%5)] = bits.RotateLeft64(
 					a[x+5*y],
 					keccakfRotationOffsets[x+5*y],
 				)
 			}
 		}
-		for y := 0; y < 5; y++ {
-			for x := 0; x < 5; x++ {
+		for y := range 5 {
+			for x := range 5 {
 				a[x+5*y] = b[x+5*y] ^ (^b[(x+1)%5+5*y] & b[(x+2)%5+5*y])
 			}
 		}
