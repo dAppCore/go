@@ -129,14 +129,20 @@ func (m *Fs) path(p string) string {
 		return PathJoin(cwd, p)
 	}
 
+	// An unrestricted medium passes an absolute path through as it
+	// stands — only a relative one was rewritten above. No "/" prefix
+	// here: prefixing was a no-op for a POSIX absolute path ("//x"
+	// cleans to "/x") but corrupted a Windows drive-letter one —
+	// filepath.Clean(`/C:\models`) is `\C:\models`, a path no Win32
+	// open resolves, which silently emptied every List/Read walk on
+	// an absolute path there.
+	if root == "/" {
+		return CleanPath(p, string(PathSeparator))
+	}
+
 	// Use a leading slash to resolve all .. and . internally
 	// before joining with the root. This is a standard way to sandbox paths.
 	clean := CleanPath("/"+p, string(PathSeparator))
-
-	// If root is "/", allow absolute paths through
-	if root == "/" {
-		return clean
-	}
 
 	// Strip leading "/" so Join works correctly with root
 	return PathJoin(root, clean[1:])
