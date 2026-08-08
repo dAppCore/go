@@ -20,6 +20,15 @@ func TestFs_Fs_path_Ugly(t *T) {
 	fsys := (&Fs{}).New("/")
 
 	AssertEqual(t, PathJoin(cwd.Value.(string), "relative.txt"), fsys.path("relative.txt"))
+
+	// An absolute path on an unrestricted medium comes back as itself —
+	// no "/" prefix bolted on first. The prefix was invisible on POSIX
+	// ("//x" cleans to "/x") and turned a Windows drive-letter path into
+	// `\C:\models`, which no Win32 open resolves. PathIsAbs recognises
+	// the drive-letter form on every platform, so this pins the contract
+	// everywhere, not just on a windows runner.
+	AssertEqual(t, `C:\models\gemma`, fsys.path(`C:\models\gemma`))
+	AssertEqual(t, CleanPath("/tmp//x/../y", string(PathSeparator)), fsys.path("/tmp//x/../y"))
 }
 func TestFs_Fs_validatePath_Good(t *T) {
 	root := t.TempDir()
