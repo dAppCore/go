@@ -2,7 +2,7 @@
 
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 func TestPath_Relative(t *T) {
 	home := Env("DIR_HOME")

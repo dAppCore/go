@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleSliceContains checks list membership through `SliceContains` for agent lists.
 // List transforms, predicates, and reducers remain typed core helpers.

@@ -2,7 +2,7 @@
 
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 func ExamplePull() {
 	var seq Seq[int] = func(yield func(int) bool) {

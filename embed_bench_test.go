@@ -15,7 +15,7 @@ import (
 	"embed"
 	"testing/fstest"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // Sinks defeat compiler DCE.

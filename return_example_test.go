@@ -2,7 +2,7 @@
 
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleReturnOK wraps a value in a successful typed Return.
 func ExampleReturnOK() {

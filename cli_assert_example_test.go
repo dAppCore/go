@@ -2,7 +2,7 @@
 
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleAssertCLI_stubProcess dispatches a CLITest case through `AssertCLI` for AX-10
 // binary validation. Like assert_example_test.go's helpers, this is compiled but not

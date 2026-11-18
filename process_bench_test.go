@@ -2,7 +2,7 @@
 
 // Benchmarks for the process façade in process.go. Run/RunIn/RunWithEnv/
 // Start/Kill dispatch to the process.* actions; on a bare Core no handler
-// is registered (the executor ships as dappco.re/go-process), so these
+// is registered (the executor ships as github.com/dappcore/go-process/go), so these
 // measure the dispatch + Result path without spawning a subprocess.
 //
 // Run:    go test -bench='BenchmarkProcess' -benchmem -run='^$' .
@@ -10,7 +10,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 var (

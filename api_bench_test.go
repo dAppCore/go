@@ -2,7 +2,7 @@
 
 // Benchmarks for the HTTP primitives in api.go.
 // Per AX-11 — api.go sits on every HTTP-touching path in the
-// ecosystem: consumer services, dappco.re/go-api, MCP transport,
+// ecosystem: consumer services, github.com/dappcore/api/go, MCP transport,
 // HTTPTestServer-driven test suites. Each public function deserves
 // a perf contract so that regressions surface against a published
 // floor rather than only after a downstream consumer complains.
@@ -18,7 +18,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // --- Fixtures ---

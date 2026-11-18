@@ -4,7 +4,7 @@
 
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // O_NOFOLLOW carries a symlink-refusal open semantic only on unix (it is
 // 0 on Windows), so its Good/Bad/Ugly triplet lives in a !windows test

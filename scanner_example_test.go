@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleNewLineScanner scans lines through `NewLineScanner` for line-oriented logs. Line
 // scanning stays on the core wrapper surface, including larger buffer cases.

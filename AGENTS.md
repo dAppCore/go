@@ -1,18 +1,18 @@
 # AGENTS.md — core/go
 
-You are working in `dappco.re/go` — the foundation Go module of the dAppCore framework. This file is the orientation card. Read it once before making any change.
+You are working in `github.com/dappcore/go` — the foundation Go module of the dAppCore framework. This file is the orientation card. Read it once before making any change.
 
 ## What this module is
 
 `core/go` is the zero-dependency foundation that every other dAppCore Go package builds on. The destination state for `go.mod` is **two lines** — `module` and `go` — with no `require` block. This is reached today; new code must not regress it.
 
 ```go.mod
-module dappco.re/go
+module github.com/dappcore/go
 
 go 1.26.0
 ```
 
-The renamed canonical github URL is `https://github.com/dappcore/go` (lowercase). The module path was previously `dappco.re/go/core`; consumer code may still reference the old path during the migration window.
+The renamed canonical github URL is `https://github.com/dappcore/go` (lowercase). The module path is `github.com/dappcore/go` (previously the vanity paths `dappco.re/go`, and before that `dappco.re/go/core`); consumer code may still reference an old path during the migration window.
 
 ## Reference-implementation rule
 
@@ -139,7 +139,7 @@ Single import line. Use `*T` (alias for `*testing.T`):
 package mypkg_test
 
 import (
-    . "dappco.re/go"
+    . "github.com/dappcore/go"
 )
 
 func TestRepository_Sync_Good(t *T) {

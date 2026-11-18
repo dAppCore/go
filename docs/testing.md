@@ -11,7 +11,7 @@ CoreGO ships its own AX-shaped test framework in `test.go`. Test files use a sin
 package mypkg_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 func TestRepository_Sync_Good(t *T) {
@@ -151,7 +151,7 @@ Run with `go test -fuzz=FuzzXxx -fuzztime=30s`. The seed corpus alone runs via `
 
 ## CLI tests (AX-10)
 
-Per AX-10 (CLI tests as artifact validation), each command path has a `tests/cli/{path}/Taskfile.yaml` that drives binary-level scenarios. Inside Go tests, the `CLITest` shape + `AssertCLI`/`AssertCLIs` helpers dispatch through `c.Process()`, so the caller registers a process service (typically `dappco.re/go-process`) on the Core before invoking.
+Per AX-10 (CLI tests as artifact validation), each command path has a `tests/cli/{path}/Taskfile.yaml` that drives binary-level scenarios. Inside Go tests, the `CLITest` shape + `AssertCLI`/`AssertCLIs` helpers dispatch through `c.Process()`, so the caller registers a process service (typically `github.com/dappcore/go-process/go`) on the Core before invoking.
 
 ```go
 c := New(WithService(process.Register))

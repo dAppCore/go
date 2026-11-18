@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleCore_accessors reads the grouped accessor methods through `Core` for Core
 // orchestration. Core keeps orchestration helpers reachable from one predictable facade.

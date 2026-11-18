@@ -1,11 +1,11 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // ExampleAssertCLI demonstrates the canonical CLI test shape: build a
-// Core, register a process.run handler (typically dappco.re/go-process
+// Core, register a process.run handler (typically github.com/dappcore/go-process/go
 // in production code, an in-test fake here), then dispatch a CLITest
 // case that asserts on stdout substring and OK status.
 func ExampleAssertCLI() {

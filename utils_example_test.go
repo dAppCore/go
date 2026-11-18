@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleID_format formats an identifier through `ID` for CLI utility parsing. Small CLI
 // argument utilities have predictable string and flag behaviour.

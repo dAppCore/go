@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleApp_New builds application metadata from name, version, description, and binary
 // filename options. Application metadata is registered once and found later by stable names.

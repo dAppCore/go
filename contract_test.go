@@ -2,7 +2,7 @@
 
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // --- WithService ---
 
@@ -12,7 +12,7 @@ type stubNamedService struct{}
 // stubFactory is a package-level factory so the runtime function name carries
 // the package path "core_test.stubFactory" — last segment after '/' is
 // "core_test", and after stripping a "_test" suffix we get "core".
-// For a real service package such as "dappco.re/go/agentic" the discovered
+// For a real service package such as "github.com/dappcore/agent/go/agentic" the discovered
 // name would be "agentic".
 func stubFactory(c *Core) Result {
 	return Result{Value: &stubNamedService{}, OK: true}
@@ -22,7 +22,7 @@ func stubFactory(c *Core) Result {
 // service name from the factory's package path and registers the instance via
 // RegisterService, making it retrievable through c.Services().
 //
-// stubFactory lives in package "dappco.re/go_test", so the last path
+// stubFactory lives in package "github.com/dappcore/go_test", so the last path
 // segment is "core_test" — WithService strips the "_test" suffix and registers
 // the service under the name "core".
 func TestContract_WithService_Good(t *T) {

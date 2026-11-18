@@ -3,7 +3,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 func TestInfo_Env_OS_Good(t *T) {

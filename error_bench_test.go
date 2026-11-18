@@ -14,7 +14,7 @@ import (
 	"errors"
 	"testing"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // Sinks defeat compiler DCE.

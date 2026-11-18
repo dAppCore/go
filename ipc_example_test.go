@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleCore_Query runs or declares a query through `Core.Query` for Core message
 // dispatch. Actions and queries share one Core dispatch pattern for messages.

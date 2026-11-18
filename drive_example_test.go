@@ -1,7 +1,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // ExampleDriveHandle defines drive handle metadata through `DriveHandle` for remote drive

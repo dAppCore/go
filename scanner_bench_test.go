@@ -14,7 +14,7 @@ import (
 	"bufio"
 	"bytes"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // Sinks defeat compiler DCE.

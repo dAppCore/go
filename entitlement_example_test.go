@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleEntitlement_UsagePercent calculates usage percentage through
 // `Entitlement.UsagePercent` for usage-gated agent features. Usage checks separate policy

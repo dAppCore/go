@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 func TestSignal_Exists_Good(t *T) {
 	// Good: with a registered signal.received action, Exists is true.

@@ -4,7 +4,7 @@
 //
 // CLITest declares a single binary scenario; AssertCLI dispatches it
 // through c.Process() (so the Core must register a "process.run"
-// service — typically dappco.re/go-process). AssertCLIs runs a
+// service — typically github.com/dappcore/go-process/go). AssertCLIs runs a
 // table-driven set of cases under sub-tests.
 //
 // Pair these with `tests/cli/{path}/Taskfile.yaml` per AX-10 — the
@@ -35,7 +35,7 @@ type CLITest struct {
 
 // AssertCLI executes tc via c.Process() and asserts the outcome. The
 // Core must have a service registering "process.run" — typically
-// dappco.re/go-process — for the dispatch to reach a real exec.
+// github.com/dappcore/go-process/go — for the dispatch to reach a real exec.
 //
 //	c := core.New(core.WithService(process.Register))
 //	core.AssertCLI(t, c, core.CLITest{

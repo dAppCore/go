@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleSetenv sets an environment variable through `Setenv` for process environment
 // setup. Process environment mutation goes through core helpers in tests and services.

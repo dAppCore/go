@@ -3,7 +3,7 @@ package core_test
 import (
 	"net"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // --- mock stream for testing ---

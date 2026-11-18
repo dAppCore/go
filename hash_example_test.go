@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleSHA256 hashes a byte payload through `SHA256` for session-token cryptography.
 // Callers stay on the core wrapper surface while receiving fixed-size digests or Result

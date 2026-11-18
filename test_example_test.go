@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleAnError uses the sentinel error through `AnError` for AX-native tests. Passing
 // assertions are silent while failures stay one-line and AI-readable.

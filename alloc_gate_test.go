@@ -21,7 +21,7 @@ package core_test
 import (
 	"testing"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // gate sinks — keep the measured call from being elided as dead code.

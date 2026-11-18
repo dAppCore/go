@@ -1,7 +1,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // --- Atoi ---
@@ -148,7 +148,7 @@ func TestInt_AppendFloat_Good(t *T) {
 
 // Bad: the two values a float field can hold that are not numbers. Built by
 // division rather than a math helper because a test here may only import
-// dappco.re/go, and core exposes no NaN/Inf constructor.
+// github.com/dappcore/go, and core exposes no NaN/Inf constructor.
 func TestInt_AppendFloat_Bad(t *T) {
 	zero := 0.0
 	AssertEqual(t, "NaN", AsString(AppendFloat(nil, zero/zero, 'g', -1, 64)))

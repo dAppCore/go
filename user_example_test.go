@@ -2,7 +2,7 @@
 
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 func ExampleUserCurrent() {
 	// Succeeds on a normal host; in a bare container without /etc/passwd it

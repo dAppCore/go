@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleJSONMarshal_config initialises configuration values through `JSONMarshal` for
 // configuration serialisation. Serialisation and parsing return core Results for

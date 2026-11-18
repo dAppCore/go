@@ -2,7 +2,7 @@
 
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 func TestEnv_Setenv_Good(t *T) {
 	key := envTestKey(t, "GOOD")

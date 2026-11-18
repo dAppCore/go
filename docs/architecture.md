@@ -5,8 +5,8 @@ description: How the CoreGO framework is composed — the Core container, the un
 
 # CoreGO Architecture
 
-CoreGO (`dappco.re/go`) is the **L0 root** of the Core ecosystem: every other
-`dappco.re/*` module depends on it, and it depends on nothing outside the Go
+CoreGO (`github.com/dappcore/go`) is the **L0 root** of the Core ecosystem: every other
+`github.com/dappcore/*` module depends on it, and it depends on nothing outside the Go
 standard library. It has no `external/` submodules — it *is* the substrate.
 
 ## The Core container
@@ -64,7 +64,7 @@ CoreGO is written to be navigable by agents as much as humans (RFC-CORE-008):
 
 ## Module layering
 
-CoreGO is L0. Higher modules (`dappco.re/go-process`, `…/go-inference`, the
+CoreGO is L0. Higher modules (`github.com/dappcore/go-process/go`, `…/go-inference`, the
 agent/CLI layers, the LEM engines) consume it and register services/actions
 into a `*Core`. Because CoreGO carries no third-party dependencies, a change
 here ripples to all consumers — API-shape changes are release-coordinated, not
