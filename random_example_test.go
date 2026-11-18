@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleRandomBytes generates random bytes through `RandomBytes` for session nonce
 // generation. Nonces, strings, and bounded integers return Results suitable for session

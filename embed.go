@@ -233,7 +233,7 @@ func GeneratePack(pkg ScannedPackage) Result {
 		return Result{b.String(), true}
 	}
 
-	b.WriteString("import \"dappco.re/go\"\n\n")
+	b.WriteString("import \"github.com/dappcore/go\"\n\n")
 	b.WriteString("func init() {\n")
 
 	// Pack groups (entire directories)

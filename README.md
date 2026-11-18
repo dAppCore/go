@@ -3,7 +3,7 @@
 Dependency injection, service lifecycle, permission, and message-passing for Go.
 
 ```go
-import "dappco.re/go/core"
+import "github.com/dappcore/go"
 ```
 
 CoreGO is the foundation layer for the Core ecosystem. It gives you:
@@ -21,7 +21,7 @@ CoreGO is the foundation layer for the Core ecosystem. It gives you:
 ```go
 package main
 
-import "dappco.re/go/core"
+import "github.com/dappcore/go"
 
 func main() {
     c := core.New(
@@ -54,7 +54,7 @@ func main() {
 ## Install
 
 ```bash
-go get dappco.re/go/core
+go get github.com/dappcore/go
 ```
 
 Requires Go 1.26 or later.

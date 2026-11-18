@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleRegex compiles a pattern through `Regex` for route parsing. Compiled patterns
 // expose common matching and replacement operations through core wrappers.

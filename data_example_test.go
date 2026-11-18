@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleData_New mounts a prompts directory as named embedded Lethean data. Mounted data
 // can be read, listed, and extracted through Result-returning helpers.

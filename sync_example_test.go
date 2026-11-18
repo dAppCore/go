@@ -1,7 +1,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // ExampleMutex uses a mutual exclusion lock through `Mutex` for concurrent service

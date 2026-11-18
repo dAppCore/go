@@ -13,7 +13,7 @@ core go qa            # fmt + vet + lint + test
 core go qa full       # + race, vuln, security
 ```
 
-CoreGO is the root module `dappco.re/go` with **no `external/` submodules** — it
+CoreGO is the root module `github.com/dappcore/go` with **no `external/` submodules** — it
 builds against the Go standard library alone. The Go 1.26 workspace lives at
 `~/Code/go.work`; after adding modules run `go work sync`.
 
@@ -68,6 +68,6 @@ that is itself gamed work.
 - UK English; EUPL-1.2.
 - Errors via `core.E(...)`; no banned stdlib imports (see
   [architecture.md](architecture.md)).
-- API-shape changes ripple to all `dappco.re/*` consumers — coordinate them as a
+- API-shape changes ripple to all `github.com/dappcore/*` consumers — coordinate them as a
   release, don't make them in isolation.
 - Commit trailer: `Co-Authored-By: Virgil <virgil@lethean.io>`.

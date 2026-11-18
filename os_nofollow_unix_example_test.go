@@ -4,7 +4,7 @@
 
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // Example_openFileNoFollow refuses to open a symlinked final path component through
 // `O_NOFOLLOW`. The flag carries a real symlink-refusal semantic only on

@@ -1,7 +1,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // ExampleCommand_I18nKey builds an i18n key through `Command.I18nKey` for managed CLI

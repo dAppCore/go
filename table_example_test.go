@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleNewTable creates a table through `NewTable` for CLI table output. Tabular CLI
 // output is built and flushed through the table wrapper.

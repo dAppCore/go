@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleAtoi parses decimal text through `Atoi` for CLI argument conversion. Numeric
 // parsing and formatting use core helpers for CLI-friendly values.

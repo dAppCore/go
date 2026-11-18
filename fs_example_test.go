@@ -1,7 +1,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // ExampleFs_New creates a sandboxed filesystem rooted at a workspace path. File reads,

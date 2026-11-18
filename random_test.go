@@ -1,7 +1,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 func TestRandom_RandomBytes_Good(t *T) {

@@ -1,7 +1,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // ExampleCore_Exit documents the normal Core exit call without terminating the example

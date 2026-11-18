@@ -14,7 +14,7 @@ package core_test
 import (
 	"testing/fstest"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // Sinks defeat compiler DCE.

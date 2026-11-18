@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleHexEncode encodes bytes as hex through `HexEncode` for token and payload
 // encoding. Byte and string encoders return predictable wrapper values for tokens and

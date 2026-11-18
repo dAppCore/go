@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleSQLOpen opens a SQL database through `SQLOpen` for database adapter setup.
 // Database opening and sentinel checks use aliases without importing database/sql

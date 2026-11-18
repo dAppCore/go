@@ -1,7 +1,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // ExampleCore_Lock acquires a lock through `Core.Lock` for lifecycle locking. Lifecycle

@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleURLParse parses an endpoint through `URLParse` for remote endpoint handling.
 // Endpoint parsing, escaping, and normalisation use core URL wrappers.

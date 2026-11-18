@@ -2,7 +2,7 @@
 
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 func TestOs_FileMode_Good_Alias(t *T) {
 	var mode FileMode = 0o644

@@ -3,7 +3,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 func TestCoalesce_Coalesce_Good(t *T) {

@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleCore_Process_accessor reads the accessor method through `Core.Process` for
 // managed process execution. Process launches and lifecycle controls flow through

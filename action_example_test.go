@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleAction declares action metadata for an agent dispatch workflow. Consumers copy
 // the Result-shaped handler contract for dAppCore actions and tasks.

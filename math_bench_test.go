@@ -11,7 +11,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // Sinks — prevent compiler dead-code elimination from collapsing the

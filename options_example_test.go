@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleResult_New creates a successful Result containing a created status for agent options.
 // Options carry loosely typed inputs while typed accessors keep call sites small.

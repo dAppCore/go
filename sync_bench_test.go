@@ -14,7 +14,7 @@ import (
 	"sync"
 	"testing"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // Sinks defeat compiler DCE on the read paths.

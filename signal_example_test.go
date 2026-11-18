@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleCore_Signal_exists checks whether signal handling has been registered in Core. OS
 // signal integration is represented as action-backed Core behaviour.

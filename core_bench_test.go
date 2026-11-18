@@ -14,7 +14,7 @@ package core_test
 import (
 	"io"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // quietDefault redirects the default logger to io.Discard for the duration

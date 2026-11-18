@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleAddAsset adds an embedded asset through `AddAsset` for embedded asset packaging.
 // Asset packing, mounting, and extraction stay declarative for consumers.
@@ -38,7 +38,7 @@ func ExampleScanAssets() {
 
 	fs.Write(Path(dir, "main.go"), `package sample
 
-import core "dappco.re/go"
+import core "github.com/dappcore/go"
 
 func message() string {
 	return core.GetAsset("assets", "message.txt").Value.(string)
@@ -68,7 +68,7 @@ func ExampleGeneratePack() {
 	fs.Write(Path(dir, "assets", "message.txt"), "hello")
 	fs.Write(Path(dir, "main.go"), `package sample
 
-import core "dappco.re/go"
+import core "github.com/dappcore/go"
 
 func message() string {
 	return core.GetAsset("assets", "message.txt").Value.(string)

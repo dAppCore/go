@@ -337,7 +337,7 @@ func WithCrashFile(path string) CoreOption {
 
 // WithCli registers the built-in CLI command framework as service "cli".
 // core.New no longer auto-registers it — opt in here for a package's basic
-// compile-and-run binary, or bring an intentional CLI (dappco.re/go/cli).
+// compile-and-run binary, or bring an intentional CLI (github.com/dappcore/cli/go).
 //
 //	core.New(core.WithCli())
 func WithCli() CoreOption {

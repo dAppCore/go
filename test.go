@@ -12,13 +12,13 @@
 //   - cli_assert.go  — CLITest/AssertCLI/AssertCLIs for AX-10 binary
 //     validation through c.Process().
 //
-// Test files use a single dot-import — `. "dappco.re/go"` — and the
+// Test files use a single dot-import — `. "github.com/dappcore/go"` — and the
 // runner picks them up by signature because *T is type-identical to
 // *testing.T. No `import "testing"` line in any consumer file.
 //
 //	package mypkg_test
 //
-//	import . "dappco.re/go"
+//	import . "github.com/dappcore/go"
 //
 //	func TestRepository_Sync_Good(t *T) {
 //	    r := svc.SyncRepository("agent", "/srv/repos/agent")

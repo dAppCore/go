@@ -79,7 +79,7 @@ func TestLsp_LSPComputeDiagnostics_Good(t *T) {
 import (
 	"context"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 `)
 	diags := LSPComputeDiagnostics("file:///homelab_test.go", content)
@@ -89,10 +89,10 @@ import (
 }
 
 func TestLsp_LSPComputeDiagnostics_Bad(t *T) {
-	// Clean test file (only dappco.re/go) produces no diagnostics.
+	// Clean test file (only github.com/dappcore/go) produces no diagnostics.
 	content := []byte(`package homelab_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 func TestSomething_Good(t *T) {}
 `)
@@ -191,9 +191,9 @@ func TestLsp_LSPDiagnostic_Ugly(t *T) {
 // --- lspExtractImportPath ---
 
 func TestLsp_lspExtractImportPath_Good(t *T) {
-	path, ok := lspExtractImportPath(`	"dappco.re/go"`)
+	path, ok := lspExtractImportPath(`	"github.com/dappcore/go"`)
 	AssertTrue(t, ok)
-	AssertEqual(t, "dappco.re/go", path)
+	AssertEqual(t, "github.com/dappcore/go", path)
 }
 
 func TestLsp_lspExtractImportPath_Bad(t *T) {
@@ -309,7 +309,7 @@ func TestLsp_lspTestImportsDiagnostic_Good(t *T) {
 import (
 	"context"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 `)
 	diags := lspTestImportsDiagnostic("file:///agent_test.go", content)
@@ -764,7 +764,7 @@ func TestLsp_lspServer_handleDocumentSync_Ugly(t *T) {
 		Params: map[string]any{
 			"textDocument": map[string]any{
 				"uri":  "file:///agent_test.go",
-				"text": "package agent_test\n\nimport . \"dappco.re/go\"\n",
+				"text": "package agent_test\n\nimport . \"github.com/dappcore/go\"\n",
 			},
 		},
 	})

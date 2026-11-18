@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleFileMode uses file mode aliases through `FileMode` for process IO access. File
 // modes and standard streams are exposed through core aliases.

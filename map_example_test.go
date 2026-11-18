@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleMapKeys lists map keys through `MapKeys` for metadata maps. Map helpers cover
 // selection, cloning, filtering, and merging with typed values.

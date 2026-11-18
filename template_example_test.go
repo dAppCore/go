@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleNewTemplate creates a template through `NewTemplate` for operator-facing
 // templates. Parsing and execution use core template wrappers for operator-facing text.

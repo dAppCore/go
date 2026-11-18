@@ -1,9 +1,9 @@
 # CoreGO API Contract — RFC Specification
 
-This file is the canonical API catalog for `dappco.re/go`.
+This file is the canonical API catalog for `github.com/dappcore/go`.
 
 **Status:** Living document
-**Module:** `dappco.re/go/core`
+**Module:** `github.com/dappcore/go`
 **Version:** v0.8.0
 
 ---

@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // --- Mount ---
 
@@ -153,7 +153,7 @@ func TestEmbed_ScanAssets_Group_Good(t *T) {
 	dir := t.TempDir()
 	source := `package agent
 
-import core "dappco.re/go"
+import core "github.com/dappcore/go"
 
 func assets() {
 	_ = core.Group("assets")
@@ -184,7 +184,7 @@ func TestEmbed_GeneratePack_WithFiles_Good(t *T) {
 	(&Fs{}).New("/").EnsureDir(assetDir)
 	(&Fs{}).New("/").Write(Path(assetDir, "hello.txt"), "hello world")
 
-	source := "package test\nimport \"dappco.re/go\"\nfunc example() {\n\t_, _ = core.GetAsset(\"mygroup\", \"hello.txt\")\n}\n"
+	source := "package test\nimport \"github.com/dappcore/go\"\nfunc example() {\n\t_, _ = core.GetAsset(\"mygroup\", \"hello.txt\")\n}\n"
 	goFile := Path(dir, "test.go")
 	(&Fs{}).New("/").Write(goFile, source)
 

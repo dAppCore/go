@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Test-import discipline — *_test.go and *_example_test.go files must
-import only `dappco.re/go` (dot-import).
+import only `github.com/dappcore/go` (dot-import).
 
 The core module re-exports every stdlib helper its consumers need.
 Reaching for "context", "sync", "time", "os", "io", etc. in a test
@@ -20,7 +20,7 @@ import re
 import sys
 from collections import defaultdict
 
-ALLOWED = {"dappco.re/go"}
+ALLOWED = {"github.com/dappcore/go"}
 
 _PACKAGE = re.compile(r"^package\s+\w+", re.MULTILINE)
 _DECL_BOUNDARY = re.compile(
@@ -98,10 +98,10 @@ def main():
                 print(f"{fname}: imports {p!r} — use core helpers")
         print()
         print(
-            f"{len(violations)} of {total} test files import packages other than 'dappco.re/go'."
+            f"{len(violations)} of {total} test files import packages other than 'github.com/dappcore/go'."
         )
         print(
-            "AX rule: *_test.go and *_example_test.go files may only import dappco.re/go."
+            "AX rule: *_test.go and *_example_test.go files may only import github.com/dappcore/go."
         )
         print(
             "Replace stdlib usage with core helpers (e.g. context.Background → Background,"
@@ -112,7 +112,7 @@ def main():
         sys.exit(1)
 
     print(
-        f"test-imports clean: all {total} non-internal test files import only dappco.re/go."
+        f"test-imports clean: all {total} non-internal test files import only github.com/dappcore/go."
     )
 
 

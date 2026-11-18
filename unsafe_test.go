@@ -9,7 +9,7 @@ package core_test
 import (
 	"unsafe"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // --- AsBytes ---

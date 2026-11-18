@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleNow reads the current time through `Now` for health-check timing. Durations,
 // parsing, and timestamps use core time wrappers for service code.

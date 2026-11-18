@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleLevel_String renders `Level.String` as a stable string for operator logging.
 // Loggers support levels, redaction, and default routing for operator output.

@@ -19,7 +19,7 @@ package core_test
 import (
 	"sync"
 
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // Sinks defeat compiler dead-code elimination on the read paths.

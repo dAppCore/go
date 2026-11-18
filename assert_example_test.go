@@ -2,7 +2,7 @@
 
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // Every Example below is compiled but not executed: none carries an
 // "Output:" comment. Go's own convention is explicit about this —

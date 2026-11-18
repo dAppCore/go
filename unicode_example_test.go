@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleIsLetter checks a letter through `IsLetter` for input normalisation. Character
 // checks and case conversion stay behind core unicode helpers.

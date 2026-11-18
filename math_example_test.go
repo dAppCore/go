@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleMin selects the lower value through `Min` for health-check thresholds. Numeric
 // helpers keep thresholds readable without importing math directly.

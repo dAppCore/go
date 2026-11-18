@@ -2,7 +2,7 @@
 
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 func TestDiscovery_Action_CoreActions_Good(t *T) {
 	c := New()

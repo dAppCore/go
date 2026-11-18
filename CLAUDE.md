@@ -4,7 +4,7 @@ Guidance for Claude Code and Codex when working with this repository.
 
 ## Module
 
-`dappco.re/go` — dependency injection, service lifecycle, permission, and message-passing for Go.
+`github.com/dappcore/go` — dependency injection, service lifecycle, permission, and message-passing for Go.
 
 Source files and tests live at the module root. No `pkg/` nesting.
 

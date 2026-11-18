@@ -1,7 +1,7 @@
 package core_test
 
 import (
-	. "dappco.re/go"
+	. "github.com/dappcore/go"
 )
 
 // ExampleAtomicBool updates a boolean atomically through `AtomicBool` for shared runtime

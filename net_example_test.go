@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // ExampleParseIP parses an IP address through `ParseIP` for network health checks. Network
 // primitives are reached through core wrappers and Result-shaped calls.

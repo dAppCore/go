@@ -1,6 +1,6 @@
 package core_test
 
-import . "dappco.re/go"
+import . "github.com/dappcore/go"
 
 // Example_sha3_256 hashes a byte payload with SHA3-256 for Ethereum-compatible digest
 // work. SHA3 and Keccak helpers cover Ethereum-compatible digest inputs without direct
