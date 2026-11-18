@@ -255,9 +255,7 @@ func WithService(factory func(*Core) Result) CoreOption {
 		if typeOf.Kind() == KindPointer {
 			typeOf = typeOf.Elem()
 		}
-		pkgPath := typeOf.PkgPath()
-		parts := Split(pkgPath, "/")
-		name := Lower(parts[len(parts)-1])
+		name := discoverServiceName(typeOf.PkgPath())
 		if name == "" {
 			return Result{E("core.WithService", Sprintf("service name could not be discovered for type %T", instance), nil), false}
 		}
@@ -265,6 +263,25 @@ func WithService(factory func(*Core) Result) CoreOption {
 		// RegisterService handles Startable/Stoppable/HandleIPCEvents discovery
 		return c.RegisterService(name, instance)
 	}
+}
+
+// discoverServiceName names a service from its package path: the last path
+// element, lower-cased. A `go` last element is the subdir-module convention
+// (the module lives in the repo's go/ folder), so the repo name is used
+// instead, minus any `go-` prefix. Moving a module path doesn't rename its
+// service.
+//
+//	discoverServiceName("dappco.re/go/ansible")              // "ansible"
+//	discoverServiceName("github.com/dappcore/go-ansible/go") // "ansible"
+//	discoverServiceName("github.com/dappcore/config/go")     // "config"
+//	discoverServiceName("github.com/dappcore/go-scm/go/marketplace") // "marketplace"
+func discoverServiceName(pkgPath string) string {
+	parts := Split(pkgPath, "/")
+	name := Lower(parts[len(parts)-1])
+	if name == "go" && len(parts) > 1 && parts[len(parts)-2] != "" {
+		name = TrimPrefix(Lower(parts[len(parts)-2]), "go-")
+	}
+	return name
 }
 
 // WithName registers a service with an explicit name (no reflect discovery).
