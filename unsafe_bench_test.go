@@ -10,11 +10,7 @@
 
 package core_test
 
-import (
-	"unsafe"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // Sinks defeat compiler DCE.
 var (
@@ -134,15 +130,13 @@ func BenchmarkAsString_Empty(b *B) {
 // pointer view; copy-into-buf is one make plus N element copies. The
 // crossover by element count is where the substrate decision lives.
 
-var pinSinkPtr unsafe.Pointer
-
 func BenchmarkPinSlice_Int32_4(b *B) {
 	slice := []int32{1, 2, 3, 4}
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		var view PinnedView
 		PinSlice(slice, &view)
-		pinSinkPtr = view.Ptr()
+		PinSinkPtr = view.Ptr()
 		view.Release()
 	}
 }
@@ -153,7 +147,7 @@ func BenchmarkPinSlice_Int32_64(b *B) {
 	for i := 0; i < b.N; i++ {
 		var view PinnedView
 		PinSlice(slice, &view)
-		pinSinkPtr = view.Ptr()
+		PinSinkPtr = view.Ptr()
 		view.Release()
 	}
 }
@@ -164,7 +158,7 @@ func BenchmarkPinSlice_Float32_2048(b *B) {
 	for i := 0; i < b.N; i++ {
 		var view PinnedView
 		PinSlice(slice, &view)
-		pinSinkPtr = view.Ptr()
+		PinSinkPtr = view.Ptr()
 		view.Release()
 	}
 }
@@ -178,7 +172,7 @@ func BenchmarkPinSlice_Baseline_MakeCopy_Int32_4(b *B) {
 	for i := 0; i < b.N; i++ {
 		copied := make([]int32, len(slice))
 		copy(copied, slice)
-		pinSinkPtr = unsafe.Pointer(&copied[0])
+		PinSinkPtr = SliceDataPtr(copied)
 	}
 }
 
@@ -188,7 +182,7 @@ func BenchmarkPinSlice_Baseline_MakeCopy_Int32_64(b *B) {
 	for i := 0; i < b.N; i++ {
 		copied := make([]int32, len(slice))
 		copy(copied, slice)
-		pinSinkPtr = unsafe.Pointer(&copied[0])
+		PinSinkPtr = SliceDataPtr(copied)
 	}
 }
 
@@ -198,7 +192,7 @@ func BenchmarkPinSlice_Baseline_MakeCopy_Float32_2048(b *B) {
 	for i := 0; i < b.N; i++ {
 		copied := make([]float32, len(slice))
 		copy(copied, slice)
-		pinSinkPtr = unsafe.Pointer(&copied[0])
+		PinSinkPtr = SliceDataPtr(copied)
 	}
 }
 
@@ -208,7 +202,7 @@ func BenchmarkPinSlice_Empty(b *B) {
 	for i := 0; i < b.N; i++ {
 		var view PinnedView
 		PinSlice(slice, &view)
-		pinSinkPtr = view.Ptr()
+		PinSinkPtr = view.Ptr()
 		view.Release()
 	}
 }

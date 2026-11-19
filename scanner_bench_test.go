@@ -10,24 +10,19 @@
 
 package core_test
 
-import (
-	"bufio"
-	"bytes"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // Sinks defeat compiler DCE.
 var (
 	scannerSinkReader  *BufReader
-	scannerSinkScanner *bufio.Scanner
+	scannerSinkScanner *LineScanner
 	scannerSinkString  string
 	scannerSinkInt     int
 )
 
 // scannerCorpus returns a 1024-line fixture (~32KB) for the scan loop.
 func scannerCorpus() []byte {
-	var buf bytes.Buffer
+	var buf Buffer
 	for range 1024 {
 		buf.WriteString("the quick brown fox jumps over the lazy dog\n")
 	}
@@ -40,7 +35,7 @@ func BenchmarkScanner_NewBufReader(b *B) {
 	corpus := scannerCorpus()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		scannerSinkReader = NewBufReader(bytes.NewReader(corpus))
+		scannerSinkReader = NewBufReader(NewBuffer(corpus))
 	}
 }
 
@@ -48,7 +43,7 @@ func BenchmarkScanner_BufReader_ReadString_1Line(b *B) {
 	corpus := scannerCorpus()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		r := NewBufReader(bytes.NewReader(corpus))
+		r := NewBufReader(NewBuffer(corpus))
 		scannerSinkString, _ = r.ReadString('\n')
 	}
 }
@@ -59,7 +54,7 @@ func BenchmarkScanner_NewLineScanner(b *B) {
 	corpus := scannerCorpus()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		scannerSinkScanner = NewLineScanner(bytes.NewReader(corpus))
+		scannerSinkScanner = NewLineScanner(NewBuffer(corpus))
 	}
 }
 
@@ -67,7 +62,7 @@ func BenchmarkScanner_NewLineScannerWithSize(b *B) {
 	corpus := scannerCorpus()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		scannerSinkScanner = NewLineScannerWithSize(bytes.NewReader(corpus), 2*1024*1024)
+		scannerSinkScanner = NewLineScannerWithSize(NewBuffer(corpus), 2*1024*1024)
 	}
 }
 
@@ -75,7 +70,7 @@ func BenchmarkScanner_LineScanner_Scan_1024(b *B) {
 	corpus := scannerCorpus()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		s := NewLineScanner(bytes.NewReader(corpus))
+		s := NewLineScanner(NewBuffer(corpus))
 		count := 0
 		for s.Scan() {
 			count++

@@ -18,11 +18,7 @@
 
 package core_test
 
-import (
-	"testing"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // gate sinks — keep the measured call from being elided as dead code.
 var (
@@ -99,7 +95,7 @@ func TestAllocs_HotPrimitives(t *T) {
 		{"SliceClone", 1, func() { gateBytes = SliceClone(bs) }},
 	}
 	for _, c := range cases {
-		avg := int(testing.AllocsPerRun(1000, c.fn))
+		avg := int(AllocsPerRun(1000, c.fn))
 		AssertLessOrEqual(t, avg, c.ceiling, c.name)
 	}
 }
@@ -112,7 +108,7 @@ func TestAllocs_LSPComputeDiagnostics(t *T) {
 	uri := "file:///agent/worker.go"
 	content := []byte("package worker\n\nfunc process(in string) (string, error) {\n\treturn in, nil\n}\n")
 	LSPComputeDiagnostics(uri, content) // warm the per-dir cache → measure steady state
-	avg := int(testing.AllocsPerRun(200, func() {
+	avg := int(AllocsPerRun(200, func() {
 		gateDiags = LSPComputeDiagnostics(uri, content)
 	}))
 	AssertLessOrEqual(t, avg, 70, "LSPComputeDiagnostics")
@@ -126,6 +122,6 @@ var gateStrSlice []string
 // spurious alloc.)
 func TestAllocs_FilterArgs(t *T) {
 	args := []string{"deploy", "--target", "homelab", "-v"}
-	fa := int(testing.AllocsPerRun(1000, func() { gateStrSlice = FilterArgs(args) }))
+	fa := int(AllocsPerRun(1000, func() { gateStrSlice = FilterArgs(args) }))
 	AssertLessOrEqual(t, fa, 1, "FilterArgs")
 }

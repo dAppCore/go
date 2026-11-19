@@ -43,7 +43,7 @@ func TestApp_isExecutableWith_Ugly(t *T) {
 	AssertFalse(t, isExecutableWith(t.TempDir(), ".EXE"))
 }
 
-func TestApp_findWith_Good(t *T) {
+func TestApp_App_findWith_Good(t *T) {
 	// Bare name "git" resolves to git.exe on a fixture PATH under
 	// PATHEXT semantics — candidate generation plus the extension
 	// check working together, from any host platform.
@@ -54,13 +54,13 @@ func TestApp_findWith_Good(t *T) {
 	RequireTrue(t, r.OK)
 	AssertEqual(t, Path(dir, "git.exe"), r.Value.(*App).Path)
 }
-func TestApp_findWith_Bad(t *T) {
+func TestApp_App_findWith_Bad(t *T) {
 	// Nothing on the fixture PATH satisfies the name; and an empty
 	// PATH is its own distinct failure.
 	AssertFalse(t, App{}.findWith("git", "Git", t.TempDir(), ".EXE").OK)
 	AssertFalse(t, App{}.findWith("git", "Git", "", ".EXE").OK)
 }
-func TestApp_findWith_Ugly(t *T) {
+func TestApp_App_findWith_Ugly(t *T) {
 	// A forward-slash path is a direct check on every platform — Go
 	// accepts "/" on Windows, so "sub/tool" must never be hunted on
 	// PATH. The candidate resolves via extension there too.
@@ -100,4 +100,37 @@ func TestApp_executableCandidates_Good(t *T) {
 	posix := executableCandidates("dir/git", "")
 	AssertEqual(t, 1, len(posix))
 	AssertEqual(t, "dir/git", posix[0])
+}
+
+func TestApp_splitPathExt_Ugly(t *T) {
+	// Only separators and blanks: nothing survives, and the result is nil.
+	AssertNil(t, splitPathExt(" ; ;;"))
+}
+
+func TestApp_executableCandidates_Bad(t *T) {
+	// A PATHEXT of only separators is no list at all: the path alone, as on POSIX.
+	got := executableCandidates("dir/git", ";;")
+	AssertEqual(t, []string{"dir/git"}, got)
+}
+
+func TestApp_executableCandidates_Ugly(t *T) {
+	// An unlisted extension isn't tried bare: "tool.sh" with .EXE only gets ".exe" appended.
+	got := executableCandidates("dir/tool.sh", ".EXE")
+	AssertEqual(t, []string{"dir/tool.sh.exe"}, got)
+}
+
+func TestApp_hasListedExt_Good(t *T) {
+	// Case-insensitive against the lower-cased list splitPathExt produces.
+	AssertTrue(t, hasListedExt("dir/GIT.EXE", []string{".com", ".exe"}))
+}
+
+func TestApp_hasListedExt_Bad(t *T) {
+	AssertFalse(t, hasListedExt("dir/git", []string{".exe"}))
+	AssertFalse(t, hasListedExt("dir/git.sh", []string{".exe"}))
+}
+
+func TestApp_hasListedExt_Ugly(t *T) {
+	// Empty list, or a dot-only name: never a match.
+	AssertFalse(t, hasListedExt("dir/git.exe", nil))
+	AssertFalse(t, hasListedExt("dir/.", []string{"."}))
 }

@@ -11,12 +11,7 @@
 
 package core_test
 
-import (
-	"embed"
-	"testing/fstest"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // Sinks defeat compiler DCE.
 var (
@@ -28,12 +23,12 @@ var (
 
 // embedFixture returns a small FS suitable for the per-op read paths.
 func embedFixture() FS {
-	return FS(fstest.MapFS{
-		"prompts/code.md":         &fstest.MapFile{Data: []byte("# Code prompt body\nLong enough to bench against.\n")},
-		"prompts/review.md":       &fstest.MapFile{Data: []byte("# Review prompt\nChecklist content here.\n")},
-		"flow/deploy/homelab.yml": &fstest.MapFile{Data: []byte("target: homelab\n")},
-		"flow/deploy/de1.yml":     &fstest.MapFile{Data: []byte("target: de1\n")},
-		"agent/persona/code.md":   &fstest.MapFile{Data: []byte("persona body\n")},
+	return FS(MapFS{
+		"prompts/code.md":         &MapFile{Data: []byte("# Code prompt body\nLong enough to bench against.\n")},
+		"prompts/review.md":       &MapFile{Data: []byte("# Review prompt\nChecklist content here.\n")},
+		"flow/deploy/homelab.yml": &MapFile{Data: []byte("target: homelab\n")},
+		"flow/deploy/de1.yml":     &MapFile{Data: []byte("target: de1\n")},
+		"agent/persona/code.md":   &MapFile{Data: []byte("persona body\n")},
 	})
 }
 
@@ -159,18 +154,15 @@ func BenchmarkEmbed_GetAssetBytes_Hit(b *B) {
 
 // --- MountEmbed / EmbedFS (need a real compile-time embed.FS) ---
 
-//go:embed embed.go
-var benchEmbedFS embed.FS
-
 func BenchmarkMountEmbed(b *B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		embedSinkResult = MountEmbed(benchEmbedFS, ".")
+		embedSinkResult = MountEmbed(BenchEmbedFS, ".")
 	}
 }
 
 func BenchmarkEmbed_EmbedFS(b *B) {
-	emb := MountEmbed(benchEmbedFS, ".").Value.(*Embed)
+	emb := MountEmbed(BenchEmbedFS, ".").Value.(*Embed)
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		_ = emb.EmbedFS()

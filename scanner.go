@@ -25,12 +25,19 @@ func NewBufReader(r Reader) *BufReader {
 	return bufio.NewReader(r)
 }
 
+// LineScanner is the Core alias for bufio.Scanner — what NewLineScanner
+// returns, named so callers can hold one without importing bufio.
+//
+//	var s *core.LineScanner = core.NewLineScanner(r)
+//	for s.Scan() { core.Println(s.Text()) }
+type LineScanner = bufio.Scanner
+
 const defaultLineScannerMaxSize = 1024 * 1024
 
 // NewLineScanner returns a bufio.Scanner configured for line-oriented reads.
 //
 //	scanner := core.NewLineScanner(r)
-func NewLineScanner(r Reader) *bufio.Scanner {
+func NewLineScanner(r Reader) *LineScanner {
 	return NewLineScannerWithSize(r, defaultLineScannerMaxSize)
 }
 
@@ -38,7 +45,7 @@ func NewLineScanner(r Reader) *bufio.Scanner {
 // reads with a custom maximum line size.
 //
 //	scanner := core.NewLineScannerWithSize(r, 2*1024*1024)
-func NewLineScannerWithSize(r Reader, max int) *bufio.Scanner {
+func NewLineScannerWithSize(r Reader, max int) *LineScanner {
 	if max <= 0 {
 		max = defaultLineScannerMaxSize
 	}

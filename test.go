@@ -31,7 +31,10 @@
 // multi-line format. See assert.go for the full helper catalogue.
 package core
 
-import "testing"
+import (
+	"testing"
+	"testing/fstest"
+)
 
 // AnError is a sentinel error for tests that need a non-nil error
 // without caring about its content. Mirrors testify's assert.AnError.
@@ -69,6 +72,26 @@ type B = testing.B
 //	    f.Fuzz(func(t *T, raw string) { ... })
 //	}
 type F = testing.F
+
+// PB is the per-goroutine iterator b.RunParallel hands out, exported as
+// core.PB so parallel benchmarks stay on the single-import pattern.
+//
+//	b.RunParallel(func(pb *core.PB) {
+//	    for pb.Next() { counter.Add(1) }
+//	})
+type PB = testing.PB
+
+// MapFS is the in-memory fs.FS for tests (testing/fstest.MapFS): a map from
+// path to *MapFile, ready to Mount without touching the disk.
+//
+//	fsys := core.MapFS{"prompts/coding.md": &core.MapFile{Data: []byte("# Coding")}}
+//	r := core.Mount(fsys, "prompts")
+type MapFS = fstest.MapFS
+
+// MapFile is one file in a MapFS: its bytes plus optional mode and time.
+//
+//	&core.MapFile{Data: []byte("# Review checklist")}
+type MapFile = fstest.MapFile
 
 // AllocsPerRun returns the mean number of heap allocations per call when fn
 // is invoked runs times (plus one untimed warm-up call to settle

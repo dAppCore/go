@@ -16,11 +16,7 @@
 
 package core_test
 
-import (
-	"sync"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // Sinks defeat compiler dead-code elimination on the read paths.
 var (
@@ -83,7 +79,7 @@ func BenchmarkCoreIsShutdown(b *B) {
 
 func BenchmarkCoreGo_Spawn(b *B) {
 	c := New()
-	var wg sync.WaitGroup
+	var wg WaitGroup
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		wg.Add(1)

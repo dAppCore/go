@@ -15,11 +15,7 @@
 
 package core_test
 
-import (
-	"testing"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // Sinks prevent compiler dead-code elimination on the read paths.
 var (
@@ -280,7 +276,7 @@ func BenchmarkAtomicPointer_CompareAndSwap(b *B) {
 func BenchmarkAtomicInt64_Add_Parallel(b *B) {
 	var a AtomicInt64
 	b.ReportAllocs()
-	b.RunParallel(func(pb *testing.PB) {
+	b.RunParallel(func(pb *PB) {
 		for pb.Next() {
 			a.Add(1)
 		}
@@ -291,7 +287,7 @@ func BenchmarkAtomicInt64_Load_Parallel(b *B) {
 	var a AtomicInt64
 	a.Store(42)
 	b.ReportAllocs()
-	b.RunParallel(func(pb *testing.PB) {
+	b.RunParallel(func(pb *PB) {
 		for pb.Next() {
 			atomicSinkInt64 = a.Load()
 		}

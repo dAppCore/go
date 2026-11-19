@@ -11,11 +11,7 @@
 
 package core_test
 
-import (
-	"testing/fstest"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // Sinks defeat compiler DCE.
 var (
@@ -111,8 +107,8 @@ func BenchmarkI18n_AvailableLanguages_WithTranslator(b *B) {
 
 func BenchmarkI18n_AddLocales(b *B) {
 	c := New()
-	r := Mount(FS(fstest.MapFS{
-		"en.yaml": &fstest.MapFile{Data: []byte("hello: Hello")},
+	r := Mount(FS(MapFS{
+		"en.yaml": &MapFile{Data: []byte("hello: Hello")},
 	}), ".")
 	emb := r.Value.(*Embed)
 	b.ReportAllocs()
@@ -123,8 +119,8 @@ func BenchmarkI18n_AddLocales(b *B) {
 
 func BenchmarkI18n_Locales(b *B) {
 	c := New()
-	r := Mount(FS(fstest.MapFS{
-		"en.yaml": &fstest.MapFile{Data: []byte("hello: Hello")},
+	r := Mount(FS(MapFS{
+		"en.yaml": &MapFile{Data: []byte("hello: Hello")},
 	}), ".")
 	c.I18n().AddLocales(r.Value.(*Embed))
 	b.ReportAllocs()

@@ -10,11 +10,7 @@
 
 package core_test
 
-import (
-	"bytes"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // Sinks defeat compiler DCE.
 var (
@@ -73,7 +69,7 @@ func BenchmarkTemplate_Parse_Rich(b *B) {
 func BenchmarkTemplate_Execute_Simple(b *B) {
 	r := ParseTemplate("bench", templateSimpleText)
 	tmpl := r.Value.(*Template)
-	var buf bytes.Buffer
+	var buf Buffer
 	data := struct{ Name string }{Name: "Snider"}
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -85,7 +81,7 @@ func BenchmarkTemplate_Execute_Simple(b *B) {
 func BenchmarkTemplate_Execute_Rich(b *B) {
 	r := ParseTemplate("bench", templateRichText)
 	tmpl := r.Value.(*Template)
-	var buf bytes.Buffer
+	var buf Buffer
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		buf.Reset()

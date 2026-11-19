@@ -98,3 +98,28 @@ func TestFs_Fs_walkSeq_Ugly(t *T) {
 	AssertContains(t, paths, PathJoin("app", "agent.txt"))
 	AssertNotContains(t, paths, PathJoin("vendor", "agent.txt"))
 }
+
+func TestFs_evalDeepestSymlinks_Good(t *T) {
+	// An existing path resolves fully (macOS TempDir sits behind /var → /private/var).
+	dir := t.TempDir()
+
+	AssertEqual(t, PathEvalSymlinks(dir).Value, evalDeepestSymlinks(dir))
+}
+
+func TestFs_evalDeepestSymlinks_Bad(t *T) {
+	// Nothing on the path exists (relative): returned as given, no resolution possible.
+	AssertEqual(t, "no-such-dir/leaf", evalDeepestSymlinks("no-such-dir/leaf"))
+}
+
+func TestFs_evalDeepestSymlinks_Ugly(t *T) {
+	// A missing tail under a symlinked dir: the deepest existing ancestor resolves,
+	// the missing parts are re-joined, so a sandbox check sees the real location.
+	root := PathEvalSymlinks(t.TempDir()).Value.(string)
+	real := PathJoin(root, "real")
+	AssertTrue(t, MkdirAll(real, 0o755).OK)
+	AssertTrue(t, Symlink(real, PathJoin(root, "link")).OK)
+
+	got := evalDeepestSymlinks(PathJoin(root, "link", "missing", "file.txt"))
+
+	AssertEqual(t, PathJoin(real, "missing", "file.txt"), got)
+}
