@@ -48,6 +48,7 @@ type Action struct {
 	// registry-disabled (unfetchable, post-F1) entry cannot.
 	enabled bool
 	core    *Core // for entitlement checks during Run()
+	refused error // why registration was refused (locked conclave); Run returns it
 }
 
 // Run executes the action with panic recovery.
@@ -55,6 +56,9 @@ type Action struct {
 //
 //	r := c.Action("process.run").Run(ctx, opts)
 func (a *Action) Run(ctx Context, opts Options) (result Result) {
+	if a != nil && a.refused != nil {
+		return Result{E("action.Run", Concat("action registration was refused: ", a.Name), a.refused), false}
+	}
 	if a == nil || a.Handler == nil {
 		return Result{E("action.Run", Concat("action not registered: ", a.safeName()), nil), false}
 	}
@@ -148,7 +152,14 @@ func (a *Action) safeName() string {
 func (c *Core) Action(name string, handler ...ActionHandler) *Action {
 	if len(handler) > 0 {
 		def := &Action{Name: name, Handler: handler[0], enabled: true, core: c}
-		c.ipc.actions.Set(name, def)
+		if r := c.ipc.actions.Set(name, def); !r.OK {
+			// Locked conclave: say so, and hand back an Action that can't
+			// run (Exists false, Run returns the refusal) rather than one
+			// that looks registered while nothing can reach it.
+			err, _ := r.Value.(error)
+			Error("core.Action: registration refused", "action", name, "err", err)
+			return &Action{Name: name, core: c, refused: err}
+		}
 		return def
 	}
 	r := c.ipc.actions.Get(name)
@@ -209,6 +220,7 @@ type Task struct {
 	Name        string
 	Description string
 	Steps       []Step
+	refused     error // why registration was refused (locked conclave); Run returns it
 }
 
 // Run executes the task's steps in order. Sync steps run sequentially —
@@ -217,6 +229,9 @@ type Task struct {
 //
 //	r := c.Task("deploy").Run(ctx, opts)
 func (t *Task) Run(ctx Context, c *Core, opts Options) Result {
+	if t != nil && t.refused != nil {
+		return Result{E("task.Run", Concat("task registration was refused: ", t.Name), t.refused), false}
+	}
 	if t == nil || len(t.Steps) == 0 {
 		return Result{E("task.Run", Concat("task has no steps: ", t.safeName()), nil), false}
 	}
@@ -283,7 +298,11 @@ func (c *Core) Task(name string, def ...Task) *Task {
 	if len(def) > 0 {
 		d := def[0]
 		d.Name = name
-		c.ipc.tasks.Set(name, &d)
+		if r := c.ipc.tasks.Set(name, &d); !r.OK {
+			err, _ := r.Value.(error)
+			Error("core.Task: registration refused", "task", name, "err", err)
+			return &Task{Name: name, Description: d.Description, refused: err}
+		}
 		return &d
 	}
 	r := c.ipc.tasks.Get(name)
