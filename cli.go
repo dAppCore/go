@@ -111,8 +111,12 @@ func (cl *Cli) Run(args ...string) Result {
 		return Result{Value: NewCode("cli.unknown", Concat("unknown command: ", Join(" ", clean...))), OK: false}
 	}
 
-	// Build options from remaining args
+	// Build options from remaining args. Positionals keep their order:
+	// "_args" holds them all, "_arg" the first (the usual single argument).
+	//
+	//	grootdps export 1234 fight.json  →  _arg "1234", _args ["1234", "fight.json"]
 	opts := NewOptions()
+	var positionals []string
 	for _, arg := range remaining {
 		key, val, valid := ParseFlag(arg)
 		if valid {
@@ -122,8 +126,12 @@ func (cl *Cli) Run(args ...string) Result {
 				opts.Set(key, true)
 			}
 		} else if !IsFlag(arg) {
-			opts.Set("_arg", arg)
+			positionals = append(positionals, arg)
 		}
+	}
+	if len(positionals) > 0 {
+		opts.Set("_arg", positionals[0])
+		opts.Set("_args", positionals)
 	}
 
 	if cmd.Action != nil {
@@ -158,9 +166,15 @@ func (cl *Cli) PrintHelp() {
 		if cmd.Hidden || (cmd.Action == nil && !cmd.IsManaged()) {
 			return
 		}
-		tr := c.I18n().Translate(cmd.I18nKey())
+		key := cmd.I18nKey()
+		tr := c.I18n().Translate(key)
 		desc, _ := tr.Value.(string)
-		if desc == "" || desc == cmd.I18nKey() {
+		if desc == "" || desc == key {
+			// Untranslated: a hand-written Description shows as written; a
+			// key derived from the path has nothing to show.
+			desc = cmd.Description
+		}
+		if desc == "" {
 			cl.Print("  %s", path)
 		} else {
 			cl.Print("  %-30s %s", path, desc)

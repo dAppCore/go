@@ -143,6 +143,22 @@ func (o Options) String(key string) string {
 	return s
 }
 
+// Args retrieves the positional arguments a CLI command was given, in order
+// (the "_args" key Cli.Run sets). Nil if there were none.
+//
+//	c.Command("export", core.Command{Action: func(opts core.Options) core.Result {
+//	    args := opts.Args() // grootdps export 1234 fight.json → ["1234", "fight.json"]
+//	    return core.Ok(len(args))
+//	}})
+func (o Options) Args() []string {
+	r := o.Get("_args")
+	if !r.OK {
+		return nil
+	}
+	args, _ := r.Value.([]string)
+	return args
+}
+
 // Int retrieves an int value, 0 if missing.
 //
 //	port := opts.Int("port")

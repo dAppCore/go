@@ -92,6 +92,14 @@ func ExampleOptions_Bool() {
 	// Output: true
 }
 
+// ExampleOptions_Args lists a command's positional arguments through `Options.Args`, in
+// the order they were typed; `_arg` stays the first for single-argument commands.
+func ExampleOptions_Args() {
+	opts := NewOptions(Option{Key: "_args", Value: []string{"1234", "fight.json"}})
+	Println(opts.Args())
+	// Output: [1234 fight.json]
+}
+
 // ExampleOptions_Len counts entries through `Options.Len` for agent options. Options carry
 // loosely typed inputs while typed accessors keep call sites small.
 func ExampleOptions_Len() {

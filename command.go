@@ -48,7 +48,7 @@ type CommandAction func(Options) Result
 //	if !r.OK { return r }
 type Command struct {
 	Name        string
-	Description string        // i18n key — derived from path if empty
+	Description string        // i18n key (derived from path if empty), or plain text: help shows it as written when it has no translation
 	Path        string        // "deploy/to/homelab"
 	Action      CommandAction // business logic
 	Managed     string        // "" = one-shot, "process.daemon" = managed lifecycle

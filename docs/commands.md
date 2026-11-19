@@ -100,16 +100,17 @@ r := c.Cli().Run("deploy", "to", "homelab", "--target=uk-prod", "--debug")
 
 ### Positional Arguments
 
-Non-flag arguments after the command path are stored as repeated `_arg` options.
+Non-flag arguments after the command path keep their order. `opts.Args()` returns them all; `_arg` holds the first, for the usual single-argument command.
 
 ```go
-r := c.Cli().Run("workspace", "open", "alpha")
+r := c.Cli().Run("workspace", "open", "alpha", "--force", "beta")
 ```
 
-That produces an option like:
+That produces:
 
 ```go
-core.Option{Key: "_arg", Value: "alpha"}
+opts.Args()          // ["alpha", "beta"]   (the "_args" key)
+opts.String("_arg")  // "alpha"
 ```
 
 ### Important Details
@@ -131,7 +132,12 @@ It skips:
 - hidden commands
 - placeholder parents with no `Action` and no `Lifecycle`
 
-Descriptions are resolved through `cmd.I18nKey()`.
+Descriptions are resolved through `cmd.I18nKey()`. When there's no translation, a hand-written `Description` shows as written, so plain text works without an i18n bundle:
+
+```go
+c.Command("fights", core.Command{Description: "list saved fights", Action: list})
+// fights                         list saved fights
+```
 
 ## I18n Description Keys
 
