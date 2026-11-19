@@ -122,7 +122,9 @@ func (c *Core) Command(path string, command ...Command) Result {
 	cmd := &command[0]
 	cmd.Name = pathName(path)
 	cmd.Path = path
-	c.commands.Set(path, cmd)
+	if r := c.commands.Set(path, cmd); !r.OK {
+		return r // locked conclave: refused, not silently dropped
+	}
 
 	// Ensure ancestor paths exist as placeholders so help/listing render the
 	// tree. Children are not tracked on the Command — the flat path-keyed
