@@ -556,19 +556,19 @@ func TestOptions_Result_New_Ugly(t *T) {
 	AssertEqual(t, "existing", r.Value)
 }
 
-func TestOptions_Args_Good(t *T) {
+func TestOptions_Options_Args_Good(t *T) {
 	opts := NewOptions(Option{Key: "_args", Value: []string{"1234", "fight.json"}})
 	AssertEqual(t, []string{"1234", "fight.json"}, opts.Args())
 }
 
-func TestOptions_Args_Bad(t *T) {
+func TestOptions_Options_Args_Bad(t *T) {
 	// No positionals: nil, not an empty slice to range over by accident.
 	AssertNil(t, NewOptions().Args())
 	// A wrong type under the key is ignored, like the other typed accessors.
 	AssertNil(t, NewOptions(Option{Key: "_args", Value: "1234"}).Args())
 }
 
-func TestOptions_Args_Ugly(t *T) {
+func TestOptions_Options_Args_Ugly(t *T) {
 	// Through Cli.Run: flags anywhere, positionals keep their order, _arg is the first.
 	c := New(WithCli())
 	var args []string
