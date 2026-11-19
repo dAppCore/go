@@ -262,6 +262,39 @@ func TestCli_Cli_PrintHelpTranslated_Good(t *T) {
 	AssertContains(t, buf.String(), "translated:cmd.agent.status.description")
 }
 
+func TestCli_Cli_PrintHelpDescription_Good(t *T) {
+	// A hand-written Description with no translation shows as written.
+	c := New(WithCli())
+	buf := NewBuffer()
+	c.Cli().SetOutput(buf)
+	c.Command("fights", Command{Description: "list saved fights", Action: func(_ Options) Result { return Result{OK: true} }})
+	c.Cli().PrintHelp()
+	AssertContains(t, buf.String(), "list saved fights")
+}
+
+func TestCli_Cli_PrintHelpDescription_Ugly(t *T) {
+	// A translator still wins over the literal text.
+	c := New(WithCli())
+	buf := NewBuffer()
+	c.Cli().SetOutput(buf)
+	c.I18n().SetTranslator(&mockTranslator{})
+	c.Command("fights", Command{Description: "cmd.fights.description", Action: func(_ Options) Result { return Result{OK: true} }})
+	c.Cli().PrintHelp()
+	AssertContains(t, buf.String(), "translated:cmd.fights.description")
+}
+
+func TestCli_Cli_RunPositionals_Good(t *T) {
+	// Every positional survives; before, each overwrote _arg and only the last was kept.
+	c := New(WithCli())
+	var got []string
+	c.Command("deploy", Command{Action: func(opts Options) Result {
+		got = opts.Args()
+		return Result{OK: true}
+	}})
+	AssertTrue(t, c.Cli().Run("deploy", "homelab", "go-io").OK)
+	AssertEqual(t, []string{"homelab", "go-io"}, got)
+}
+
 func TestCli_Cli_SetBanner_Good(t *T) {
 	c := New(WithCli())
 	c.Cli().SetBanner(func(_ *Cli) string { return "dAppCore agent" })
