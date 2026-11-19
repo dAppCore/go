@@ -10,12 +10,7 @@
 
 package core_test
 
-import (
-	"sync"
-	"testing"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // Sinks defeat compiler DCE on the read paths.
 var (
@@ -49,7 +44,7 @@ func BenchmarkMutex_TryLock(b *B) {
 func BenchmarkMutex_LockUnlock_Parallel(b *B) {
 	var m Mutex
 	b.ReportAllocs()
-	b.RunParallel(func(pb *testing.PB) {
+	b.RunParallel(func(pb *PB) {
 		for pb.Next() {
 			m.Lock()
 			m.Unlock()
@@ -102,7 +97,7 @@ func BenchmarkRWMutex_TryRLock(b *B) {
 func BenchmarkRWMutex_RLockRUnlock_Parallel(b *B) {
 	var m RWMutex
 	b.ReportAllocs()
-	b.RunParallel(func(pb *testing.PB) {
+	b.RunParallel(func(pb *PB) {
 		for pb.Next() {
 			m.RLock()
 			m.RUnlock()
@@ -142,7 +137,7 @@ func BenchmarkWaitGroup_AddDone(b *B) {
 
 func BenchmarkWaitGroup_Go(b *B) {
 	var w WaitGroup
-	var done sync.WaitGroup
+	var done WaitGroup
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		done.Add(1)
@@ -206,7 +201,7 @@ func BenchmarkSyncMap_Load_Parallel(b *B) {
 		m.Store(i, i)
 	}
 	b.ReportAllocs()
-	b.RunParallel(func(pb *testing.PB) {
+	b.RunParallel(func(pb *PB) {
 		var k int
 		for pb.Next() {
 			syncSinkAny, syncSinkBool = m.Load(k)

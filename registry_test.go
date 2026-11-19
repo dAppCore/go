@@ -61,7 +61,7 @@ func TestRegistry_Set_Ugly_ConcurrentWrites(t *T) {
 
 // --- GetOrSet ---
 
-func TestRegistry_GetOrSet_Good(t *T) {
+func TestRegistry_Registry_GetOrSet_Good(t *T) {
 	r := NewRegistry[*Lock]()
 	calls := 0
 	mk := func() *Lock { calls++; return &Lock{Name: "drain", Mutex: &RWMutex{}} }
@@ -76,14 +76,14 @@ func TestRegistry_GetOrSet_Good(t *T) {
 	AssertSame(t, first.Value.(*Lock), second.Value.(*Lock))
 }
 
-func TestRegistry_GetOrSet_Bad(t *T) {
+func TestRegistry_Registry_GetOrSet_Bad(t *T) {
 	r := NewRegistry[int]()
 	r.Lock()
 	res := r.GetOrSet("late", func() int { return 1 })
 	AssertFalse(t, res.OK)
 }
 
-func TestRegistry_GetOrSet_Ugly(t *T) {
+func TestRegistry_Registry_GetOrSet_Ugly(t *T) {
 	r := NewRegistry[*Lock]()
 	var wg WaitGroup
 	results := make([]*Lock, 50)
@@ -326,7 +326,7 @@ func TestRegistry_Enable_Bad_NotFound(t *T) {
 	AssertFalse(t, res.OK)
 }
 
-func TestRegistry_GetIncludingDisabled_Good(t *T) {
+func TestRegistry_Registry_GetIncludingDisabled_Good(t *T) {
 	r := NewRegistry[string]()
 	r.Set("alpha", "value")
 	r.Disable("alpha")
@@ -335,12 +335,12 @@ func TestRegistry_GetIncludingDisabled_Good(t *T) {
 	AssertEqual(t, "value", res.Value.(string))
 }
 
-func TestRegistry_GetIncludingDisabled_Bad(t *T) {
+func TestRegistry_Registry_GetIncludingDisabled_Bad(t *T) {
 	r := NewRegistry[string]()
 	AssertFalse(t, r.GetIncludingDisabled("missing").OK)
 }
 
-func TestRegistry_GetIncludingDisabled_Ugly(t *T) {
+func TestRegistry_Registry_GetIncludingDisabled_Ugly(t *T) {
 	// An enabled entry resolves identically through Get and GetIncludingDisabled.
 	r := NewRegistry[string]()
 	r.Set("alpha", "value")

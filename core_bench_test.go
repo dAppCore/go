@@ -11,18 +11,14 @@
 
 package core_test
 
-import (
-	"io"
+import . "github.com/dappcore/go"
 
-	. "github.com/dappcore/go"
-)
-
-// quietDefault redirects the default logger to io.Discard for the duration
+// quietDefault redirects the default logger to Discard for the duration
 // of a sub-test. Used by LogError / LogWarn benches that otherwise spam
 // stderr with formatted log lines.
 func quietDefault(b *B) {
 	prev := Default()
-	SetDefault(NewLog(LogOptions{Level: LevelError, Output: io.Discard}))
+	SetDefault(NewLog(LogOptions{Level: LevelError, Output: Discard}))
 	b.Cleanup(func() { SetDefault(prev) })
 }
 

@@ -1,10 +1,6 @@
 package core_test
 
-import (
-	"net"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // --- mock stream for testing ---
 
@@ -697,8 +693,9 @@ func TestApi_HTTPListenAndServe_Good(t *T) {
 	// goroutine; the test fetches from it and then leaves it (the process
 	// exits at test end). A free port is reserved then released to avoid a
 	// hard-coded port clash.
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	RequireTrue(t, err == nil)
+	lr := NetListen("tcp", "127.0.0.1:0")
+	RequireTrue(t, lr.OK)
+	ln := lr.Value.(Listener)
 	addr := ln.Addr().String()
 	RequireTrue(t, ln.Close() == nil)
 
@@ -729,8 +726,9 @@ func TestApi_HTTPListenAndServe_Bad(t *T) {
 
 func TestApi_HTTPListenAndServe_Ugly(t *T) {
 	// Binding an already-occupied address fails immediately.
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	RequireTrue(t, err == nil)
+	lr := NetListen("tcp", "127.0.0.1:0")
+	RequireTrue(t, lr.OK)
+	ln := lr.Value.(Listener)
 	defer ln.Close()
 	r := HTTPListenAndServe(ln.Addr().String(), HandlerFunc(func(w ResponseWriter, r *Request) {}))
 	AssertFalse(t, r.OK)

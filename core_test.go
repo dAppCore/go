@@ -709,7 +709,7 @@ type withContextKey struct{}
 // Good — the request-scoped value round-trips on the clone, the parent's
 // Context is left untouched, and the heavy subsystems are shared by
 // pointer (here: the same *Config).
-func TestCore_WithContext_Good(t *T) {
+func TestCore_Core_WithContext_Good(t *T) {
 	c := New()
 	rc := c.WithContext(WithValue(c.Context(), withContextKey{}, "user-42"))
 
@@ -720,7 +720,7 @@ func TestCore_WithContext_Good(t *T) {
 
 // Bad — cancelling the derived Core must NOT cancel the parent: the
 // parent's lifecycle context stays live (Err() == nil) afterwards.
-func TestCore_WithContext_Bad(t *T) {
+func TestCore_Core_WithContext_Bad(t *T) {
 	c := New()
 	rc := c.WithContext(c.Context())
 
@@ -732,7 +732,7 @@ func TestCore_WithContext_Bad(t *T) {
 
 // Ugly — a parent shutdown propagates DOWN to the derived context when
 // the derived ctx chains from the parent (the documented usual case).
-func TestCore_WithContext_Ugly(t *T) {
+func TestCore_Core_WithContext_Ugly(t *T) {
 	c := New()
 	rc := c.WithContext(WithValue(c.Context(), withContextKey{}, "scoped"))
 

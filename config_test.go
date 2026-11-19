@@ -46,7 +46,7 @@ func TestConfig_EnabledFeatures_Good(t *T) {
 
 // --- Group (G1) ---
 
-func TestConfig_Group_Good(t *T) {
+func TestConfig_Config_Group_Good(t *T) {
 	c := New()
 	c.Config().Group("database").Set("host", "localhost")
 
@@ -56,14 +56,14 @@ func TestConfig_Group_Good(t *T) {
 	AssertEqual(t, "localhost", c.Config("database").String("host"))
 }
 
-func TestConfig_Group_Bad(t *T) {
+func TestConfig_Config_Group_Bad(t *T) {
 	c := New()
 	// An empty group name is the root — no prefix applied.
 	c.Config().Group("").Set("host", "localhost")
 	AssertEqual(t, "localhost", c.Config().String("host"))
 }
 
-func TestConfig_Group_Ugly(t *T) {
+func TestConfig_Config_Group_Ugly(t *T) {
 	c := New()
 	// Nested groups compose into a dotted prefix.
 	c.Config("a").Group("b").Set("k", "v")
@@ -531,7 +531,7 @@ func TestConfig_ConfigVar_Unset_Ugly(t *T) {
 
 // --- W4-3: config sources ---
 
-func TestConfig_Load_Good(t *T) {
+func TestConfig_Config_Load_Good(t *T) {
 	path := Path(t.TempDir(), "config.json")
 	AssertTrue(t, WriteFile(path, []byte(`{"port": 8080, "database": {"host": "homelab"}}`), 0600).OK)
 	c := New()
@@ -540,17 +540,17 @@ func TestConfig_Load_Good(t *T) {
 	AssertEqual(t, 8080.0, c.Config().Get("port").Float64()) // JSON numbers decode float64; W1 getter lifts it
 }
 
-func TestConfig_Load_Bad(t *T) {
+func TestConfig_Config_Load_Bad(t *T) {
 	AssertFalse(t, New().Config().Load("/nonexistent/config.json").OK)
 }
 
-func TestConfig_Load_Ugly(t *T) {
+func TestConfig_Config_Load_Ugly(t *T) {
 	path := Path(t.TempDir(), "bad.json")
 	AssertTrue(t, WriteFile(path, []byte(`{not json`), 0600).OK)
 	AssertFalse(t, New().Config().Load(path).OK)
 }
 
-func TestConfig_FromEnv_Good(t *T) {
+func TestConfig_Config_FromEnv_Good(t *T) {
 	AssertTrue(t, Setenv("CORETESTW4_DATABASE_HOST", "homelab").OK)
 	defer Unsetenv("CORETESTW4_DATABASE_HOST")
 	c := New()
@@ -560,14 +560,14 @@ func TestConfig_FromEnv_Good(t *T) {
 	AssertEqual(t, "homelab", c.Config().String("database.host"))
 }
 
-func TestConfig_FromEnv_Bad(t *T) {
+func TestConfig_Config_FromEnv_Bad(t *T) {
 	c := New()
 	r := c.Config().FromEnv("CORETESTW4_NOMATCH_PREFIX_")
 	AssertTrue(t, r.OK)
 	AssertEqual(t, 0, r.Int())
 }
 
-func TestConfig_FromEnv_Ugly(t *T) {
+func TestConfig_Config_FromEnv_Ugly(t *T) {
 	// Empty prefix imports the whole environment — count is positive.
 	c := New()
 	r := c.Config().FromEnv("")

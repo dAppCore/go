@@ -10,12 +10,7 @@
 
 package core_test
 
-import (
-	"errors"
-	"testing"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // Sinks defeat compiler DCE.
 var (
@@ -26,7 +21,7 @@ var (
 
 // Fixtures
 var (
-	errSentinel = errors.New("connection refused")
+	errSentinel = NewError("connection refused")
 	errCoreLeaf = E("net.Dial", "dial failed", errSentinel)
 	errCoreDeep = Wrap(Wrap(errCoreLeaf, "api.Call", "remote unreachable"), "agent.Ping", "homelab probe failed")
 	errCoded    = NewCode("CONFIG_MISSING", "missing config.host")
@@ -154,8 +149,8 @@ func BenchmarkErr_As(b *B) {
 // --- ErrorJoin ---
 
 func BenchmarkErr_ErrorJoin_Two(b *B) {
-	a := errors.New("a failed")
-	c := errors.New("c failed")
+	a := NewError("a failed")
+	c := NewError("c failed")
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		errSinkErr = ErrorJoin(a, c)
@@ -241,6 +236,3 @@ func BenchmarkErr_ErrorPanic_Reports(b *B) {
 		_ = ep.Reports(10)
 	}
 }
-
-// Quiet unused-imports for "testing" — used implicitly via core.B alias chain.
-var _ = testing.Short

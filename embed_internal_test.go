@@ -7,6 +7,13 @@ import "embed"
 //go:embed all:tests/data
 var EmbeddedTestFS embed.FS
 
+// BenchEmbedFS is a real compile-time embed.FS for the MountEmbed benches in
+// embed_bench_test.go: go:embed needs the embed import, which only this
+// internal file may carry, and exported test vars are visible to core_test.
+//
+//go:embed embed.go
+var BenchEmbedFS embed.FS
+
 func MustCompressTestAsset(t *T, input string) string {
 	t.Helper()
 

@@ -10,11 +10,7 @@
 
 package core_test
 
-import (
-	"testing/fstest"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // Sinks defeat compiler DCE.
 var (
@@ -26,14 +22,14 @@ var (
 // Mirrors how consumer packages declare their embedded.FS at boot.
 func dataFixture() *Core {
 	c := New()
-	fsys := fstest.MapFS{
-		"prompts/coding.md":          &fstest.MapFile{Data: []byte("# Coding\n\n```go\nfunc main() {}\n```\n")},
-		"prompts/review.md":          &fstest.MapFile{Data: []byte("# Review checklist\n- correctness\n- tests\n- docs\n")},
-		"prompts/triage.md":          &fstest.MapFile{Data: []byte("# Triage\n\nSurface the smallest reproducer.\n")},
-		"flow/deploy/homelab.yaml":   &fstest.MapFile{Data: []byte("target: homelab\nbranch: dev\n")},
-		"flow/deploy/de1.yaml":       &fstest.MapFile{Data: []byte("target: de1\nbranch: main\n")},
-		"persona/code/cladius.md":    &fstest.MapFile{Data: []byte("persona: cladius\n")},
-		"persona/code/hephaestus.md": &fstest.MapFile{Data: []byte("persona: hephaestus\n")},
+	fsys := MapFS{
+		"prompts/coding.md":          &MapFile{Data: []byte("# Coding\n\n```go\nfunc main() {}\n```\n")},
+		"prompts/review.md":          &MapFile{Data: []byte("# Review checklist\n- correctness\n- tests\n- docs\n")},
+		"prompts/triage.md":          &MapFile{Data: []byte("# Triage\n\nSurface the smallest reproducer.\n")},
+		"flow/deploy/homelab.yaml":   &MapFile{Data: []byte("target: homelab\nbranch: dev\n")},
+		"flow/deploy/de1.yaml":       &MapFile{Data: []byte("target: de1\nbranch: main\n")},
+		"persona/code/cladius.md":    &MapFile{Data: []byte("persona: cladius\n")},
+		"persona/code/hephaestus.md": &MapFile{Data: []byte("persona: hephaestus\n")},
 	}
 	c.Data().New(NewOptions(
 		Option{Key: "name", Value: "brain"},
@@ -100,8 +96,8 @@ func BenchmarkData_Mounts(b *B) {
 // --- New (mount registration) ---
 
 func BenchmarkData_New(b *B) {
-	fsys := fstest.MapFS{
-		"a.md": &fstest.MapFile{Data: []byte("a")},
+	fsys := MapFS{
+		"a.md": &MapFile{Data: []byte("a")},
 	}
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -115,8 +111,8 @@ func BenchmarkData_New(b *B) {
 }
 
 func BenchmarkData_Extract(b *B) {
-	fsys := fstest.MapFS{
-		"tmpl/a.md": &fstest.MapFile{Data: []byte("content")},
+	fsys := MapFS{
+		"tmpl/a.md": &MapFile{Data: []byte("content")},
 	}
 	c := New()
 	c.Data().New(NewOptions(

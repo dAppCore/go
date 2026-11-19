@@ -90,7 +90,9 @@ func (d *Data) New(opts Options) Result {
 	}
 
 	emb := mr.Value.(*Embed)
-	d.Set(name, emb)
+	if r := d.Set(name, emb); !r.OK {
+		return r // locked conclave: refused, not silently dropped
+	}
 	return Result{emb, true}
 }
 
@@ -116,7 +118,9 @@ func (d *Data) MountDir(name, dir string) Result {
 	}
 
 	emb := mr.Value.(*Embed)
-	d.Set(name, emb)
+	if r := d.Set(name, emb); !r.OK {
+		return r // locked conclave: refused, not silently dropped
+	}
 	return Result{emb, true}
 }
 

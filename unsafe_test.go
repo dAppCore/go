@@ -6,11 +6,7 @@
 
 package core_test
 
-import (
-	"unsafe"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // --- AsBytes ---
 
@@ -54,7 +50,7 @@ func TestUnsafe_PinSlice_Good(t *T) {
 	defer view.Release()
 
 	AssertTrue(t, view.Active())
-	AssertTrue(t, view.Ptr() == unsafe.Pointer(&slice[0]))
+	AssertTrue(t, view.Ptr() == SliceDataPtr(slice))
 	AssertEqual(t, 4, view.Len())
 	AssertEqual(t, 16, view.Bytes())
 }
@@ -87,7 +83,7 @@ func TestUnsafe_PinnedView_Ptr_Good(t *T) {
 	PinSlice(slice, &view)
 	defer view.Release()
 
-	AssertTrue(t, view.Ptr() == unsafe.Pointer(&slice[0]))
+	AssertTrue(t, view.Ptr() == SliceDataPtr(slice))
 }
 
 func TestUnsafe_PinnedView_Ptr_Bad(t *T) {

@@ -10,21 +10,17 @@
 
 package core_test
 
-import (
-	"io"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // Sinks defeat compiler DCE.
 var logSinkInt int
 
 // logBenchFixture builds a Log at the given level that writes to
-// io.Discard so the bench measures formatter cost without IO noise.
+// Discard so the bench measures formatter cost without IO noise.
 func logBenchFixture(level Level) *Log {
 	return NewLog(LogOptions{
 		Level:  level,
-		Output: io.Discard,
+		Output: Discard,
 	})
 }
 
@@ -115,7 +111,7 @@ func BenchmarkLog_SetOutput(b *B) {
 	l := logBenchFixture(LevelInfo)
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		l.SetOutput(io.Discard)
+		l.SetOutput(Discard)
 	}
 }
 
@@ -214,7 +210,7 @@ func BenchmarkLogPanic_Recover(b *B) {
 // stderr.
 func quietPackageDefault(b *B, level Level) func() {
 	prev := Default()
-	SetDefault(NewLog(LogOptions{Output: io.Discard, Level: level}))
+	SetDefault(NewLog(LogOptions{Output: Discard, Level: level}))
 	return func() { SetDefault(prev) }
 }
 

@@ -9,12 +9,7 @@
 
 package core_test
 
-import (
-	"bytes"
-	"os"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // Sinks defeat compiler DCE.
 var (
@@ -66,7 +61,7 @@ func BenchmarkFormat_Sprintln(b *B) {
 // --- Print to a buffer (writer-mediated, avoids stdout in bench) ---
 
 func BenchmarkFormat_Print_Buffer(b *B) {
-	var buf bytes.Buffer
+	var buf Buffer
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
@@ -88,24 +83,5 @@ func BenchmarkFormat_Errorf_Wrap(b *B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		formatSinkErr = Errorf("connect %s: %w", "homelab", cause)
-	}
-}
-
-// Println writes to os.Stdout; redirect to /dev/null so the bench measures
-// the formatting + write cost, not terminal scroll.
-func BenchmarkPrintln(b *B) {
-	devnull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
-	if err != nil {
-		b.Skip("no /dev/null")
-	}
-	old := os.Stdout
-	os.Stdout = devnull
-	defer func() {
-		os.Stdout = old
-		devnull.Close()
-	}()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		Println("agent ready", 42)
 	}
 }

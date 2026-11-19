@@ -114,6 +114,8 @@ func (d *Drive) New(opts Options) Result {
 		Options:   opts,
 	}
 
-	d.Set(name, handle)
+	if r := d.Set(name, handle); !r.OK {
+		return r // locked conclave: refused, not silently dropped
+	}
 	return Result{handle, true}
 }

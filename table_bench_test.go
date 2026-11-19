@@ -9,11 +9,7 @@
 
 package core_test
 
-import (
-	"bytes"
-
-	. "github.com/dappcore/go"
-)
+import . "github.com/dappcore/go"
 
 // Sinks defeat compiler DCE.
 var (
@@ -24,7 +20,7 @@ var (
 // --- Constructor ---
 
 func BenchmarkTable_NewTable(b *B) {
-	var buf bytes.Buffer
+	var buf Buffer
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
@@ -35,7 +31,7 @@ func BenchmarkTable_NewTable(b *B) {
 // --- Row + Flush cycle ---
 
 func BenchmarkTable_Row_TwoCells(b *B) {
-	var buf bytes.Buffer
+	var buf Buffer
 	table := NewTable(&buf)
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -44,7 +40,7 @@ func BenchmarkTable_Row_TwoCells(b *B) {
 }
 
 func BenchmarkTable_Row_FourCells(b *B) {
-	var buf bytes.Buffer
+	var buf Buffer
 	table := NewTable(&buf)
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
@@ -53,7 +49,7 @@ func BenchmarkTable_Row_FourCells(b *B) {
 }
 
 func BenchmarkTable_Flush_Empty(b *B) {
-	var buf bytes.Buffer
+	var buf Buffer
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
@@ -63,7 +59,7 @@ func BenchmarkTable_Flush_Empty(b *B) {
 }
 
 func BenchmarkTable_BuildAndFlush_10Rows(b *B) {
-	var buf bytes.Buffer
+	var buf Buffer
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
