@@ -118,13 +118,14 @@ func (a *API) Discover() Result {
 }
 
 // RegisterProtocol registers a stream factory for a URL scheme.
-// Consumer packages call this during OnStartup.
+// Consumer packages call this during OnStartup; after a locked conclave
+// seals, the Result reports the refusal.
 //
 //	c.API().RegisterProtocol("http", httpStreamFactory)
 //	c.API().RegisterProtocol("https", httpStreamFactory)
 //	c.API().RegisterProtocol("mcp", mcpStreamFactory)
-func (a *API) RegisterProtocol(scheme string, factory StreamFactory) {
-	a.protocols.Set(scheme, factory)
+func (a *API) RegisterProtocol(scheme string, factory StreamFactory) Result {
+	return a.protocols.Set(scheme, factory)
 }
 
 // Stream opens a connection to a named endpoint.

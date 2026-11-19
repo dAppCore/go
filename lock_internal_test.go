@@ -48,4 +48,25 @@ func TestLock_Core_sealConclave_Ugly(t *T) {
 	AssertFalse(t, c.Command("late").OK)
 	AssertFalse(t, c.Drive().New(NewOptions(Option{Key: "name", Value: "late"}, Option{Key: "transport", Value: "http://x"})).OK)
 	AssertFalse(t, c.Data().MountDir("late", t.TempDir()).OK)
+	AssertFalse(t, c.API().RegisterProtocol("late", func(*DriveHandle) (Stream, error) { return nil, nil }).OK)
+}
+
+func TestLock_Core_sealConclave_Good_LateActionRefused(t *T) {
+	// A late Action or Task can't return a Result, so what comes back can't
+	// run: Exists is false and Run returns the refusal, never the handler.
+	c := New(WithServiceLock())
+	c.ServiceStartup(Background(), nil)
+	ran := false
+
+	a := c.Action("late.action", func(Context, Options) Result { ran = true; return Ok(nil) })
+	a.Description = "callers chain this; it must stay safe"
+	task := c.Task("late.task", Task{Steps: []Step{{Action: "late.action"}}})
+
+	AssertFalse(t, a.Exists())
+	AssertFalse(t, c.Action("late.action").Exists())
+	r := a.Run(Background(), NewOptions())
+	AssertFalse(t, r.OK)
+	AssertContains(t, r.Error(), "refused")
+	AssertFalse(t, ran)
+	AssertContains(t, task.Run(Background(), c, NewOptions()).Error(), "refused")
 }
