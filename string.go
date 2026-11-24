@@ -370,3 +370,9 @@ func UTF8Valid(b []byte) bool { return utf8.Valid(b) }
 //
 //	core.UTF8ValidString("Groot") // true
 func UTF8ValidString(s string) bool { return utf8.ValidString(s) }
+
+// MapRunes returns s with every rune passed through mapping; a negative
+// result drops the rune.
+//
+//	safe := core.MapRunes(func(r rune) rune { if r == '/' { return '-' }; return r }, name)
+func MapRunes(mapping func(rune) rune, s string) string { return strings.Map(mapping, s) }

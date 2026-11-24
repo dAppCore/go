@@ -270,3 +270,28 @@ func TestIo_NewBufferReader_Ugly(t *T) {
 
 	AssertEqual(t, int64(3), rd.Size())
 }
+
+func TestIo_BytesIndex_Good(t *T) {
+	AssertEqual(t, 2, BytesIndex([]byte("xxSYNCyy"), []byte("SYNC")))
+}
+
+func TestIo_BytesIndex_Bad(t *T) {
+	AssertEqual(t, -1, BytesIndex([]byte("nothing"), []byte("SYNC")))
+}
+
+func TestIo_BytesIndex_Ugly(t *T) {
+	AssertEqual(t, 0, BytesIndex([]byte("abc"), nil)) // the empty pattern is at 0
+}
+
+func TestIo_BytesHasPrefix_Good(t *T) {
+	AssertTrue(t, BytesHasPrefix([]byte{1, 2, 3}, []byte{1, 2}))
+}
+
+func TestIo_BytesHasPrefix_Bad(t *T) {
+	AssertFalse(t, BytesHasPrefix([]byte{1, 2}, []byte{2}))
+}
+
+func TestIo_BytesHasPrefix_Ugly(t *T) {
+	AssertFalse(t, BytesHasPrefix(nil, []byte{1}))
+	AssertTrue(t, BytesHasPrefix(nil, nil))
+}

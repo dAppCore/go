@@ -269,3 +269,22 @@ func NewBufferReader(b []byte) *bytes.Reader {
 func LimitReader(r Reader, n int64) Reader {
 	return io.LimitReader(r, n)
 }
+
+// SeekStart, SeekCurrent and SeekEnd are the whence values for Seek.
+//
+//	f.Seek(0, core.SeekStart) // back to the beginning
+const (
+	SeekStart   = io.SeekStart
+	SeekCurrent = io.SeekCurrent
+	SeekEnd     = io.SeekEnd
+)
+
+// BytesIndex is the index of the first sep in b, or -1.
+//
+//	i := core.BytesIndex(stream, syncPattern)
+func BytesIndex(b, sep []byte) int { return bytes.Index(b, sep) }
+
+// BytesHasPrefix reports whether b begins with prefix.
+//
+//	if core.BytesHasPrefix(packet, magic) { … }
+func BytesHasPrefix(b, prefix []byte) bool { return bytes.HasPrefix(b, prefix) }

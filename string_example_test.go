@@ -287,3 +287,14 @@ func ExampleUTF8ValidString() {
 	Println(UTF8ValidString("界"))
 	// Output: true
 }
+
+// ExampleMapRunes makes a name safe for a file.
+func ExampleMapRunes() {
+	Println(MapRunes(func(r rune) rune {
+		if r == ':' {
+			return '-'
+		}
+		return r
+	}, "12:30"))
+	// Output: 12-30
+}

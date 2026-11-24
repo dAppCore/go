@@ -140,3 +140,21 @@ func AssertNotSameContext(t *T, a, b Context) {
 	t.Helper()
 	AssertFalse(t, a == b)
 }
+
+func TestContext_ContextCanceled_Good(t *T) {
+	ctx, cancel := WithCancel(Background())
+	cancel()
+	AssertTrue(t, Is(ctx.Err(), ContextCanceled))
+}
+
+func TestContext_ContextCanceled_Bad(t *T) {
+	AssertFalse(t, Is(NewError("other"), ContextCanceled))
+}
+
+func TestContext_ContextCanceled_Ugly(t *T) {
+	// A passed deadline is not a cancellation.
+	ctx, cancel := WithTimeout(Background(), -Second)
+	defer cancel()
+	AssertFalse(t, Is(ctx.Err(), ContextCanceled))
+	AssertTrue(t, Is(ctx.Err(), ContextDeadlineExceeded))
+}

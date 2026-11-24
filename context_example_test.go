@@ -52,3 +52,11 @@ func ExampleWithDeadline() {
 	defer cancel()
 	_ = ctx // cancels automatically once the deadline passes
 }
+
+// ExampleContextCanceled tells a stop we asked for from a real failure.
+func ExampleContextCanceled() {
+	ctx, cancel := WithCancel(Background())
+	cancel()
+	Println(Is(ctx.Err(), ContextCanceled))
+	// Output: true
+}

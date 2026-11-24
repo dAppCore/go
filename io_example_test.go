@@ -129,3 +129,15 @@ func ExampleReadAll() {
 	Println(r.Value)
 	// Output: agent ready
 }
+
+// ExampleBytesIndex finds a sync marker in a stream.
+func ExampleBytesIndex() {
+	Println(BytesIndex([]byte("..SYNC.."), []byte("SYNC")))
+	// Output: 2
+}
+
+// ExampleBytesHasPrefix checks a packet's magic bytes.
+func ExampleBytesHasPrefix() {
+	Println(BytesHasPrefix([]byte{0xca, 0xfe, 1}, []byte{0xca, 0xfe}))
+	// Output: true
+}

@@ -742,3 +742,26 @@ func TestString_UTF8ValidString_Bad(t *T) {
 func TestString_UTF8ValidString_Ugly(t *T) {
 	AssertTrue(t, UTF8ValidString(""))
 }
+
+func TestString_MapRunes_Good(t *T) {
+	AssertEqual(t, "a-b", MapRunes(func(r rune) rune {
+		if r == '/' {
+			return '-'
+		}
+		return r
+	}, "a/b"))
+}
+
+func TestString_MapRunes_Bad(t *T) {
+	// A negative result drops the rune.
+	AssertEqual(t, "ab", MapRunes(func(r rune) rune {
+		if r == '?' {
+			return -1
+		}
+		return r
+	}, "a?b?"))
+}
+
+func TestString_MapRunes_Ugly(t *T) {
+	AssertEqual(t, "", MapRunes(func(r rune) rune { return r }, ""))
+}
