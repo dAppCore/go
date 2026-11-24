@@ -252,12 +252,18 @@ func GeneratePack(pkg ScannedPackage) Result {
 				return cr
 			}
 			data := cr.Value.(string)
-			localPath := TrimPrefix(file, groupPath+"/")
+			// Asset names are slash paths on every OS: the walk hands back
+			// native ones (a backslash between folders on Windows), so relativise and
+			// convert rather than trimming a "/" prefix that never matches there.
+			localPath := PathRel(groupPath, file)
+			if !localPath.OK {
+				return localPath
+			}
 			relGroup := PathRel(pkg.BaseDirectory, groupPath)
 			if !relGroup.OK {
 				return relGroup
 			}
-			b.WriteString(Sprintf("\tcore.AddAsset(%q, %q, %q)\n", relGroup.Value.(string), localPath, data))
+			b.WriteString(Sprintf("\tcore.AddAsset(%q, %q, %q)\n", PathToSlash(relGroup.Value.(string)), PathToSlash(localPath.Value.(string)), data))
 			packed[file] = true
 		}
 	}

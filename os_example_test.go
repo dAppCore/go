@@ -46,9 +46,11 @@ func ExampleChmod() {
 	WriteFile(path, []byte("#!/bin/sh\n"), 0o644)
 	defer Remove(path)
 
-	Chmod(path, 0o755)
+	// Read-only is the one permission every OS keeps (Windows has no execute bit).
+	Chmod(path, 0o444)
+	defer Chmod(path, 0o644)
 	info := Stat(path)
-	Println(info.Value.(FsFileInfo).Mode().Perm() == 0o755)
+	Println(info.Value.(FsFileInfo).Mode().Perm() == 0o444)
 	// Output: true
 }
 

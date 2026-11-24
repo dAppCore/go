@@ -13,14 +13,14 @@ func TestPath_Relative(t *T) {
 
 func TestPath_Absolute(t *T) {
 	ds := Env("DS")
-	AssertEqual(t, "/tmp"+ds+"workspace", Path("/tmp", "workspace"))
+	AssertEqual(t, PathToSlash("/tmp"+ds+"workspace"), PathToSlash(Path("/tmp", "workspace")))
 	// An absolute first segment bypasses the DIR_HOME anchor and flows
 	// through PathJoin, which cleans while joining: .. resolves and
 	// redundant separators collapse.
-	AssertEqual(t, "/tmp", Path("/tmp", "workspace", ".."))
-	AssertEqual(t, "/a"+ds+"b", Path("/a//b"))
-	AssertEqual(t, "/etc", Path("/tmp/../etc"))
-	AssertEqual(t, "/usr"+ds+"local", Path("/usr/local"))
+	AssertEqual(t, PathToSlash("/tmp"), PathToSlash(Path("/tmp", "workspace", "..")))
+	AssertEqual(t, PathToSlash("/a"+ds+"b"), PathToSlash(Path("/a//b")))
+	AssertEqual(t, PathToSlash("/etc"), PathToSlash(Path("/tmp/../etc")))
+	AssertEqual(t, PathToSlash("/usr"+ds+"local"), PathToSlash(Path("/usr/local")))
 	AssertTrue(t, PathIsAbs(Path("/tmp", "workspace")))
 }
 
@@ -70,7 +70,7 @@ func TestPath_PathBase(t *T) {
 func TestPath_PathBase_Root(t *T) {
 	// Trimming "/" off "/" leaves "", which PathBase reports as the
 	// separator itself.
-	AssertEqual(t, "/", PathBase("/"))
+	AssertEqual(t, PathToSlash("/"), PathToSlash(PathBase("/")))
 	AssertEqual(t, string(PathSeparator), PathBase(string(PathSeparator)))
 	// An absolute single element with a trailing slash trims back to the name.
 	AssertEqual(t, "a", PathBase("/a/"))
@@ -86,19 +86,19 @@ func TestPath_PathBase_Empty(t *T) {
 }
 
 func TestPath_PathDir(t *T) {
-	AssertEqual(t, "/Users/snider/Code", PathDir("/Users/snider/Code/core"))
+	AssertEqual(t, PathToSlash("/Users/snider/Code"), PathToSlash(PathDir("/Users/snider/Code/core")))
 	// Drops only the final element; intermediate elements are preserved.
-	AssertEqual(t, "a/b", PathDir("a/b/c"))
-	AssertEqual(t, "/srv/dappcore", PathDir("/srv/dappcore/agent.json"))
+	AssertEqual(t, PathToSlash("a/b"), PathToSlash(PathDir("a/b/c")))
+	AssertEqual(t, PathToSlash("/srv/dappcore"), PathToSlash(PathDir("/srv/dappcore/agent.json")))
 }
 
 func TestPath_PathDir_Root(t *T) {
 	// The only separator is at index 0, so the dir collapses to "/".
-	AssertEqual(t, "/", PathDir("/file"))
-	AssertEqual(t, "/", PathDir("/agent.json"))
+	AssertEqual(t, PathToSlash("/"), PathToSlash(PathDir("/file")))
+	AssertEqual(t, PathToSlash("/"), PathToSlash(PathDir("/agent.json")))
 	// Collapse to root only happens for a single element; deeper paths keep
 	// their leading directory.
-	AssertEqual(t, "/a", PathDir("/a/b"))
+	AssertEqual(t, PathToSlash("/a"), PathToSlash(PathDir("/a/b")))
 }
 
 func TestPath_PathDir_NoDir(t *T) {
@@ -165,8 +165,8 @@ func TestPath_PathDir_TrailingSlash(t *T) {
 	// PathDir does not pre-trim a trailing separator, so the final empty
 	// element is dropped, leaving the path without its trailing slash.
 	result := PathDir("/Users/snider/Code/")
-	AssertEqual(t, "/Users/snider/Code", result)
-	AssertEqual(t, "a/b", PathDir("a/b/"))
+	AssertEqual(t, PathToSlash("/Users/snider/Code"), PathToSlash(result))
+	AssertEqual(t, PathToSlash("a/b"), PathToSlash(PathDir("a/b/")))
 }
 
 // --- PathRel ---
@@ -174,13 +174,13 @@ func TestPath_PathDir_TrailingSlash(t *T) {
 func TestPath_PathRel_Good_Descendant(t *T) {
 	r := PathRel("/var/lib/foo", "/var/lib/foo/bar/baz")
 	AssertTrue(t, r.OK)
-	AssertEqual(t, "bar/baz", r.Value.(string))
+	AssertEqual(t, PathToSlash("bar/baz"), PathToSlash(r.Value.(string)))
 }
 
 func TestPath_PathRel_Good_Sibling(t *T) {
 	r := PathRel("/a", "/b")
 	AssertTrue(t, r.OK)
-	AssertEqual(t, "../b", r.Value.(string))
+	AssertEqual(t, PathToSlash("../b"), PathToSlash(r.Value.(string)))
 }
 
 func TestPath_PathRel_Good_Identical(t *T) {
@@ -208,7 +208,8 @@ func TestPath_PathRel_Bad_MixedAbsRel(t *T) {
 func TestPath_PathAbs_Good_AlreadyAbsolute(t *T) {
 	r := PathAbs("/already/absolute")
 	AssertTrue(t, r.OK)
-	AssertEqual(t, "/already/absolute", r.Value.(string))
+	// Windows adds the current drive ("C:/already/absolute"); the rest is unchanged.
+	AssertTrue(t, HasSuffix(PathToSlash(r.Value.(string)), "/already/absolute"))
 }
 
 func TestPath_PathAbs_Good_Relative(t *T) {
@@ -216,8 +217,8 @@ func TestPath_PathAbs_Good_Relative(t *T) {
 	AssertTrue(t, r.OK)
 	abs := r.Value.(string)
 	// Resolved against cwd — must end in the relative tail and be absolute.
-	AssertTrue(t, len(abs) > 0 && abs[0] == '/', "PathAbs must return absolute: %s", abs)
-	AssertContains(t, abs, "relative/path")
+	AssertTrue(t, PathIsAbs(abs), "PathAbs must return absolute: %s", abs)
+	AssertContains(t, PathToSlash(abs), "relative/path")
 }
 
 // --- AX-7 canonical triplets ---
@@ -296,11 +297,11 @@ func TestPath_PathBase_Ugly(t *T) {
 }
 
 func TestPath_PathDir_Good(t *T) {
-	AssertEqual(t, "/srv/dappcore", PathDir("/srv/dappcore/agent.json"))
+	AssertEqual(t, PathToSlash("/srv/dappcore"), PathToSlash(PathDir("/srv/dappcore/agent.json")))
 	// Deeper nesting keeps every element except the last.
-	AssertEqual(t, "/srv/dappcore/agent", PathDir("/srv/dappcore/agent/config.json"))
+	AssertEqual(t, PathToSlash("/srv/dappcore/agent"), PathToSlash(PathDir("/srv/dappcore/agent/config.json")))
 	// Relative input keeps its relative directory.
-	AssertEqual(t, "deploy/to", PathDir("deploy/to/homelab"))
+	AssertEqual(t, PathToSlash("deploy/to"), PathToSlash(PathDir("deploy/to/homelab")))
 }
 
 func TestPath_PathDir_Bad(t *T) {
@@ -314,7 +315,7 @@ func TestPath_PathDir_Ugly(t *T) {
 	// The only separator sits at index 0, so the dir collapses to it.
 	AssertEqual(t, string(PathSeparator), PathDir(string(PathSeparator)+"agent.json"))
 	// A trailing separator drops the empty final element.
-	AssertEqual(t, "a/b", PathDir("a/b/"))
+	AssertEqual(t, PathToSlash("a/b"), PathToSlash(PathDir("a/b/")))
 	// A single relative element with a trailing slash keeps the element as
 	// the dir (the custom impl differs from stdlib filepath.Dir here).
 	AssertEqual(t, "a", PathDir("a/"))
@@ -361,6 +362,8 @@ func TestPath_PathIsAbs_Ugly(t *T) {
 	AssertFalse(t, PathIsAbs("C:agent"))
 	// The empty string is never absolute.
 	AssertFalse(t, PathIsAbs(""))
+	// A leading backslash is rooted on Windows and a plain name character on unix.
+	AssertEqual(t, OS() == "windows", PathIsAbs(`\agent\workspace`))
 }
 
 func TestPath_CleanPath_Bad(t *T) {
@@ -429,7 +432,7 @@ func TestPath_PathMatch_Ugly(t *T) {
 func TestPath_PathRel_Good(t *T) {
 	r := PathRel("/srv/dappcore", "/srv/dappcore/agent/config.json")
 	AssertTrue(t, r.OK)
-	AssertEqual(t, "agent/config.json", r.Value.(string))
+	AssertEqual(t, PathToSlash("agent/config.json"), PathToSlash(r.Value.(string)))
 }
 
 func TestPath_PathRel_Bad(t *T) {

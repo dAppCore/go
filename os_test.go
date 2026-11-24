@@ -680,6 +680,10 @@ func TestOs_Stdin_Good(t *T) {
 	in := Stdin()
 
 	AssertNotNil(t, in)
+	if OS() == "windows" {
+		AssertTrue(t, in.(*OSFile).Fd() != 0) // a handle there, not fd 0
+		return
+	}
 	AssertEqual(t, uintptr(0), in.(*OSFile).Fd())
 }
 
@@ -702,6 +706,10 @@ func TestOs_Stdout_Good(t *T) {
 	out := Stdout()
 
 	AssertNotNil(t, out)
+	if OS() == "windows" {
+		AssertTrue(t, out.(*OSFile).Fd() != 0) // a handle there, not fd 1
+		return
+	}
 	AssertEqual(t, uintptr(1), out.(*OSFile).Fd())
 }
 
@@ -758,7 +766,11 @@ func TestOs_TempDir_Bad(t *T) {
 
 func TestOs_TempDir_Ugly(t *T) {
 	custom := t.TempDir()
-	t.Setenv("TMPDIR", custom)
+	if OS() == "windows" {
+		t.Setenv("TMP", custom) // Windows reads TMP, then TEMP
+	} else {
+		t.Setenv("TMPDIR", custom)
+	}
 
 	got := TempDir()
 
@@ -861,7 +873,11 @@ func TestOs_UserHomeDir_Bad(t *T) {
 
 func TestOs_UserHomeDir_Ugly(t *T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	if OS() == "windows" {
+		t.Setenv("USERPROFILE", home) // Windows reads USERPROFILE
+	} else {
+		t.Setenv("HOME", home)
+	}
 
 	r := UserHomeDir()
 
@@ -912,7 +928,7 @@ func TestOs_Chmod_Good(t *T) {
 	AssertTrue(t, r.OK)
 	info := Stat(path)
 	RequireTrue(t, info.OK)
-	AssertEqual(t, FileMode(0o755), info.Value.(FsFileInfo).Mode().Perm())
+	AssertEqual(t, platformPerm(0o755), info.Value.(FsFileInfo).Mode().Perm())
 }
 
 func TestOs_Chmod_Bad(t *T) {

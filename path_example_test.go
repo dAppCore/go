@@ -31,7 +31,7 @@ func ExamplePathBase() {
 // ExamplePathDir reads a directory name through `PathDir` for workspace path handling.
 // Path joins, cleanup, globbing, and extension changes use core wrappers.
 func ExamplePathDir() {
-	Println(PathDir("/srv/workspaces/alpha"))
+	Println(PathToSlash(PathDir("/srv/workspaces/alpha"))) // slash form on every OS
 	// Output: /srv/workspaces
 }
 
@@ -86,7 +86,7 @@ func ExamplePathGlob() {
 // Path joins, cleanup, globbing, and extension changes use core wrappers.
 func ExamplePathRel() {
 	r := PathRel("/srv/app", "/srv/app/config/settings.yaml")
-	Println(r.Value)
+	Println(PathToSlash(r.Value.(string)))
 	// Output: config/settings.yaml
 }
 
@@ -113,7 +113,7 @@ func ExamplePathChangeExt() {
 
 // ExamplePathJoin joins elements with the OS separator through `PathJoin`.
 func ExamplePathJoin() {
-	Println(PathJoin("workspace", "agent", "readme.md"))
+	Println(PathToSlash(PathJoin("workspace", "agent", "readme.md")))
 	// Output: workspace/agent/readme.md
 }
 

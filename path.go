@@ -158,6 +158,12 @@ func PathIsAbs(p string) bool {
 	if p[0] == '/' {
 		return true
 	}
+	// Windows roots a leading backslash on the current drive, the same as a
+	// leading "/" (which Path writes back as a backslash there). On unix a
+	// backslash is just a character in a file name.
+	if p[0] == '\\' && PathSeparator == '\\' {
+		return true
+	}
 	// Windows: C:\ or C:/
 	if len(p) >= 3 && p[1] == ':' && (p[2] == '/' || p[2] == '\\') {
 		return true
