@@ -580,6 +580,39 @@ func CloseStream(v any) {
 	}
 }
 
+// isProtectedPath reports whether Delete and DeleteAll must refuse full: a
+// filesystem root ("/", or a drive root such as C:\ on Windows) or the
+// user's home directory. The home is asked of the OS (USERPROFILE on
+// Windows, where HOME is usually unset) as well as read from HOME, and on
+// Windows the comparison ignores case, as its filesystem does.
+//
+//	isProtectedPath("/")            // true
+//	isProtectedPath(home)           // true
+//	isProtectedPath(home + "/logs") // false
+func isProtectedPath(full string) bool {
+	if full == "" {
+		return false
+	}
+	full = CleanPath(full, string(PathSeparator))
+	if PathDir(full) == full {
+		return true // a root: its own parent
+	}
+	homes := []string{Getenv("HOME")}
+	if r := UserHomeDir(); r.OK {
+		homes = append(homes, r.Value.(string))
+	}
+	for _, home := range homes {
+		if home == "" {
+			continue
+		}
+		home = CleanPath(home, string(PathSeparator))
+		if full == home || (PathSeparator == '\\' && EqualFold(full, home)) {
+			return true
+		}
+	}
+	return false
+}
+
 // Delete removes a file or empty directory.
 //
 //	fsys := (&core.Fs{}).New("/tmp/agent-workspace")
@@ -591,7 +624,7 @@ func (m *Fs) Delete(p string) Result {
 		return vp
 	}
 	full := vp.Value.(string)
-	if full == "/" || full == Getenv("HOME") {
+	if isProtectedPath(full) {
 		return Result{E("fs.Delete", Concat("refusing to delete protected path: ", full), nil), false}
 	}
 	if r := Remove(full); !r.OK {
@@ -611,7 +644,7 @@ func (m *Fs) DeleteAll(p string) Result {
 		return vp
 	}
 	full := vp.Value.(string)
-	if full == "/" || full == Getenv("HOME") {
+	if isProtectedPath(full) {
 		return Result{E("fs.DeleteAll", Concat("refusing to delete protected path: ", full), nil), false}
 	}
 	if r := RemoveAll(full); !r.OK {

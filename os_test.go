@@ -86,7 +86,8 @@ func TestOs_Chdir_Good(t *T) {
 	AssertTrue(t, r.OK)
 	after := Getwd()
 	AssertTrue(t, after.OK)
-	AssertEqual(t, realDir.Value.(string), after.Value.(string))
+	// Resolve both: Windows can hand out an 8.3 short name (RUNNER~1) for one.
+	AssertEqual(t, realDir.Value.(string), PathEvalSymlinks(after.Value.(string)).Value.(string))
 }
 
 func TestOs_Chdir_Bad(t *T) {
@@ -307,7 +308,8 @@ func TestOs_Getwd_Ugly(t *T) {
 	r := Getwd()
 
 	AssertTrue(t, r.OK)
-	AssertEqual(t, realDir.Value.(string), r.Value.(string))
+	// Resolve both: Windows can hand out an 8.3 short name (RUNNER~1) for one.
+	AssertEqual(t, realDir.Value.(string), PathEvalSymlinks(r.Value.(string)).Value.(string))
 }
 
 func TestOs_Hostname_Good(t *T) {

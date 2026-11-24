@@ -1070,7 +1070,7 @@ func TestFs_Fs_Delete_Ugly(t *T) {
 }
 
 func TestFs_Fs_DeleteProtectedHome_Bad(t *T) {
-	home := Getenv("HOME")
+	home := UserHomeDir().Value.(string) // HOME is usually unset on Windows
 	RequireNotEmpty(t, home)
 	fsys := (&Fs{}).New("/")
 
@@ -1099,7 +1099,7 @@ func TestFs_Fs_DeleteAll_Bad(t *T) {
 }
 
 func TestFs_Fs_DeleteAllProtectedHome_Ugly(t *T) {
-	home := Getenv("HOME")
+	home := UserHomeDir().Value.(string) // HOME is usually unset on Windows
 	RequireNotEmpty(t, home)
 	fsys := (&Fs{}).New("/")
 
