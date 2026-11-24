@@ -12,7 +12,6 @@ package core
 
 import (
 	"log"
-	"os"
 	"syscall"
 )
 
@@ -35,12 +34,15 @@ func AttachParentConsole() Result {
 	if r, _, _ := syscall.NewLazyDLL("kernel32.dll").NewProc("AttachConsole").Call(attachParentProcess); r == 0 {
 		return Result{Value: false, OK: true}
 	}
-	f, err := os.OpenFile("CONOUT$", os.O_RDWR, 0)
-	if err != nil {
-		return Result{E("core.AttachParentConsole", "open the console", err), false}
+	r := OpenFile("CONOUT$", O_RDWR, 0)
+	if !r.OK {
+		return Result{E("core.AttachParentConsole", "open the console", r.Err()), false}
 	}
-	os.Stdout, os.Stderr = f, f
-	log.SetOutput(f)
+	w, ok := useForStdio(r.Value)
+	if !ok {
+		return Result{E("core.AttachParentConsole", "the console isn't a file", nil), false}
+	}
+	log.SetOutput(w)
 	return Result{Value: true, OK: true}
 }
 

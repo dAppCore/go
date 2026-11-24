@@ -108,6 +108,19 @@ func Stderr() Writer {
 	return os.Stderr
 }
 
+// useForStdio points stdout and stderr at an opened file: the console
+// AttachParentConsole borrows on Windows (console_windows.go). It answers
+// the file as a Writer for anything else that should follow, such as the
+// standard logger.
+func useForStdio(f any) (Writer, bool) {
+	file, ok := f.(*os.File)
+	if !ok {
+		return nil, false
+	}
+	os.Stdout, os.Stderr = file, file
+	return file, true
+}
+
 // ReadFile reads the named file and returns its bytes.
 //
 //	r := core.ReadFile("config/agent.json")
