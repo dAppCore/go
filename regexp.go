@@ -44,6 +44,19 @@ func Regex(pattern string) Result {
 	return Result{&Regexp{inner: re}, true}
 }
 
+// MustRegex compiles pattern and panics if it doesn't compile: for the
+// package-level patterns an app writes once, where a typo is a bug the
+// first test run finds. Patterns that come from input use Regex.
+//
+//	var volume = core.MustRegex(`(?i)vol\.?\s*(\d+)`)
+func MustRegex(pattern string) *Regexp {
+	r := Regex(pattern)
+	if !r.OK {
+		panic(E("core.MustRegex", "bad pattern "+pattern, r.Value.(error)))
+	}
+	return r.Value.(*Regexp)
+}
+
 // MatchString reports whether s contains any match.
 //
 //	rx.MatchString("foo123bar")  // true

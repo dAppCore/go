@@ -317,3 +317,18 @@ func TestRegexp_Regexp_String_Ugly(t *T) {
 	// A whitespace-only pattern is preserved, not trimmed.
 	AssertEqual(t, " ", Regex(" ").Value.(*Regexp).String())
 }
+
+func TestRegexp_MustRegex_Good(t *T) {
+	rx := MustRegex(`vol\.?\s*(\d+)`)
+	AssertEqual(t, "vol. 3", rx.FindString("Berserk vol. 3"))
+}
+
+func TestRegexp_MustRegex_Bad(t *T) {
+	defer func() { AssertNotNil(t, recover(), "a bad pattern must panic") }()
+	MustRegex(`(unclosed`)
+}
+
+func TestRegexp_MustRegex_Ugly(t *T) {
+	// The empty pattern is valid and matches everywhere.
+	AssertTrue(t, MustRegex(``).MatchString("anything"))
+}

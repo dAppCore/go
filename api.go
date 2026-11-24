@@ -458,6 +458,31 @@ func HTTPError(w ResponseWriter, error string, code int) {
 	http.Error(w, error, code)
 }
 
+// HTTPNotFound replies 404 with a plain "404 page not found" body.
+//
+//	if !found { core.HTTPNotFound(w, r); return }
+func HTTPNotFound(w ResponseWriter, r *Request) {
+	http.NotFound(w, r)
+}
+
+// HTTPDetectContentType sniffs the first 512 bytes of data and returns its
+// MIME type ("image/jpeg", "image/png"), or "application/octet-stream".
+//
+//	w.Header().Set("Content-Type", core.HTTPDetectContentType(cover))
+func HTTPDetectContentType(data []byte) string {
+	return http.DetectContentType(data)
+}
+
+// HTTPMaxBytesReader caps a request body at n bytes. Unlike LimitReader it
+// fails the read past the cap (so a decoder errors instead of seeing a
+// truncated body) and tells the server to close the connection.
+//
+//	body := core.HTTPMaxBytesReader(w, r.Body, 1<<20)
+//	core.JSONNewDecoder(body).Decode(&req)
+func HTTPMaxBytesReader(w ResponseWriter, body ReadCloser, n int64) ReadCloser {
+	return http.MaxBytesReader(w, body, n)
+}
+
 // HTTPGet performs an HTTP GET. Returns Result wrapping *Response on
 // success or the error.
 //

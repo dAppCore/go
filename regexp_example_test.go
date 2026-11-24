@@ -72,3 +72,10 @@ func ExampleRegexp_String() {
 	Println(rx.String())
 	// Output: \d+
 }
+
+// ExampleMustRegex compiles a package-level pattern once.
+func ExampleMustRegex() {
+	volume := MustRegex(`(?i)vol\.?\s*(\d+)`)
+	Println(volume.FindStringSubmatch("Berserk Vol. 3")[1])
+	// Output: 3
+}

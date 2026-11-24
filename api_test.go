@@ -940,3 +940,56 @@ func TestApi_API_Discover_Bad(t *T) {
 func TestApi_API_Discover_Ugly(t *T) {
 	AssertFalse(t, New().API("ghost").Discover().OK)
 }
+
+func TestApi_HTTPNotFound_Good(t *T) {
+	rec := NewHTTPTestRecorder()
+	HTTPNotFound(rec, NewHTTPTestRequest("GET", "/missing", nil))
+	AssertEqual(t, StatusNotFound, rec.Code)
+}
+
+func TestApi_HTTPNotFound_Bad(t *T) {
+	// A POST is still just not found.
+	rec := NewHTTPTestRecorder()
+	HTTPNotFound(rec, NewHTTPTestRequest("POST", "/missing", nil))
+	AssertEqual(t, StatusNotFound, rec.Code)
+}
+
+func TestApi_HTTPNotFound_Ugly(t *T) {
+	rec := NewHTTPTestRecorder()
+	HTTPNotFound(rec, NewHTTPTestRequest("GET", "/", nil))
+	AssertContains(t, rec.Body.String(), "404")
+}
+
+func TestApi_HTTPDetectContentType_Good(t *T) {
+	AssertEqual(t, "image/png", HTTPDetectContentType([]byte("\x89PNG\r\n\x1a\n0000")))
+}
+
+func TestApi_HTTPDetectContentType_Bad(t *T) {
+	AssertEqual(t, "application/octet-stream", HTTPDetectContentType([]byte{0, 1, 2, 3}))
+}
+
+func TestApi_HTTPDetectContentType_Ugly(t *T) {
+	AssertEqual(t, "text/plain; charset=utf-8", HTTPDetectContentType(nil))
+}
+
+func TestApi_HTTPMaxBytesReader_Good(t *T) {
+	rec := NewHTTPTestRecorder()
+	body := HTTPMaxBytesReader(rec, NewHTTPTestRequest("POST", "/", NewBufferString("small")).Body, 64)
+	got := ReadAll(body)
+	AssertTrue(t, got.OK)
+	AssertEqual(t, "small", got.Value.(string))
+}
+
+func TestApi_HTTPMaxBytesReader_Bad(t *T) {
+	// Past the cap the read fails: it doesn't hand back a truncated body.
+	rec := NewHTTPTestRecorder()
+	body := HTTPMaxBytesReader(rec, NewHTTPTestRequest("POST", "/", NewBufferString("far too long")).Body, 4)
+	AssertFalse(t, ReadAll(body).OK)
+}
+
+func TestApi_HTTPMaxBytesReader_Ugly(t *T) {
+	// Exactly at the cap is fine.
+	rec := NewHTTPTestRecorder()
+	body := HTTPMaxBytesReader(rec, NewHTTPTestRequest("POST", "/", NewBufferString("four")).Body, 4)
+	AssertTrue(t, ReadAll(body).OK)
+}

@@ -13,6 +13,14 @@ func IsLetter(r rune) bool {
 	return unicode.IsLetter(r)
 }
 
+// IsControl reports whether r is a control character (C0 or C1): the
+// characters a file name or a label should never contain.
+//
+//	core.IsControl('\n') // true
+func IsControl(r rune) bool {
+	return unicode.IsControl(r)
+}
+
 // IsDigit reports whether r is a decimal digit.
 //
 //	core.IsDigit('9')  // true

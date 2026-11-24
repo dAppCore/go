@@ -53,3 +53,9 @@ func ExampleToLower() {
 	Println(string(ToLower('A')))
 	// Output: a
 }
+
+// ExampleIsControl keeps control characters out of a folder name.
+func ExampleIsControl() {
+	Println(IsControl('\t'), IsControl('a'))
+	// Output: true false
+}

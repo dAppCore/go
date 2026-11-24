@@ -477,3 +477,25 @@ func ExampleAPI_Discover() {
 	Println(r.OK)
 	// Output: false
 }
+
+// ExampleHTTPNotFound answers a missing page.
+func ExampleHTTPNotFound() {
+	rec := NewHTTPTestRecorder()
+	HTTPNotFound(rec, NewHTTPTestRequest("GET", "/nope", nil))
+	Println(rec.Code)
+	// Output: 404
+}
+
+// ExampleHTTPDetectContentType names an image from its first bytes.
+func ExampleHTTPDetectContentType() {
+	Println(HTTPDetectContentType([]byte("\xff\xd8\xff\xe0 jpeg")))
+	// Output: image/jpeg
+}
+
+// ExampleHTTPMaxBytesReader caps a request body.
+func ExampleHTTPMaxBytesReader() {
+	rec := NewHTTPTestRecorder()
+	body := HTTPMaxBytesReader(rec, NewHTTPTestRequest("POST", "/", NewBufferString("{}")).Body, 1<<20)
+	Println(ReadAll(body).Value)
+	// Output: {}
+}
