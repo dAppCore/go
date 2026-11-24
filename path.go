@@ -91,6 +91,11 @@ func PathBase(p string) string {
 		return "."
 	}
 	ds := Env("DS")
+	// Native separator (the >99% case, as in CleanPath): stdlib's Base,
+	// which on Windows splits on a forward slash as well as a backslash, as Go itself does.
+	if ds == string(PathSeparator) {
+		return filepath.Base(p)
+	}
 	p = TrimSuffix(p, ds)
 	if p == "" {
 		return ds
@@ -112,6 +117,10 @@ func PathDir(p string) string {
 		return "."
 	}
 	ds := Env("DS")
+	// Native separator: stdlib's Dir (both separators on Windows; see PathBase).
+	if ds == string(PathSeparator) {
+		return filepath.Dir(p)
+	}
 	i := lastIndex(p, ds)
 	if i < 0 {
 		return "."
@@ -147,6 +156,12 @@ func PathIsAbs(p string) bool {
 		return false
 	}
 	if p[0] == '/' {
+		return true
+	}
+	// Windows roots a leading backslash on the current drive, the same as a
+	// leading "/" (which Path writes back as a backslash there). On unix a
+	// backslash is just a character in a file name.
+	if p[0] == '\\' && PathSeparator == '\\' {
 		return true
 	}
 	// Windows: C:\ or C:/

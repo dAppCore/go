@@ -54,11 +54,15 @@ func TestApp_App_New_Ugly(t *T) {
 
 func TestApp_App_Find_Good(t *T) {
 	dir := t.TempDir()
-	bin := Path(dir, "agent-dispatch")
+	name := "agent-dispatch"
+	if OS() == "windows" {
+		name += ".exe" // no execute bit there: a listed extension is what counts
+	}
+	bin := Path(dir, name)
 	AssertTrue(t, WriteFile(bin, []byte("#!/bin/sh\n"), 0755).OK)
 
 	r := App{}.Find(bin, "Agent Dispatch")
-	AssertTrue(t, r.OK)
+	RequireTrue(t, r.OK) // stop here, not panic on the cast below
 	app := r.Value.(*App)
 	AssertEqual(t, "Agent Dispatch", app.Name)
 	AssertEqual(t, bin, app.Filename)

@@ -30,7 +30,8 @@ func ExampleApp_Find() {
 	dir := MustCast[string](fs.TempDir("core-app-example"))
 	defer fs.DeleteAll(dir)
 
-	bin := Path(dir, "forge")
+	// .exe and 0755: executable on Windows (extension) and unix (mode).
+	bin := Path(dir, "forge.exe")
 	fs.WriteMode(bin, "#!/bin/sh\n", 0755)
 
 	r := App{}.Find(bin, "Forge")
@@ -42,6 +43,6 @@ func ExampleApp_Find() {
 	// Output:
 	// true
 	// Forge
-	// forge
-	// forge
+	// forge.exe
+	// forge.exe
 }

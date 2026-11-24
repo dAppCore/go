@@ -108,7 +108,7 @@ func TestFs_evalDeepestSymlinks_Good(t *T) {
 
 func TestFs_evalDeepestSymlinks_Bad(t *T) {
 	// Nothing on the path exists (relative): returned as given, no resolution possible.
-	AssertEqual(t, "no-such-dir/leaf", evalDeepestSymlinks("no-such-dir/leaf"))
+	AssertEqual(t, PathToSlash("no-such-dir/leaf"), PathToSlash(evalDeepestSymlinks("no-such-dir/leaf")))
 }
 
 func TestFs_evalDeepestSymlinks_Ugly(t *T) {

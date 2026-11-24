@@ -240,9 +240,10 @@ func TestEmbed_Extract_WithTemplate_Good(t *T) {
 func TestEmbed_Extract_BadTargetDir_Ugly(t *T) {
 	srcDir := t.TempDir()
 	(&Fs{}).New("/").Write(Path(srcDir, "f.txt"), "x")
-	r := Extract(DirFS(srcDir), "/nonexistent/deeply/nested/impossible", nil)
-	// Should fail gracefully, not panic: an unwritable root-anchored path
-	// fails Extract's upfront MkdirAll rather than crashing.
+	// Under a regular file, so no OS can create it (a root-anchored path
+	// like /nonexistent is creatable on Windows by an administrator).
+	r := Extract(DirFS(srcDir), Path(srcDir, "f.txt", "impossible"), nil)
+	// Should fail gracefully, not panic: the upfront MkdirAll fails.
 	AssertFalse(t, r.OK)
 }
 

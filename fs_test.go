@@ -236,9 +236,11 @@ func TestFs_ReadStream_WriteStream_Good(t *T) {
 
 	r := c.Fs().ReadStream(path)
 	AssertTrue(t, r.OK)
+	CloseStream(r.Value) // Windows can't delete a file that's still open
 
 	w := c.Fs().WriteStream(path)
 	AssertTrue(t, w.OK)
+	CloseStream(w.Value)
 }
 
 // --- WriteAtomic ---
@@ -473,6 +475,18 @@ func TestFs_WalkSeq_Good_SandboxContainment(t *T) {
 	}
 }
 
+// platformPerm is the permission a file written with m reports back. Windows
+// keeps only a read-only flag, so it reports 0666 (writable) or 0444.
+func platformPerm(m FileMode) FileMode {
+	if OS() != "windows" {
+		return m
+	}
+	if m&0o200 != 0 {
+		return 0o666
+	}
+	return 0o444
+}
+
 func TestFs_WalkSeq_Good_FileMode(t *T) {
 	dir := t.TempDir()
 	c := New()
@@ -480,7 +494,7 @@ func TestFs_WalkSeq_Good_FileMode(t *T) {
 	for entry, err := range c.Fs().WalkSeq(dir) {
 		AssertNoError(t, err)
 		if entry.Name == "secret.key" {
-			AssertEqual(t, FileMode(0o600), entry.Mode.Perm())
+			AssertEqual(t, platformPerm(0o600), entry.Mode.Perm())
 		}
 	}
 }
@@ -644,7 +658,7 @@ func TestFs_Fs_WriteMode_Good(t *T) {
 	stat := fsys.Stat("secrets/session.token")
 	AssertTrue(t, stat.OK)
 	info := stat.Value.(FsFileInfo)
-	AssertEqual(t, FileMode(0o600), info.Mode().Perm())
+	AssertEqual(t, platformPerm(0o600), info.Mode().Perm())
 }
 
 func TestFs_Fs_WriteMode_Bad(t *T) {
@@ -665,7 +679,7 @@ func TestFs_Fs_WriteMode_Ugly(t *T) {
 	stat := fsys.Stat("public.txt")
 	AssertTrue(t, stat.OK)
 	info := stat.Value.(FsFileInfo)
-	AssertEqual(t, FileMode(0o644), info.Mode().Perm())
+	AssertEqual(t, platformPerm(0o644), info.Mode().Perm())
 }
 
 func TestFs_Fs_WriteAtomic_Good(t *T) {
@@ -1056,7 +1070,7 @@ func TestFs_Fs_Delete_Ugly(t *T) {
 }
 
 func TestFs_Fs_DeleteProtectedHome_Bad(t *T) {
-	home := Getenv("HOME")
+	home := UserHomeDir().Value.(string) // HOME is usually unset on Windows
 	RequireNotEmpty(t, home)
 	fsys := (&Fs{}).New("/")
 
@@ -1085,7 +1099,7 @@ func TestFs_Fs_DeleteAll_Bad(t *T) {
 }
 
 func TestFs_Fs_DeleteAllProtectedHome_Ugly(t *T) {
-	home := Getenv("HOME")
+	home := UserHomeDir().Value.(string) // HOME is usually unset on Windows
 	RequireNotEmpty(t, home)
 	fsys := (&Fs{}).New("/")
 

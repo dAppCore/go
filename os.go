@@ -438,6 +438,9 @@ func Setenv(key, value string) Result {
 //	r := core.Unsetenv("FORGE_TOKEN")
 //	if !r.OK { return r }
 func Unsetenv(key string) Result {
+	if key == "" {
+		return Result{OK: true} // no such variable on any OS (Windows would reject the call)
+	}
 	if err := os.Unsetenv(key); err != nil {
 		return Result{Value: WrapCode(err, "env.invalid", "Unsetenv", "OS rejected env removal"), OK: false}
 	}
