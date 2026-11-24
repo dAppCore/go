@@ -59,3 +59,9 @@ func ExampleIsControl() {
 	Println(IsControl('\t'), IsControl('a'))
 	// Output: true false
 }
+
+// ExampleIsNumber counts more than digits.
+func ExampleIsNumber() {
+	Println(IsNumber('½'), IsDigit('½'))
+	// Output: true false
+}

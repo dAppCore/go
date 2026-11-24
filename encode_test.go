@@ -215,3 +215,68 @@ func TestEncode_HexAppendEncode_Ugly(t *T) {
 	AssertEqual(t, "id-42-0aff", AsString(HexAppendEncode([]byte("id-42-"), []byte{0x0a, 0xff})))
 	AssertEqual(t, HexEncode([]byte{0x0a, 0xff}), AsString(HexAppendEncode(nil, []byte{0x0a, 0xff})))
 }
+
+func TestEncode_LittleEndianUint16_Good(t *T) {
+	AssertEqual(t, uint16(0x0201), LittleEndianUint16([]byte{1, 2}))
+}
+
+func TestEncode_LittleEndianUint16_Bad(t *T) {
+	defer func() { AssertNotNil(t, recover(), "short input panics, as the stdlib does") }()
+	LittleEndianUint16([]byte{1})
+}
+
+func TestEncode_LittleEndianUint16_Ugly(t *T) {
+	// Extra bytes are ignored.
+	AssertEqual(t, uint16(0xffff), LittleEndianUint16([]byte{0xff, 0xff, 9, 9}))
+}
+
+func TestEncode_LittleEndianUint32_Good(t *T) {
+	AssertEqual(t, uint32(0x04030201), LittleEndianUint32([]byte{1, 2, 3, 4}))
+}
+
+func TestEncode_LittleEndianUint32_Bad(t *T) {
+	defer func() { AssertNotNil(t, recover(), "short input panics, as the stdlib does") }()
+	LittleEndianUint32([]byte{1, 2, 3})
+}
+
+func TestEncode_LittleEndianUint32_Ugly(t *T) {
+	AssertEqual(t, uint32(0), LittleEndianUint32(make([]byte, 4)))
+}
+
+func TestEncode_BigEndianUint16_Good(t *T) {
+	AssertEqual(t, uint16(0x0102), BigEndianUint16([]byte{1, 2}))
+}
+
+func TestEncode_BigEndianUint16_Bad(t *T) {
+	defer func() { AssertNotNil(t, recover(), "short input panics, as the stdlib does") }()
+	BigEndianUint16(nil)
+}
+
+func TestEncode_BigEndianUint16_Ugly(t *T) {
+	AssertEqual(t, uint16(0xff00), BigEndianUint16([]byte{0xff, 0, 7}))
+}
+
+func TestEncode_AppendLittleEndianUint16_Good(t *T) {
+	AssertEqual(t, []byte{9, 0x01, 0x02}, AppendLittleEndianUint16([]byte{9}, 0x0201))
+}
+
+func TestEncode_AppendLittleEndianUint16_Bad(t *T) {
+	// A nil slice is a fine starting point.
+	AssertEqual(t, []byte{0, 0}, AppendLittleEndianUint16(nil, 0))
+}
+
+func TestEncode_AppendLittleEndianUint16_Ugly(t *T) {
+	AssertEqual(t, uint16(0xbeef), LittleEndianUint16(AppendLittleEndianUint16(nil, 0xbeef)))
+}
+
+func TestEncode_AppendLittleEndianUint32_Good(t *T) {
+	AssertEqual(t, []byte{1, 2, 3, 4}, AppendLittleEndianUint32(nil, 0x04030201))
+}
+
+func TestEncode_AppendLittleEndianUint32_Bad(t *T) {
+	AssertEqual(t, []byte{0, 0, 0, 0}, AppendLittleEndianUint32(nil, 0))
+}
+
+func TestEncode_AppendLittleEndianUint32_Ugly(t *T) {
+	AssertEqual(t, uint32(0xdeadbeef), LittleEndianUint32(AppendLittleEndianUint32(nil, 0xdeadbeef)))
+}

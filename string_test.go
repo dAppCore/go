@@ -718,3 +718,27 @@ func TestString_StringReader_Good(t *T) {
 	AssertEqual(t, "pay", string(buf))
 	AssertEqual(t, 4, r.Len()) // Len reports the unread remainder
 }
+
+func TestString_UTF8Valid_Good(t *T) {
+	AssertTrue(t, UTF8Valid([]byte("Groot 界")))
+}
+
+func TestString_UTF8Valid_Bad(t *T) {
+	AssertFalse(t, UTF8Valid([]byte{0xff, 0xfe}))
+}
+
+func TestString_UTF8Valid_Ugly(t *T) {
+	AssertTrue(t, UTF8Valid(nil)) // empty is valid
+}
+
+func TestString_UTF8ValidString_Good(t *T) {
+	AssertTrue(t, UTF8ValidString("Groot"))
+}
+
+func TestString_UTF8ValidString_Bad(t *T) {
+	AssertFalse(t, UTF8ValidString("\xc3\x28"))
+}
+
+func TestString_UTF8ValidString_Ugly(t *T) {
+	AssertTrue(t, UTF8ValidString(""))
+}

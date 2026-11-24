@@ -119,3 +119,35 @@ func HexAppendEncode(dst, src []byte) []byte { return hex.AppendEncode(dst, src)
 //
 // The write-side counterpart to LittleEndianUint64, here for the same reason.
 func PutLittleEndianUint64(b []byte, v uint64) { binary.LittleEndian.PutUint64(b, v) }
+
+// LittleEndianUint16 reads the first two bytes of b as a little-endian uint16.
+//
+//	opcode := core.LittleEndianUint16(packet[0:])
+//
+// Wire formats (game packets, file headers) are mostly little-endian; like
+// the 64-bit form, the wrapper inlines to the direct call.
+func LittleEndianUint16(b []byte) uint16 { return binary.LittleEndian.Uint16(b) }
+
+// LittleEndianUint32 reads the first four bytes of b as a little-endian uint32.
+//
+//	size := core.LittleEndianUint32(header[4:])
+func LittleEndianUint32(b []byte) uint32 { return binary.LittleEndian.Uint32(b) }
+
+// BigEndianUint16 reads the first two bytes of b as a big-endian uint16 (network order).
+//
+//	port := core.BigEndianUint16(tcp[2:])
+func BigEndianUint16(b []byte) uint16 { return binary.BigEndian.Uint16(b) }
+
+// AppendLittleEndianUint16 appends v to b, little-endian, and returns the extended slice.
+//
+//	packet = core.AppendLittleEndianUint16(packet, opcode)
+func AppendLittleEndianUint16(b []byte, v uint16) []byte {
+	return binary.LittleEndian.AppendUint16(b, v)
+}
+
+// AppendLittleEndianUint32 appends v to b, little-endian, and returns the extended slice.
+//
+//	packet = core.AppendLittleEndianUint32(packet, uint32(len(body)))
+func AppendLittleEndianUint32(b []byte, v uint32) []byte {
+	return binary.LittleEndian.AppendUint32(b, v)
+}

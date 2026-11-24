@@ -141,3 +141,18 @@ func TestUnicode_IsControl_Ugly(t *T) {
 	AssertFalse(t, IsControl('\u200d'))
 	AssertFalse(t, IsControl('界'))
 }
+
+func TestUnicode_IsNumber_Good(t *T) {
+	AssertTrue(t, IsNumber('7'))
+	AssertTrue(t, IsNumber('½'))
+}
+
+func TestUnicode_IsNumber_Bad(t *T) {
+	AssertFalse(t, IsNumber('a'))
+}
+
+func TestUnicode_IsNumber_Ugly(t *T) {
+	// Roman numeral twelve is a number but not a digit.
+	AssertTrue(t, IsNumber('Ⅻ'))
+	AssertFalse(t, IsDigit('Ⅻ'))
+}

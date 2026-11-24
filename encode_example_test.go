@@ -51,3 +51,33 @@ func ExampleBase64URLDecode() {
 	Println(string(r.Value.([]byte)))
 	// Output: hello?
 }
+
+// ExampleLittleEndianUint16 reads a packet's opcode.
+func ExampleLittleEndianUint16() {
+	Println(LittleEndianUint16([]byte{0x34, 0x12}) == 0x1234)
+	// Output: true
+}
+
+// ExampleLittleEndianUint32 reads a length field.
+func ExampleLittleEndianUint32() {
+	Println(LittleEndianUint32([]byte{10, 0, 0, 0}))
+	// Output: 10
+}
+
+// ExampleBigEndianUint16 reads a port in network order.
+func ExampleBigEndianUint16() {
+	Println(BigEndianUint16([]byte{0x1f, 0x90}))
+	// Output: 8080
+}
+
+// ExampleAppendLittleEndianUint16 builds a packet header.
+func ExampleAppendLittleEndianUint16() {
+	Println(AppendLittleEndianUint16(nil, 0x1234))
+	// Output: [52 18]
+}
+
+// ExampleAppendLittleEndianUint32 builds a length field.
+func ExampleAppendLittleEndianUint32() {
+	Println(AppendLittleEndianUint32(nil, 10))
+	// Output: [10 0 0 0]
+}
