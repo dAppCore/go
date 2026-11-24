@@ -275,3 +275,15 @@ func ExampleCutSuffix() {
 	Println(before, found)
 	// Output: agent true
 }
+
+// ExampleUTF8Valid drops a garbled name.
+func ExampleUTF8Valid() {
+	Println(UTF8Valid([]byte("Groot")), UTF8Valid([]byte{0xff}))
+	// Output: true false
+}
+
+// ExampleUTF8ValidString checks a string.
+func ExampleUTF8ValidString() {
+	Println(UTF8ValidString("界"))
+	// Output: true
+}

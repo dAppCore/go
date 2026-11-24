@@ -360,3 +360,13 @@ func CutPrefix(s, prefix string) (after string, found bool) {
 func CutSuffix(s, suffix string) (before string, found bool) {
 	return strings.CutSuffix(s, suffix)
 }
+
+// UTF8Valid reports whether b is entirely valid UTF-8.
+//
+//	if !core.UTF8Valid(name) { return "" } // a garbled name off the wire
+func UTF8Valid(b []byte) bool { return utf8.Valid(b) }
+
+// UTF8ValidString reports whether s is entirely valid UTF-8.
+//
+//	core.UTF8ValidString("Groot") // true
+func UTF8ValidString(s string) bool { return utf8.ValidString(s) }

@@ -62,3 +62,16 @@ func ToUpper(r rune) rune {
 func ToLower(r rune) rune {
 	return unicode.ToLower(r)
 }
+
+// MaxASCII is the largest ASCII rune, U+007F.
+//
+//	if r > core.MaxASCII { ascii = false }
+const MaxASCII = unicode.MaxASCII
+
+// IsNumber reports whether r is a number of any kind (digits, plus things
+// like Ⅻ and ½ that IsDigit leaves out).
+//
+//	core.IsNumber('½') // true
+func IsNumber(r rune) bool {
+	return unicode.IsNumber(r)
+}

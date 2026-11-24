@@ -127,3 +127,8 @@ func Ceil(x float64) float64 {
 func Round(x float64) float64 {
 	return math.Round(x)
 }
+
+// MaxInt32 is the largest int32.
+//
+//	if n > core.MaxInt32 { return core.E("wire", "count too large", nil) }
+const MaxInt32 = math.MaxInt32
