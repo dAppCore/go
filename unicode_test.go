@@ -124,3 +124,20 @@ func TestUnicode_ToLower_Ugly(t *T) {
 	AssertEqual(t, rune(0), ToLower(rune(0)))
 	AssertEqual(t, rune(-1), ToLower(-1))
 }
+
+func TestUnicode_IsControl_Good(t *T) {
+	AssertTrue(t, IsControl('\n'))
+	AssertTrue(t, IsControl(0))
+	AssertTrue(t, IsControl(0x85)) // C1: next line
+}
+
+func TestUnicode_IsControl_Bad(t *T) {
+	AssertFalse(t, IsControl('A'))
+	AssertFalse(t, IsControl(' '))
+}
+
+func TestUnicode_IsControl_Ugly(t *T) {
+	// Formatting marks like the zero-width joiner aren't control characters.
+	AssertFalse(t, IsControl('\u200d'))
+	AssertFalse(t, IsControl('界'))
+}
