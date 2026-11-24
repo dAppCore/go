@@ -3,7 +3,12 @@
 package core
 
 func TestApp_isExecutable_Good(t *T) {
-	path := Path(t.TempDir(), "agent")
+	// Windows has no execute bit: there, executable means a listed extension.
+	name := "agent"
+	if OS() == "windows" {
+		name += ".exe"
+	}
+	path := Path(t.TempDir(), name)
 	RequireTrue(t, WriteFile(path, []byte("#!/bin/sh\n"), 0o755).OK)
 
 	AssertTrue(t, isExecutable(path))
