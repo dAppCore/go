@@ -84,3 +84,12 @@ func WithDeadline(parent Context, deadline Time) (Context, CancelFunc) {
 func WithValue(parent Context, key, val any) Context {
 	return context.WithValue(parent, key, val)
 }
+
+// ContextCanceled is the error a context reports once it's cancelled, and
+// ContextDeadlineExceeded the one it reports when its deadline passes.
+//
+//	if core.Is(err, core.ContextCanceled) { return nil } // we asked it to stop
+var (
+	ContextCanceled         = context.Canceled
+	ContextDeadlineExceeded = context.DeadlineExceeded
+)

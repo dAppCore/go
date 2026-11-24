@@ -290,3 +290,15 @@ const (
 func Date(year int, month Month, day, hour, min, sec, nsec int, loc *Location) Time {
 	return time.Date(year, month, day, hour, min, sec, nsec, loc)
 }
+
+// TimeParseInLocation is TimeParse for a value with no zone of its own: it's
+// read as local to loc. Returns Result wrapping time.Time.
+//
+//	r := core.TimeParseInLocation("2006-01-02", "2026-11-24", core.Now().Location())
+func TimeParseInLocation(layout, value string, loc *time.Location) Result {
+	t, err := time.ParseInLocation(layout, value, loc)
+	if err != nil {
+		return Result{err, false}
+	}
+	return Result{t, true}
+}

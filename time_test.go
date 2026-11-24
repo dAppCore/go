@@ -858,3 +858,21 @@ func TestTime_Tick_Ugly(t *T) {
 		}
 	}
 }
+
+func TestTime_TimeParseInLocation_Good(t *T) {
+	r := TimeParseInLocation("2006-01-02", "2026-11-24", UTC)
+	RequireTrue(t, r.OK)
+	AssertEqual(t, 2026, r.Value.(Time).Year())
+}
+
+func TestTime_TimeParseInLocation_Bad(t *T) {
+	AssertFalse(t, TimeParseInLocation("2006-01-02", "not a date", UTC).OK)
+}
+
+func TestTime_TimeParseInLocation_Ugly(t *T) {
+	// The location is used: midnight local, not midnight UTC.
+	loc := TimeParse(TimeRFC3339, "2026-01-01T00:00:00+05:00").Value.(Time).Location() // +05:00
+	r := TimeParseInLocation("2006-01-02", "2026-11-24", loc)
+	RequireTrue(t, r.OK)
+	AssertEqual(t, 19, r.Value.(Time).UTC().Hour())
+}

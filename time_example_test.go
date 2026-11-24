@@ -132,3 +132,10 @@ func ExampleAfterFunc() {
 	timer := AfterFunc(Hour, func() {})
 	defer timer.Stop()
 }
+
+// ExampleTimeParseInLocation reads a folder named for a day as that local day.
+func ExampleTimeParseInLocation() {
+	r := TimeParseInLocation("2006-01-02", "2026-11-24", UTC)
+	Println(r.Value.(Time).Format("Mon 2 Jan"))
+	// Output: Tue 24 Nov
+}
