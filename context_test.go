@@ -83,7 +83,14 @@ func TestContext_WithDeadline_Ugly(t *T) {
 func TestContext_WithTimeout_Good(t *T) {
 	ctx, cancel := WithTimeout(Background(), Millisecond)
 	defer cancel()
-	Sleep(2 * Millisecond)
+	// Wait for it rather than sleeping a fixed 2ms: Windows timers tick at
+	// ~15ms, so a short sleep can wake before the deadline fires there.
+	guard, stop := WithTimeout(Background(), 5*Second)
+	defer stop()
+	select {
+	case <-ctx.Done():
+	case <-guard.Done():
+	}
 
 	assertContextDone(t, ctx)
 	// Expiry via elapsed timeout reports the deadline error.
